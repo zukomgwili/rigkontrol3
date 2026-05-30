@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "rigkontrol3",
+  "project_id": "0b63e06e-bd2e-4aeb-9497-016654e350a9"
+}
