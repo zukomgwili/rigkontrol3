@@ -3,3 +3,10 @@
 .dolt/
 *.db
 .beads-credential-key
+
+# Swift / Xcode build output
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
