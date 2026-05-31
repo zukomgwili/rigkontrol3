@@ -2,7 +2,7 @@ import RigKontrol3Core
 import XCTest
 
 final class RigKontrolMIDIBridgePipelineTests: XCTestCase {
-    func testMapsVerifiedSwitchPacketToMIDINote() {
+    func testMomentaryModeMapsVerifiedSwitchPressAndReleaseToMIDINotes() {
         var pipeline = RigKontrolMIDIBridgePipeline()
 
         XCTAssertEqual(
@@ -13,6 +13,64 @@ final class RigKontrolMIDIBridgePipelineTests: XCTestCase {
                     message: .noteOn(channel: MIDIChannel(16), note: 1)
                 )
             ]
+        )
+        XCTAssertEqual(
+            pipeline.outputs(for: [0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x53, 0x04]),
+            [
+                RigKontrolMIDIOutput(
+                    event: .switchChanged(index: 1, isPressed: false),
+                    message: .noteOff(channel: MIDIChannel(16), note: 1)
+                )
+            ]
+        )
+    }
+
+    func testLatchModeTogglesOnPhysicalPressAndIgnoresRelease() {
+        var pipeline = RigKontrolMIDIBridgePipeline(switchMode: .latch)
+
+        XCTAssertEqual(
+            pipeline.outputs(for: [0x04, 0x10, 0x00, 0x00, 0x00, 0x00, 0x53, 0x04]),
+            [
+                RigKontrolMIDIOutput(
+                    event: .switchChanged(index: 1, isPressed: true),
+                    message: .noteOn(channel: MIDIChannel(16), note: 1)
+                )
+            ]
+        )
+        XCTAssertEqual(
+            pipeline.outputs(for: [0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x53, 0x04]),
+            []
+        )
+        XCTAssertEqual(
+            pipeline.outputs(for: [0x04, 0x10, 0x00, 0x00, 0x00, 0x00, 0x53, 0x04]),
+            [
+                RigKontrolMIDIOutput(
+                    event: .switchChanged(index: 1, isPressed: false),
+                    message: .noteOff(channel: MIDIChannel(16), note: 1)
+                )
+            ]
+        )
+        XCTAssertEqual(
+            pipeline.outputs(for: [0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x53, 0x04]),
+            []
+        )
+    }
+
+    func testTriggerModeSendsPressOnlyAndIgnoresRelease() {
+        var pipeline = RigKontrolMIDIBridgePipeline(switchMode: .trigger)
+
+        XCTAssertEqual(
+            pipeline.outputs(for: [0x04, 0x10, 0x00, 0x00, 0x00, 0x00, 0x53, 0x04]),
+            [
+                RigKontrolMIDIOutput(
+                    event: .switchChanged(index: 1, isPressed: true),
+                    message: .noteOn(channel: MIDIChannel(16), note: 1)
+                )
+            ]
+        )
+        XCTAssertEqual(
+            pipeline.outputs(for: [0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x53, 0x04]),
+            []
         )
     }
 

@@ -46,6 +46,9 @@ swift build
 swift test
 swift run rk3bridge
 swift run rk3bridge --verbose
+swift run rk3bridge --switch-mode momentary
+swift run rk3bridge --led-test 1 --seconds 3
+swift run rk3bridge --led-test off --seconds 1
 swift run rk3bridge --seconds 10 --verbose
 swift run rk3probe
 swift run rk3probe --read-bulk --seconds 10
@@ -66,6 +69,10 @@ swift run rk3bridge
 ```
 
 It opens USB interface `0` alt setting `0`, reads bulk endpoint `0x81`, parses verified switch and expression packets, and publishes a CoreMIDI virtual source named `RigKontrol3 Bridge`. Stop it with `Ctrl-C`. Use `--source-name "Custom Name"` to change the CoreMIDI source name, `--verbose` to print decoded events as MIDI is sent, and `--seconds 10` for a bounded smoke test.
+
+The default switch mode is `latch`, which is intended for Guitar Rig-style effect bypass toggles: a physical press flips the MIDI output state and the physical release sends no MIDI. Use `--switch-mode momentary` if a host needs traditional press `noteOn` and release `noteOff` behavior, or `--switch-mode trigger` if it should receive `noteOn` only on each press.
+
+The physical Rig Kontrol LEDs follow switch output by default. The LED packet format comes from the Linux `snd-usb-caiaq` Rig Kontrol 3 support and is verified on the attached unit: send command `0x05` to bulk OUT endpoint `0x01`. The raw switch LED byte is payload byte `4`; physical switch labels 1...4 map to bits `4...7`, and physical switch labels 5...8 map to bits `0...3`. The pedal LED maps to payload byte `5` bit `0`. Normal bridge shutdown and bounded LED tests send a final all-off switch LED state before releasing USB. Use `--leds off` to disable LED writes, `--led-test 1 --seconds 3` to turn on physical switch LED 1 briefly for protocol checks, and `--led-test off --seconds 1` to clear switch LEDs after an interrupted run.
 
 ## Design Direction
 

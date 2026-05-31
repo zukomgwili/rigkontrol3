@@ -69,6 +69,34 @@ public struct LibUSBBulkStreamSummary: Sendable {
     }
 }
 
+public struct LibUSBBulkWriteResult: Equatable, Sendable {
+    public let status: String
+    public let transferred: Int
+
+    public init(status: String, transferred: Int) {
+        self.status = status
+        self.transferred = transferred
+    }
+}
+
+public struct LibUSBBulkOutputWriter {
+    public let endpointAddress: Int
+
+    private let writeBytes: ([UInt8], UInt32) -> LibUSBBulkWriteResult
+
+    init(endpointAddress: Int, writeBytes: @escaping ([UInt8], UInt32) -> LibUSBBulkWriteResult) {
+        self.endpointAddress = endpointAddress
+        self.writeBytes = writeBytes
+    }
+
+    public func write(
+        _ bytes: [UInt8],
+        timeoutMilliseconds: UInt32 = 200
+    ) -> LibUSBBulkWriteResult {
+        writeBytes(bytes, timeoutMilliseconds)
+    }
+}
+
 public enum LibUSBBulkReadError: Error, Equatable {
     case initializationFailed(String)
     case deviceListFailed(String)
@@ -80,10 +108,13 @@ public enum LibUSBBulkEventReader {
         interfaceNumber: Int32 = 0,
         alternateSetting: Int32 = 0,
         endpointAddress: UInt8 = 0x81,
+        outputEndpointAddress: UInt8 = 0x01,
         packetSize: Int = 512,
         timeoutMilliseconds: UInt32 = 100,
+        didOpen: ((LibUSBBulkOutputWriter) -> Void)? = nil,
+        willClose: ((LibUSBBulkOutputWriter) -> Void)? = nil,
         shouldContinue: () -> Bool,
-        packetHandler: (LibUSBBulkReadPacket) -> Void
+        packetHandler: (LibUSBBulkReadPacket, LibUSBBulkOutputWriter) -> Void
     ) throws -> LibUSBBulkStreamSummary {
         var context: OpaquePointer?
         let initStatus = libusb_init(&context)
@@ -147,6 +178,34 @@ public enum LibUSBBulkEventReader {
             )
         }
 
+        let outputWriter = LibUSBBulkOutputWriter(endpointAddress: Int(outputEndpointAddress)) {
+            bytes, timeoutMilliseconds in
+            guard !bytes.isEmpty else {
+                return LibUSBBulkWriteResult(status: errorName(success), transferred: 0)
+            }
+
+            var buffer = bytes
+            let byteCount = buffer.count
+            var transferred: Int32 = 0
+            let writeStatus = buffer.withUnsafeMutableBufferPointer { pointer in
+                libusb_bulk_transfer(
+                    handle,
+                    outputEndpointAddress,
+                    pointer.baseAddress,
+                    Int32(byteCount),
+                    &transferred,
+                    timeoutMilliseconds
+                )
+            }
+
+            return LibUSBBulkWriteResult(
+                status: errorName(writeStatus),
+                transferred: Int(transferred)
+            )
+        }
+
+        didOpen?(outputWriter)
+
         var packetCount = 0
         var nonTimeoutErrors: [String] = []
 
@@ -171,13 +230,16 @@ public enum LibUSBBulkEventReader {
                         endpointAddress: Int(endpointAddress),
                         timestamp: Date(),
                         bytes: Array(buffer.prefix(Int(transferred)))
-                    )
+                    ),
+                    outputWriter
                 )
             } else if readStatus != timeout {
                 nonTimeoutErrors.append(errorName(readStatus))
                 break
             }
         }
+
+        willClose?(outputWriter)
 
         let finalReleaseStatus = libusb_release_interface(handle, interfaceNumber)
 

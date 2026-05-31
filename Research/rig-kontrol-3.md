@@ -210,6 +210,25 @@ Launch command:
 swift run rk3bridge
 ```
 
+The default switch mode is `latch`: a physical switch press toggles the MIDI note state, and the physical release sends no MIDI. This is intended for Guitar Rig 6 learned effect toggles. Use `--switch-mode momentary` for the original press `noteOn` / release `noteOff` behavior, or `--switch-mode trigger` for press-only `noteOn` output.
+
+LED protocol evidence from the Linux `snd-usb-caiaq` driver:
+
+- Rig Kontrol 3 is supported under Native Instruments VID/PID `0x17cc:0x1940`.
+- EP1 command `0x05` is `WRITE_IO`.
+- Commands are sent to USB bulk OUT endpoint `0x01` as `[command] + payload`.
+- Rig Kontrol 3 raw switch LED controls are bit positions `32...40` in the output control state. On the attached unit, physical switch labels 1...4 map to payload byte `4` bits `4...7`, physical switch labels 5...8 map to payload byte `4` bits `0...3`, and the pedal LED maps to payload byte `5` bit `0`.
+- The Linux startup path writes payload bytes `00 40 40 00` for the Rig Kontrol 3 seven-segment display dashes; this bridge preserves those display bytes in its LED state payload.
+
+The bridge now sends `WRITE_IO` LED state packets by default. Normal bridge shutdown and bounded LED tests send a final all-off switch LED state before releasing USB, so latched effect LEDs do not remain lit after the bridge exits. Use `--leds off` to disable LED writes, `--led-test 1 --seconds 3` to light one switch LED briefly, and `--led-test off --seconds 1` to clear switch LEDs after an interrupted run.
+
+Hardware LED verification on 2026-05-30 with the attached Rig Kontrol 3:
+
+- Before physical-label remapping, `swift run rk3bridge --led-test 1 --seconds 10 --verbose` sent command `0x05` with switch LED payload byte `0x01`; the user confirmed physical switch LED 5 lit. This proved Linux control bit 0 does not correspond to printed switch label 1 on this unit.
+- Before physical-label remapping, `swift run rk3bridge --led-test 5 --seconds 30 --verbose` sent command `0x05` with switch LED payload byte `0x10`; the user confirmed physical switch LED 1 lit.
+- The bridge now translates printed switch labels to the verified hardware LED bit order, so `--led-test 1` sends payload byte `0x10` and live switch 1 LED follow uses the physical switch 1 LED.
+- `swift run rk3bridge --led-test off --seconds 1 --verbose` sent command `0x05` with switch LED payload byte `0x00` and cleared the switch LED state successfully.
+
 Bounded smoke-test command:
 
 ```bash
