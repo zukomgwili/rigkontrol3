@@ -47,11 +47,27 @@ calibration measured **88–648** from 555 samples. The user completed the repea
 switch/pedal test without reporting faults and confirmed that host CC80 values
 of 127 and 0 respectively lit and extinguished LED 1.
 
+A roughly 207-second listening run kept audio and MIDI active together. The
+user heard guitar and reported that the controls continued responding, but the
+guitar was very soft and had noticeable delay. The test client's 0.1 gain
+attenuated the signal by 20 dB; normal output level has not yet been established
+with unity gain. The installed driver also accepted a 128-frame CoreAudio
+buffer request in a separate one-second silent-output check.
+
+The **0.1.3 (build 4) source** prepares a latency adaptation: a 4 ms output
+scheduling lead replaces the recovered 64 ms lead in the native adapter, while
+the NI reference scheduler remains intact. Public I/O waits for PCM readiness,
+and the capture consumer discards stale backlog. A regression using the actual
+ISO adapter fails against the previous behavior and passes with this change.
+**Build 4 is not installed or physically validated yet.** The 4 ms scheduling
+lead is not a measured total round-trip latency.
+
 These installed tests use standard CoreAudio and CoreMIDI clients, without the
-retired app or MainStage. **Audible guitar playback, actual reconnect recovery,
-and physical DIN loopback remain unvalidated.** Source/feedback/calibration
-and reconnect rules are documented in [the MIDI component](Driver/MIDI/README.md),
-with measured results in [hardware validation](ReverseEngineering/HardwareValidation.md).
+retired app or MainStage. Acceptable guitar level and latency remain open under
+`rigkontrol3-40h.3`; actual reconnect recovery and physical DIN loopback also
+remain unvalidated. Source/feedback/calibration and reconnect rules are
+documented in [the MIDI component](Driver/MIDI/README.md), with measured results
+in [hardware validation](ReverseEngineering/HardwareValidation.md).
 Task status is tracked in Beads under `rigkontrol3-40h`.
 
 ## Build and install
@@ -95,8 +111,17 @@ finished, rather than relying on a short recording window:
 ```
 
 Run these in separate terminals when testing audio and controls together. The
-audio client sends guitar input 1 quietly to both outputs with 0.1 gain and a
-±0.2 clamp; its presence here is a test procedure, not an audible-result claim.
+audio client defaults to sending guitar input 1 to both outputs with 0.1 gain
+and a ±0.2 clamp. That intentionally quiet test attenuates the signal by 20 dB.
+For the next level and latency test, request unity gain and a smaller buffer:
+
+```sh
+.build/native/test/rk3-audio-client --monitor --gain 1 --buffer-frames 128 --live
+```
+
+Explicit `--gain` accepts a finite decimal from 0 to 1 and uses a ±0.95 clamp;
+the client prints the selected gain, limit and actual CoreAudio buffer size.
+The driver has not yet passed a listening test with these settings.
 Each client prints its PID. `kill -USR1 <PID>` prints cumulative statistics
 without stopping; Control-C stops the client cleanly. The timed `--seconds`
 option remains available. With no MIDI applications or test clients open,

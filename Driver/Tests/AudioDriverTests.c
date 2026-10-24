@@ -56,10 +56,15 @@ static void properties(void){
     a.mSelector=kAudioDevicePropertyStreams;a.mScope=kAudioObjectPropertyScopeInput;
     AudioObjectID ids[2]={0};
     assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(ids),&written,ids)==0&&written==4&&ids[0]==INPUT);
-    a.mSelector=kAudioDevicePropertyLatency;a.mScope=kAudioObjectPropertyScopeGlobal;
+    a.mSelector=kAudioDevicePropertyLatency;a.mScope=kAudioObjectPropertyScopeInput;
     UInt32 latency=99;
-    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==3072);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==48);
+    a.mScope=kAudioObjectPropertyScopeOutput;
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==192);
+    a.mScope=kAudioObjectPropertyScopeGlobal;
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==192);
     assert(table.GetPropertyData(driver,INPUT,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==0);
+    assert(table.GetPropertyData(driver,OUTPUT,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==0);
     a.mSelector=RK3_PROPERTY_COMMAND;a.mScope=kAudioObjectPropertyScopeGlobal;
     RK3NativeCommand command={1,4,{7,0,1,0xf8}};
     RK3NativeCommandLease lease={1,0,7};

@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../NativeUSB.h"
+#include "../AudioTiming.h"
 
 enum { DEVICE=2, INPUT=3, OUTPUT=4, RATE=48000, PERIOD=16384, CLIENT_LIMIT=64 };
 static AudioServerPlugInDriverInterface table;
@@ -231,7 +232,10 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         case kAudioDevicePropertyDeviceIsAlive:number=(info().flags&RK3_NATIVE_CONNECTED)!=0;break;
         case kAudioDevicePropertyDeviceIsRunning:number=(info().flags&RK3_NATIVE_AUDIO_RUNNING)!=0;break;
         case kAudioDevicePropertyDeviceCanBeDefaultDevice:number=1;break;
-        case kAudioDevicePropertyLatency:number=o==DEVICE?3072:0;break;
+        case kAudioDevicePropertyLatency:
+            if(o==DEVICE)number=a->mScope==kAudioObjectPropertyScopeInput?
+                RK3_AUDIO_INPUT_LATENCY_FRAMES:RK3_AUDIO_OUTPUT_LATENCY_FRAMES;
+            break;
         case kAudioDevicePropertySafetyOffset:number=128;break;
         case kAudioDevicePropertyZeroTimeStampPeriod:number=PERIOD;break;
         case kAudioDevicePropertyClockAlgorithm:number=kAudioDeviceClockAlgorithmRaw;break;

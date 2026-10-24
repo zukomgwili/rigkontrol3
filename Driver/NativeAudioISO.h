@@ -1,6 +1,7 @@
 #ifndef RK3_NATIVE_AUDIO_ISO_H
 #define RK3_NATIVE_AUDIO_ISO_H
 
+#include "AudioTiming.h"
 #include <IOKit/usb/IOUSBLib.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -21,7 +22,9 @@ typedef struct {
  * stop and callback drain, then calls release_usb before closing the interface.
  * Command callback writes on that worker and pumps its loop. Real rates require
  * ACK9=1; the bounded rate-255 stop accepts the device's received ACK9=0/1.
- * This first engine supports verified 48kHz/stereo/mode2 only. */
+ * This first engine supports verified 48kHz/stereo/mode2 only. Its native OUT
+ * calendar uses AudioTiming.h; the recovered NI reference scheduler is unchanged.
+ * A clock is published only after priming and a valid post-priming capture batch. */
 rk3_native_audio_iso *rk3_native_audio_iso_create(IOUSBInterfaceInterface300 **interface,
     uint8_t input_pipe, uint8_t output_pipe, rk3_native_audio_command command, void *context);
 int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *engine);
@@ -41,7 +44,12 @@ bool rk3_native_audio_iso_running(const rk3_native_audio_iso *engine);
 
 /* HAL paths: no mutex, allocation, run-loop work or USB call. Bounded SPSC
  * Float32 stereo queues; competing callers return zero rather than wait.
- * Return actual frames accepted/read. NativeUSB retains the engine pointer
+ * Return actual frames accepted/read; both return zero before PCM readiness.
+ * Capture discards an old backlog on the consumer side, retaining at most the
+ * requested frames plus one input IRP, so a late client cannot inherit stale
+ * startup audio indefinitely. This intentionally drops samples after a late
+ * consumer; it does not promise lossless recording through a host stall.
+ * NativeUSB retains the engine pointer
  * until all concurrent calls have completed, including across disconnects. */
 size_t rk3_native_audio_iso_render(rk3_native_audio_iso *engine,
                                   const float *interleaved, size_t frames);

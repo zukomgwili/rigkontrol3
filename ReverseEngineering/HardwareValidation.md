@@ -154,17 +154,67 @@ recorded:
 Thus all eight NI-profile switch assignments and the full calibrated pedal
 range reached CoreMIDI. The Controller LED Feedback destination was then sent
 CC80=127 and CC80=0. The user confirmed that LED 1 lit and extinguished,
-respectively. This feedback check
-does not establish automatic effect-state output from Guitar Rig or another
-host.
+respectively. This feedback check does not establish automatic effect-state
+output from Guitar Rig or another host.
 
 All installed acceptance checks above use standard CoreAudio and CoreMIDI
 clients. The former controller app and MainStage are not involved. For a guided
 physical test, `rk3-midi-monitor --live` and
 `rk3-audio-client --monitor --live` keep their clients open until stopped.
 Each prints its PID; SIGUSR1 requests statistics, while SIGINT or SIGTERM ends
-the test cleanly. The audio monitor retains 0.1 gain and a ±0.2 output clamp.
+the test cleanly. The audio monitor defaults to 0.1 gain and a ±0.2 output clamp.
 
-**Still pending:** audible guitar playback through the RK3, actual reconnect
-recovery, and a physical DIN MIDI loopback test. Other sample rates are outside
-this stereo 48 kHz build's validated scope.
+## Audible guitar check on installed build 3
+
+A live standard CoreAudio monitor and the native CoreMIDI client ran together
+for approximately 207 seconds. The audio client stopped cleanly with:
+
+```text
+19431 callbacks; 9948672 input1 frames; RMS0.007939; stop0
+```
+
+The user reported that guitar was audible and controls continued responding,
+but the guitar was very soft and the delay was noticeable. The client applied
+0.1 gain, a 20 dB attenuation, so this test's output level does not establish
+normal driver output level. A unity-gain listening check is still required.
+This run establishes simultaneous audible audio and controller operation, not
+acceptable sound quality or round-trip latency.
+
+A subsequent one-second silent-output check used the standard CoreAudio
+buffer-size API. The installed build 3 accepted a request for 128 frames, and
+the client verified the actual size before starting:
+
+```text
+389 callbacks; 49792 input1 frames; RMS0.006867; input peak0.017783; stop0
+```
+
+The diagnostic now supports `--gain 1 --buffer-frames 128 --live`, prints the
+selected gain/limit and actual buffer size, and reports input peak. Explicit
+gain uses a ±0.95 clamp; the unchanged default is 0.1 gain with a ±0.2 clamp.
+No unity-gain audible result has yet been established.
+
+## Proposed version 0.1.3 (build 4) adaptation
+
+The source now adapts the native ISO output calendar from the recovered 64 ms
+lead to 4 ms. The original NI scheduling model remains in `AudioSchedule.c` as
+a reference; the current stereo adapter overrides its output scheduling lead.
+The driver withholds its public clock, render and capture readiness until
+post-priming PCM is available. The capture consumer also discards stale input
+backlog. The HAL advertises 48 frames of input latency and 192 frames of output
+latency at 48 kHz.
+
+The new fake-interface regression exercises the actual `NativeAudioISO.c`
+submission and startup path. It fails against the previous behavior and passes
+with the change, covering the output calendar, early public clock/render/
+capture rejection and capture-backlog removal. These are automated adapter
+checks, not measurements of physical latency.
+
+**Build 4 has not been installed or physically validated.** A 4 ms output
+calendar and the HAL's reported latency do not establish a 4 ms total round trip.
+The next listening check must establish normal guitar level, acceptable delay
+and continued controller operation on the new build. This work is tracked in
+`rigkontrol3-40h.3`.
+
+Actual reconnect recovery and a physical DIN MIDI loopback test also remain
+pending. Other sample rates are outside this stereo 48 kHz build's validated
+scope.

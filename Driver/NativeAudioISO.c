@@ -36,12 +36,12 @@ struct rk3_native_audio_iso {
     NIAudioEncoder encoder;
     NIAudioDecoder decoder;
     uint8_t output_pcm[PACKED_BYTES], input_pcm[PACKED_BYTES];
-    uint64_t capture_next_frame, wire_bytes_scheduled;
+    uint64_t capture_next_frame, wire_bytes_scheduled, expected_input_frame;
     uint64_t output_sample_end[128];
     unsigned output_microframes[128];
     StereoQueue render_queue, capture_queue;
     atomic_flag render_busy, capture_busy;
-    atomic_bool running;
+    atomic_bool running, pcm_ready;
     atomic_int_least32_t error;
     atomic_uint active_calls;
     atomic_uint_fast64_t clock_sequence, clock_frame, clock_host, clock_seed;
@@ -78,6 +78,7 @@ static size_t queue_read(StereoQueue *queue,float *samples,size_t frames) {
 static void fail_engine(rk3_native_audio_iso *engine,int32_t error) {
     int_least32_t expected=0;
     (void)atomic_compare_exchange_strong(&engine->error,&expected,error);
+    atomic_store(&engine->pcm_ready,false);
     bool was_running=atomic_exchange(&engine->running,false);
     if(was_running) {
         (void)(*engine->interface)->AbortPipe(engine->interface,engine->input_pipe);
@@ -214,6 +215,14 @@ static void read_complete(void *context,IOReturn result,void *argument) {
     if(argument != engine->input_frames+transfer->slot*8 || !accepted_status(result)) {
         fail_engine(engine,result == kIOReturnSuccess ? kIOReturnBadArgument : result);return;
     }
+    /* The low-latency output calendar is tied to each received frame, while
+     * the encoder and render FIFO are sequential. Do not attach sequential PCM
+     * to a reversed calendar if the host delivers callbacks out of order. */
+    uint64_t received_frame=engine->schedule.input_frame[transfer->slot];
+    if(received_frame != engine->expected_input_frame || received_frame == UINT64_MAX) {
+        fail_engine(engine,kIOReturnIOError);return;
+    }
+    engine->expected_input_frame=received_frame+1;
     consume_ready_input(engine);
     if(!atomic_load(&engine->running)) return;
     NIAudioPacketResult packets[8];
@@ -226,7 +235,13 @@ static void read_complete(void *context,IOReturn result,void *argument) {
     if(ni_audio_schedule_input_completed(&engine->schedule,transfer->slot,packets,&plan) != NI_AUDIO_SCHEDULE_OK) {
         fail_engine(engine,kIOReturnNoResources);return;
     }
-    /* Snapshot counts, then requeue IN before OUT: this determines NI's frame lead. */
+    /* Preserve NI's 64-slot input requeue, but do not inherit its 64 ms
+     * output lead. The current native stereo path uses a four-ms OUT calendar.
+     * A completed one-ms IN transfer leaves about three ms for submission. */
+    if(plan.received_frame > UINT64_MAX-RK3_AUDIO_OUTPUT_LEAD_MILLISECONDS) {
+        fail_engine(engine,kIOReturnBadArgument);return;
+    }
+    plan.output_frame=plan.received_frame+RK3_AUDIO_OUTPUT_LEAD_MILLISECONDS;
     if(!submit_input(engine,transfer->slot,plan.requeued_input_frame)) return;
     if(!submit_output(engine,&plan)) return;
     if(plan.priming_ended) {
@@ -234,6 +249,12 @@ static void read_complete(void *context,IOReturn result,void *argument) {
         (void)ni_audio_decoder_set_priming(&engine->decoder,false);
         consume_ready_input(engine);
     }
+    /* NativeUSB waits for the public clock before returning Start to HAL.
+     * Earlier output completions are still used for clock accounting, but
+     * must not start the host while the 64-read priming pass rejects render.
+     * The first real capture batch establishes a fresh starting boundary. */
+    if(atomic_load(&engine->running) && !engine->schedule.priming && engine->capture_next_frame != 0)
+        atomic_store_explicit(&engine->pcm_ready,true,memory_order_release);
 }
 
 static void write_complete(void *context,IOReturn result,void *argument) {
@@ -292,7 +313,7 @@ rk3_native_audio_iso *rk3_native_audio_iso_create(IOUSBInterfaceInterface300 **i
     (*interface)->AddRef(interface);
     engine->command=command;engine->command_context=context;
     atomic_flag_clear(&engine->render_busy);atomic_flag_clear(&engine->capture_busy);
-    atomic_init(&engine->running,false);atomic_init(&engine->error,0);atomic_init(&engine->active_calls,0);
+    atomic_init(&engine->running,false);atomic_init(&engine->pcm_ready,false);atomic_init(&engine->error,0);atomic_init(&engine->active_calls,0);
     atomic_init(&engine->clock_seed,mach_absolute_time());
     atomic_init(&engine->clock_sequence,0);atomic_init(&engine->clock_frame,0);atomic_init(&engine->clock_host,0);
     atomic_init(&engine->render_queue.head,0);atomic_init(&engine->render_queue.tail,0);
@@ -335,11 +356,15 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *engine) {
     atomic_store(&engine->capture_queue.head,0);atomic_store(&engine->capture_queue.tail,0);
     atomic_store(&engine->error,0);atomic_fetch_add(&engine->clock_seed,1);
     atomic_store(&engine->clock_host,0);atomic_store(&engine->clock_frame,0);
+    atomic_store(&engine->pcm_ready,false);
     atomic_store(&engine->running,true);
     for(unsigned slot=0;slot<64;++slot) {
         uint64_t scheduled=0;
-        if(ni_audio_schedule_begin_input(&engine->schedule,slot,&scheduled) != NI_AUDIO_SCHEDULE_OK ||
-           !submit_input(engine,slot,scheduled)) {
+        if(ni_audio_schedule_begin_input(&engine->schedule,slot,&scheduled) != NI_AUDIO_SCHEDULE_OK) {
+            fail_engine(engine,kIOReturnIOError);return atomic_load(&engine->error);
+        }
+        if(slot == 0) engine->expected_input_frame=scheduled;
+        if(!submit_input(engine,slot,scheduled)) {
             fail_engine(engine,kIOReturnIOError);return atomic_load(&engine->error);
         }
     }
@@ -365,6 +390,7 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *engine) {
 
 void rk3_native_audio_iso_stop(rk3_native_audio_iso *engine) {
     if(engine == NULL) return;
+    atomic_store(&engine->pcm_ready,false);
     atomic_store(&engine->running,false);
     if(engine->usb_released) return;
     (void)(*engine->interface)->AbortPipe(engine->interface,engine->input_pipe);
@@ -410,7 +436,7 @@ size_t rk3_native_audio_iso_render(rk3_native_audio_iso *engine,const float *sam
     if(engine == NULL || samples == NULL) return 0;
     atomic_fetch_add(&engine->active_calls,1);
     size_t accepted=0;
-    if(atomic_load(&engine->running) && !atomic_flag_test_and_set_explicit(&engine->render_busy,memory_order_acquire)) {
+    if(atomic_load(&engine->running) && atomic_load_explicit(&engine->pcm_ready,memory_order_acquire) && !atomic_flag_test_and_set_explicit(&engine->render_busy,memory_order_acquire)) {
         accepted=queue_write(&engine->render_queue,samples,frames);
         atomic_flag_clear_explicit(&engine->render_busy,memory_order_release);
     }
@@ -421,8 +447,18 @@ size_t rk3_native_audio_iso_capture(rk3_native_audio_iso *engine,float *samples,
     if(engine == NULL || samples == NULL) return 0;
     atomic_fetch_add(&engine->active_calls,1);
     size_t captured=0;
-    if(atomic_load(&engine->running) && !atomic_flag_test_and_set_explicit(&engine->capture_busy,memory_order_acquire)) {
-        captured=queue_read(&engine->capture_queue,samples,frames);
+    if(atomic_load(&engine->running) && atomic_load_explicit(&engine->pcm_ready,memory_order_acquire) && !atomic_flag_test_and_set_explicit(&engine->capture_busy,memory_order_acquire)) {
+        /* Only this consumer owns tail. Keep a late host close to current
+         * input, without producer-side tail mutation or an unbounded RT loop. */
+        if(frames != 0) {
+            uint64_t tail=atomic_load_explicit(&engine->capture_queue.tail,memory_order_relaxed);
+            uint64_t head=atomic_load_explicit(&engine->capture_queue.head,memory_order_acquire);
+            size_t keep=frames < QUEUE_FRAMES-RK3_AUDIO_INPUT_LATENCY_FRAMES ?
+                frames+RK3_AUDIO_INPUT_LATENCY_FRAMES : QUEUE_FRAMES;
+            if(head-tail > keep)
+                atomic_store_explicit(&engine->capture_queue.tail,head-keep,memory_order_release);
+            captured=queue_read(&engine->capture_queue,samples,frames);
+        }
         atomic_flag_clear_explicit(&engine->capture_busy,memory_order_release);
     }
     atomic_fetch_sub(&engine->active_calls,1);return captured;
@@ -432,7 +468,7 @@ bool rk3_native_audio_iso_clock(rk3_native_audio_iso *engine,rk3_native_audio_cl
     if(engine == NULL || snapshot == NULL) return false;
     atomic_fetch_add(&engine->active_calls,1);
     bool valid=false;
-    for(unsigned attempt=0;attempt<3 && atomic_load(&engine->running);++attempt) {
+    for(unsigned attempt=0;attempt<3 && atomic_load(&engine->running) && atomic_load_explicit(&engine->pcm_ready,memory_order_acquire);++attempt) {
         uint64_t sequence=atomic_load_explicit(&engine->clock_sequence,memory_order_acquire);
         if((sequence&1) != 0) continue;
         rk3_native_audio_clock result={atomic_load(&engine->clock_frame),atomic_load(&engine->clock_host),atomic_load(&engine->clock_seed)};

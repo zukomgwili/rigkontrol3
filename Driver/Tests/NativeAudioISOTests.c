@@ -143,27 +143,35 @@ static void test_full_session(IOUSBInterfaceInterface300 **interface) {
     assert(!rk3_native_audio_iso_destroy(engine));
     assert(!rk3_native_audio_iso_release_usb(engine));
     float render[192];for(unsigned index=0;index<192;++index) render[index]=0.5f;
-    assert(rk3_native_audio_iso_render(engine,render,96) == 96);
+    assert(rk3_native_audio_iso_render(engine,render,96) == 0);
+    rk3_native_audio_clock clock;
     for(unsigned slot=0;slot<64;++slot) {
         complete_input(slot,false);
-        assert(mock.writes[slot].scheduled_frame == 1165+slot);
+        assert(mock.writes[slot].scheduled_frame == 1105+slot);
         uint8_t *wire=mock.writes[slot].data;
         assert(wire[0] == 0 && wire[1] == 0 && wire[2] == 1 && wire[3] == 0 && wire[6] == 0);
         complete_output(slot);
+        assert(!rk3_native_audio_iso_clock(engine,&clock));
     }
     assert(rk3_native_audio_iso_pending(engine) == 64);
     complete_input(0,false);
-    assert(mock.reads[0].scheduled_frame == 1229 && mock.writes[0].scheduled_frame == 1229);
+    assert(mock.reads[0].scheduled_frame == 1229 && mock.writes[0].scheduled_frame == 1169);
     uint8_t *wire=mock.writes[0].data;
-    assert(wire[0] == 0 && wire[1] == 0 && wire[2] == 1 && wire[3] == 0x40 && wire[7] == 0x40);
+    assert(wire[0] == 0 && wire[1] == 0 && wire[2] == 1 && wire[3] == 0 && wire[7] == 0);
     float captured[96];assert(rk3_native_audio_iso_capture(engine,captured,48) == 48);
     assert(captured[0] == 0.0f && captured[1] == 0.5f);
     for(unsigned index=2;index<96;++index) assert(captured[index] == 0.5f);
     assert(rk3_native_audio_iso_capture(engine,captured,48) == 0);
-    complete_output(0);
-    rk3_native_audio_clock clock;
     assert(rk3_native_audio_iso_clock(engine,&clock));
-    assert(clock.sample_frame == 3120 && clock.host_time != 0 && clock.seed != 0);
+    assert(clock.sample_frame == 3072 && clock.host_time != 0 && clock.seed != 0);
+    assert(rk3_native_audio_iso_render(engine,render,96) == 96);
+    complete_output(0);
+    complete_input(1,false);
+    assert(mock.writes[1].scheduled_frame == 1170);
+    wire=mock.writes[1].data;
+    assert(wire[0] == 0 && wire[1] == 0 && wire[2] == 1 && wire[3] == 0x40 && wire[7] == 0x40);
+    complete_output(1);
+    assert(rk3_native_audio_iso_clock(engine,&clock) && clock.sample_frame == 3168);
     rk3_native_audio_iso_stop(engine);
     assert(rk3_native_audio_iso_pending(engine) == 0 && !rk3_native_audio_iso_running(engine));
     assert(!rk3_native_audio_iso_clock(engine,&clock));
@@ -195,28 +203,68 @@ static void test_failures(IOUSBInterfaceInterface300 **interface) {
 static void test_empty_output_tails(IOUSBInterfaceInterface300 **interface) {
     rk3_native_audio_iso *engine=new_engine(interface);
     assert(rk3_native_audio_iso_start(engine) == 0);
+    for(unsigned slot=0;slot<64;++slot) {complete_input(slot,false);complete_output(slot);}
+    complete_input(0,false);complete_output(0);
     const uint16_t first[8]={136,0,136,0,0,0,0,0},zero[8]={0};
-    complete_input_counts(0,first,false);
-    assert(rk3_native_audio_iso_running(engine) && mock.write_count == 1);
-    assert(mock.writes[0].microframes == 3 && mock.writes[0].scheduled_frame == 1165);
-    for(unsigned index=0;index<3;++index) assert(mock.writes[0].frames[index].frReqCount == first[index]);
+    complete_input_counts(1,first,false);
+    assert(rk3_native_audio_iso_running(engine) && mock.write_count == 64);
+    assert(mock.writes[1].microframes == 3 && mock.writes[1].scheduled_frame == 1170);
+    for(unsigned index=0;index<3;++index) assert(mock.writes[1].frames[index].frReqCount == first[index]);
     for(unsigned index=0;index<272;++index)
-        assert(((uint8_t *)mock.writes[0].data)[index] == (index%8 == 2 ? 1 : 0));
-    complete_output(0); /* Unsubmitted tail descriptors retain the pending marker. */
+        assert(((uint8_t *)mock.writes[1].data)[index] == (index%8 == 2 ? 1 : 0));
+    complete_output(1); /* Unsubmitted tail descriptors retain the pending marker. */
     rk3_native_audio_clock before,after;
-    assert(rk3_native_audio_iso_clock(engine,&before) && before.sample_frame == 34);
-    complete_input_counts(1,zero,false);
-    assert(mock.write_count == 1 && rk3_native_audio_iso_pending(engine) == 64);
+    assert(rk3_native_audio_iso_clock(engine,&before) && before.sample_frame == 3154);
+    complete_input_counts(2,zero,false);
+    assert(mock.write_count == 64 && !mock.writes[2].pending && rk3_native_audio_iso_pending(engine) == 64);
     assert(rk3_native_audio_iso_clock(engine,&after) && after.sample_frame == before.sample_frame && after.host_time == before.host_time);
     const uint16_t next[8]={0,136,0,136,0,0,0,0};
-    complete_input_counts(2,next,false);
-    assert(mock.write_count == 2 && mock.writes[1].microframes == 4);
-    assert(mock.writes[1].scheduled_frame == 1167 && mock.reads[2].scheduled_frame == 1167);
-    for(unsigned index=0;index<4;++index) assert(mock.writes[1].frames[index].frReqCount == next[index]);
-    complete_output(1);
-    assert(rk3_native_audio_iso_clock(engine,&after) && after.sample_frame == 68);
+    complete_input_counts(3,next,false);
+    assert(mock.write_count == 64 && mock.writes[3].microframes == 4);
+    assert(mock.writes[3].scheduled_frame == 1172 && mock.reads[3].scheduled_frame == 1232);
+    for(unsigned index=0;index<4;++index) assert(mock.writes[3].frames[index].frReqCount == next[index]);
+    complete_output(3);
+    assert(rk3_native_audio_iso_clock(engine,&after) && after.sample_frame == 3188);
     assert(mock.policy_calls == 0 && mock.property_calls == 2);
     rk3_native_audio_iso_stop(engine);assert(rk3_native_audio_iso_destroy(engine));
+}
+
+/* Exercise the actual production LowLatencyWrite submission calendar: retaining
+ * 64 prequeued reads must not force each live output 64 ms into the future. */
+static void test_low_latency_startup(IOUSBInterfaceInterface300 **interface) {
+    rk3_native_audio_iso *engine=new_engine(interface);
+    assert(rk3_native_audio_iso_start(engine) == 0);
+    float samples[96];rk3_native_audio_clock clock;
+    for(unsigned slot=0;slot<64;++slot) {
+        uint64_t received=mock.reads[slot].scheduled_frame;
+        complete_input(slot,false);
+        assert(mock.writes[slot].scheduled_frame == received+RK3_AUDIO_OUTPUT_LEAD_MILLISECONDS);
+        complete_output(slot);
+        /* Early completed output must not let Start return and accumulate
+         * 60 ms of render while prepare_output_pcm is still priming. */
+        assert(!rk3_native_audio_iso_clock(engine,&clock));
+        assert(rk3_native_audio_iso_render(engine,samples,48) == 0);
+        assert(rk3_native_audio_iso_capture(engine,samples,48) == 0);
+    }
+    complete_input(0,false);complete_output(0);
+    assert(rk3_native_audio_iso_clock(engine,&clock));
+    /* Let capture accumulate for 20 ms as if the first HAL callback were late.
+     * The consumer owns its tail and discards old data before returning PCM. */
+    for(unsigned slot=1;slot<=20;++slot) {complete_input(slot,false);complete_output(slot);}
+    assert(rk3_native_audio_iso_capture(engine,samples,48) == 48);
+    assert(rk3_native_audio_iso_capture(engine,samples,48) == 48);
+    assert(rk3_native_audio_iso_capture(engine,samples,48) == 0);
+    rk3_native_audio_iso_stop(engine);
+    assert(rk3_native_audio_iso_destroy(engine));
+}
+
+static void test_out_of_order_input(IOUSBInterfaceInterface300 **interface) {
+    rk3_native_audio_iso *engine=new_engine(interface);
+    assert(rk3_native_audio_iso_start(engine) == 0);
+    complete_input(1,false); /* Reversed calendar must not reach the encoder. */
+    assert(!rk3_native_audio_iso_running(engine) && rk3_native_audio_iso_error(engine) != 0);
+    assert(mock.write_count == 0 && rk3_native_audio_iso_pending(engine) == 0);
+    assert(rk3_native_audio_iso_is_quiescent(engine) && rk3_native_audio_iso_destroy(engine));
 }
 
 static void test_pipe_geometry(IOUSBInterfaceInterface300 **interface) {
@@ -237,7 +285,7 @@ int main(void) {
     methods.LowLatencyReadIsochPipeAsync=read_iso;methods.LowLatencyWriteIsochPipeAsync=write_iso;
     methods.AbortPipe=abort_pipe;
     IOUSBInterfaceInterface300 *pointer=&methods;
-    test_full_session(&pointer);test_failures(&pointer);test_empty_output_tails(&pointer);test_pipe_geometry(&pointer);
+    test_low_latency_startup(&pointer);test_full_session(&pointer);test_failures(&pointer);test_empty_output_tails(&pointer);test_out_of_order_input(&pointer);test_pipe_geometry(&pointer);
     puts("NativeAudioISO: fake-interface startup, priming, PCM queues, clock, abort/drain and failures passed.");
     return 0;
 }
