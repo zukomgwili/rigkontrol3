@@ -1,6 +1,23 @@
 # Rig Kontrol 3 legacy Mac drivers: 2.6.0, 2.7.0 and 2.8.0
 
-Static inspection on 2026-10-24 for `rigkontrol3-tw5.4`. **These installers provide useful named protocol implementations, but no ARM driver or source project.** Their RK3 matching interface and three inspected controller commands remain consistent. The downloaded 2.8.0 kernel executable is byte-for-byte identical to the one already installed on this Mac. Reinstalling it would not supply missing ARM code or establish a fix for the current libusb stall.
+Initial static inspection on 2026-10-24 for `rigkontrol3-tw5.4`. **These installers provide useful named protocol implementations, but no ARM driver or source project.** Their RK3 matching interface and three initially inspected controller commands remain consistent. The downloaded 2.8.0 kernel executable is byte-for-byte identical to the one already installed on this Mac. Reinstalling it would not supply missing ARM code. The controller's then-observed libusb stall was subsequently resolved by the [native transport migration](rk3-coreaudio-backend-evaluation.md).
+
+## Follow-up reconstruction
+
+Lack of source does not prevent reverse engineering. Further static analysis for
+`rigkontrol3-do5.1` recovered concrete audio/control coordination from the Intel
+instructions: one device owner, a shared asynchronous EP1 reply reader, control
+report fan-out, audio-command acknowledgements, and input priming before audio
+enable. These are behavioral requirements for a native implementation, rather
+than a conversion of the Intel kernel binary.
+
+See the [audio lifecycle](legacy-rk3-audio-lifecycle.md),
+[control sharing](legacy-rk3-control-sharing.md), and
+[reconstruction feasibility and firmware evidence](legacy-rk3-reconstruction-feasibility.md)
+for exact instruction addresses and analysis limits. This work has not yet
+implemented or validated simultaneous RK3 audio and controller access on ARM.
+The existing separate HAL and controller still need a coordinated owner before
+the full guitar-and-eight-switch test can proceed through the RK3.
 
 ## Artifacts and method
 
