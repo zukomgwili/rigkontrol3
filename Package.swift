@@ -10,6 +10,7 @@ let package = Package(
     products: [
         .library(name: "RigKontrol3Core", targets: ["RigKontrol3Core"]),
         .executable(name: "rk3bridge", targets: ["RK3Bridge"]),
+        .executable(name: "rk3controller", targets: ["RK3ControllerApp"]),
         .executable(name: "rk3probe", targets: ["RK3Probe"]),
     ],
     targets: [
@@ -24,6 +25,14 @@ let package = Package(
         .executableTarget(
             name: "RK3Bridge",
             dependencies: ["RigKontrol3Core"]
+        ),
+        .executableTarget(
+            name: "RK3ControllerApp",
+            dependencies: ["RigKontrol3Core"],
+            linkerSettings: [
+                .linkedFramework("AppKit"),
+                .linkedFramework("ServiceManagement"),
+            ]
         ),
         .executableTarget(
             name: "RK3Probe",

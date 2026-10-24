@@ -11,7 +11,10 @@ public final class CoreMIDIVirtualSource {
     private var client = MIDIClientRef()
     private var source = MIDIEndpointRef()
 
-    public init(name: String = "RigKontrol3 Bridge", protocolID: MIDIProtocolID = ._1_0) throws {
+    public init(
+        name: String = "RigKontrol3 Bridge", protocolID: MIDIProtocolID = ._1_0,
+        uniqueID: MIDIUniqueID? = nil
+    ) throws {
         self.name = name
 
         var createdClient = MIDIClientRef()
@@ -26,6 +29,16 @@ public final class CoreMIDIVirtualSource {
         guard sourceStatus == noErr else {
             MIDIClientDispose(createdClient)
             throw CoreMIDIError.osStatus(sourceStatus, operation: "MIDISourceCreateWithProtocol")
+        }
+
+        if let uniqueID {
+            let identityStatus = MIDIObjectSetIntegerProperty(
+                createdSource, kMIDIPropertyUniqueID, uniqueID)
+            guard identityStatus == noErr else {
+                MIDIEndpointDispose(createdSource)
+                MIDIClientDispose(createdClient)
+                throw CoreMIDIError.osStatus(identityStatus, operation: "MIDIObjectSetIntegerProperty")
+            }
         }
 
         self.client = createdClient

@@ -43,7 +43,9 @@ public struct ExpressionValueFilter: Equatable, Sendable {
             return value
         }
 
-        guard abs(value - lastAcceptedValue) > deadband else {
+        guard value != lastAcceptedValue,
+            value == 0 || value == 127 || abs(value - lastAcceptedValue) > deadband
+        else {
             return nil
         }
 

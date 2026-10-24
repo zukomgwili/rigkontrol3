@@ -2,7 +2,18 @@
 
 Native macOS Apple Silicon work for bringing Native Instruments Rig Kontrol 3 pedal and switch control data back as MIDI.
 
-The first milestone is a native macOS MIDI bridge app for the controller surface only. Audio interface support is intentionally out of scope until the control path is working and verified.
+The current controller milestone is a personal-use menu-bar app for Guitar Rig 6 standalone, with eight effect switches, wah expression, press-only LEDs, and USB/sleep recovery. Use a separate audio interface for this setup. Simultaneous RK3 audio and controller use needs further integration.
+
+## Menu-bar effects controller
+
+```bash
+Scripts/build-rk3controller.sh
+open ".build/Rig Kontrol 3.app"
+```
+
+The app publishes **RigKontrol3 Bridge** on MIDI channel 16. Switches 1–8 send momentary CC20–27, and expression sends CC11. Let Guitar Rig perform effect toggling through MIDI Learn; use one switch for wah bypass. LEDs indicate physical presses. The menu provides connection status, start/stop, **Setup & Test** with live control counts, saved pedal calibration, and optional launch at login.
+
+USB reconnect and sleep/wake retain the MIDI endpoint and establish fresh switch state without replaying effect toggles. Quit the legacy CLI bridge before using the app, and keep RK3 audio idle in all applications. See [Controller Setup](Documentation/Controller-Setup.md) for assignment instructions and the joint hardware verification procedure. Build and automated results do not establish that host mapping or physical behavior has passed acceptance.
 
 ## Verified Starting Point
 
@@ -17,6 +28,7 @@ See `Research/rig-kontrol-3.md` for the captured evidence and links to the publi
 ## Current Implementation
 
 - `RigKontrol3Core`: Swift library with USB/HID/MIDI probe helpers, raw packet parsing, MIDI message construction, default mappings, and expression-pedal calibration.
+- `rk3controller`: native menu-bar controller with reconnect, sleep/wake handling, stable CoreMIDI identity, and live test feedback.
 - `rk3bridge`: long-running CoreMIDI virtual-source bridge for verified Rig Kontrol 3 controls.
 - `rk3probe`: command-line probe for re-checking device visibility from the native app layer.
 - `rk3probe --read-bulk`: bounded raw packet capture from the vendor-specific bulk IN endpoint, including packet numbers, relative timestamps, lengths, and byte-offset deltas.

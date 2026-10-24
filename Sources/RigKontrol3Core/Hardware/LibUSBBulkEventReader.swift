@@ -149,7 +149,22 @@ public enum LibUSBBulkEventReader {
         }
         defer { libusb_close(handle) }
 
-        let configurationStatus = libusb_set_configuration(handle, 1)
+        var currentConfiguration: Int32 = 0
+        var configurationStatus = libusb_get_configuration(handle, &currentConfiguration)
+        if configurationStatus == success, currentConfiguration != 1 {
+            configurationStatus = libusb_set_configuration(handle, 1)
+        }
+        guard configurationStatus == success else {
+            return LibUSBBulkStreamSummary(
+                openStatus: errorName(openStatus),
+                configurationStatus: errorName(configurationStatus),
+                claimStatus: nil,
+                alternateSettingStatus: nil,
+                releaseStatus: nil,
+                packetCount: 0,
+                nonTimeoutErrors: []
+            )
+        }
         let claimStatus = libusb_claim_interface(handle, interfaceNumber)
         guard claimStatus == success else {
             return LibUSBBulkStreamSummary(
@@ -204,42 +219,49 @@ public enum LibUSBBulkEventReader {
             )
         }
 
+        // Attached-unit regression on 2026-10-24: undrained EP1-IN traffic can
+        // block OUT commands, including between consecutive startup writes.
+        // Keep input reads active through startup, operation and LED cleanup.
+        // The pump never calls client code or writes to the device.
+        let inputPump = LibUSBBulkInputPump(
+            handle: handle, endpointAddress: endpointAddress, packetSize: packetSize,
+            timeoutMilliseconds: min(100, max(1, timeoutMilliseconds)))
+        if let startupError = inputPump.start() {
+            inputPump.stopAndWait()
+            let releaseStatus = libusb_release_interface(handle, interfaceNumber)
+            return LibUSBBulkStreamSummary(
+                openStatus: errorName(openStatus),
+                configurationStatus: errorName(configurationStatus),
+                claimStatus: errorName(claimStatus),
+                alternateSettingStatus: errorName(alternateSettingStatus),
+                releaseStatus: errorName(releaseStatus),
+                packetCount: 0,
+                nonTimeoutErrors: [startupError]
+            )
+        }
+
         didOpen?(outputWriter)
 
         var packetCount = 0
         var nonTimeoutErrors: [String] = []
 
         while shouldContinue() {
-            var buffer = [UInt8](repeating: 0, count: packetSize)
-            var transferred: Int32 = 0
-            let readStatus = buffer.withUnsafeMutableBufferPointer { pointer in
-                libusb_bulk_transfer(
-                    handle,
-                    endpointAddress,
-                    pointer.baseAddress,
-                    Int32(packetSize),
-                    &transferred,
-                    timeoutMilliseconds
-                )
-            }
-
-            if readStatus == success, transferred > 0 {
-                packetCount += 1
-                packetHandler(
-                    LibUSBBulkReadPacket(
-                        endpointAddress: Int(endpointAddress),
-                        timestamp: Date(),
-                        bytes: Array(buffer.prefix(Int(transferred)))
-                    ),
-                    outputWriter
-                )
-            } else if readStatus != timeout {
-                nonTimeoutErrors.append(errorName(readStatus))
+            let packet = inputPump.nextPacket()
+            if let error = inputPump.failure {
+                nonTimeoutErrors.append(error)
                 break
+            }
+            if let packet, shouldContinue() {
+                packetCount += 1
+                packetHandler(packet, outputWriter)
             }
         }
 
         willClose?(outputWriter)
+        inputPump.stopAndWait()
+        if let error = inputPump.failure, !nonTimeoutErrors.contains(error) {
+            nonTimeoutErrors.append(error)
+        }
 
         let finalReleaseStatus = libusb_release_interface(handle, interfaceNumber)
 

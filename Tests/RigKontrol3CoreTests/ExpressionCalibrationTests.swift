@@ -30,4 +30,26 @@ final class ExpressionCalibrationTests: XCTestCase {
         XCTAssertNil(filter.accept(11))
         XCTAssertEqual(filter.accept(12), 12)
     }
+
+    func testExactEndpointsBypassDeadbandAndSuppressDuplicates() {
+        var filter = ExpressionValueFilter(deadband: 1)
+
+        XCTAssertEqual(filter.accept(1), 1)
+        XCTAssertEqual(filter.accept(0), 0)
+        XCTAssertNil(filter.accept(0))
+        XCTAssertEqual(filter.accept(126), 126)
+        XCTAssertEqual(filter.accept(127), 127)
+        XCTAssertNil(filter.accept(127))
+    }
+
+    func testReturningFromAnEndpointRetainsDeadband() {
+        var filter = ExpressionValueFilter(deadband: 1)
+
+        XCTAssertEqual(filter.accept(0), 0)
+        XCTAssertNil(filter.accept(1))
+        XCTAssertEqual(filter.accept(2), 2)
+        XCTAssertEqual(filter.accept(127), 127)
+        XCTAssertNil(filter.accept(126))
+        XCTAssertEqual(filter.accept(125), 125)
+    }
 }
