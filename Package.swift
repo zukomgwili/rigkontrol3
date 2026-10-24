@@ -16,7 +16,7 @@ let package = Package(
     targets: [
         .target(
             name: "RigKontrol3Core",
-            dependencies: ["CLibusb"],
+            dependencies: ["CLibusb", "CRK3CoreAudioUSB"],
             linkerSettings: [
                 .linkedFramework("CoreMIDI"),
                 .linkedFramework("IOKit"),
@@ -41,6 +41,14 @@ let package = Package(
         .testTarget(
             name: "RigKontrol3CoreTests",
             dependencies: ["RigKontrol3Core"]
+        ),
+        .target(
+            name: "CRK3CoreAudioUSB",
+            publicHeadersPath: "include",
+            linkerSettings: [
+                .linkedFramework("CoreFoundation"),
+                .linkedFramework("IOKit"),
+            ]
         ),
         .systemLibrary(
             name: "CLibusb",

@@ -59,6 +59,8 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         }
 
         configureEventLog()
+        log(["type": "backend", "name": CoreAudioUSBEventReader.backendName,
+             "upstreamRevision": CoreAudioUSBEventReader.upstreamRevision])
         switchOutputMode = UserDefaults.standard.string(forKey: "switchOutputMode") == "momentary"
             ? .momentary : .pressOnly
         buildMenu()
@@ -453,6 +455,7 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         }
         text.string = """
         \(statusText)
+        USB backend: \(CoreAudioUSBEventReader.backendName)
 
         \(hostSetup)
 

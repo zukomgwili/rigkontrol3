@@ -31,6 +31,11 @@ except subprocess.TimeoutExpired:
 with open(path) as event_file:
     records = [json.loads(line) for line in event_file if line.strip()]
 states = [record['status'] for record in records if record['type'] == 'status']
+native_backend = any(
+    record['type'] == 'backend' and record.get('name') == 'rk3-coreaudio IOKit'
+    and record.get('upstreamRevision') == 'd0679238ad06842f382ef89b995823e978caec9b'
+    for record in records
+)
 ready = 'Connected — MIDI ready' in states
 clean = any(record['type'] == 'shutdown' and record.get('clean') for record in records)
 switch_messages = [
@@ -44,12 +49,14 @@ if timed_out:
     print('FAIL: app did not exit within ten seconds; its test process was stopped.')
 elif not records:
     print('FAIL: no test session started. Quit any existing controller app and retry.')
+elif not native_backend:
+    print('FAIL: expected the pinned rk3-coreaudio IOKit backend.')
 elif exit_code or not ready or not clean:
     print('FAIL: expected device readiness and a clean shutdown.')
 elif switch_messages:
     print('FAIL: switch MIDI was emitted during the idle check. Leave switches untouched and retry.')
 else:
-    print('PASS: MIDI ready, no idle switch commands, clean shutdown.')
+    print('PASS: rk3-coreaudio backend ready, no idle switch commands, clean shutdown.')
     sys.exit(0)
 sys.exit(1)
 PY

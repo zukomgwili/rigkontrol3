@@ -11,11 +11,13 @@ Scripts/build-rk3controller.sh
 open ".build/Rig Kontrol 3.app"
 ```
 
-The script builds a native arm64 app, bundles libusb, and signs it locally. It creates `.build/Rig Kontrol 3.app`; it does not install or launch anything. Keep the app in a stable location before enabling launch at login, and rebuild it at that same location when updating.
+The script builds a native arm64 app and signs it locally. Version **0.3.0**, build **3**, uses the adapted **rk3-coreaudio IOKit** controller backend. It creates `.build/Rig Kontrol 3.app`; it does not install or launch anything. Keep the app in a stable location before enabling launch at login, and rebuild it at that same location when updating.
 
-This is a build for the current Mac. Its bundled Homebrew libusb may require a newer macOS version than the Swift package's declared minimum; compatibility with older Macs is not established by a successful local build.
+The controller uses native IOKit access and does not create or tear down libusb contexts. Legacy diagnostics remain in the core target, so the app may still link libusb; the script bundles it only when needed. A bundled Homebrew libusb may require a newer macOS version than the Swift package's declared minimum. This is a build for the current Mac; older-Mac compatibility is not established by a successful local build.
 
-Use the menu-bar item to check the connection, start or stop the bridge, quit, and optionally enable launch at login. **Setup & Test…** opens assignment instructions, live switch counts, pedal range, and received host LED states. Start manually until the playing setup has been verified. A disconnected device should reconnect automatically when plugged in; waking the Mac should restore the connection when the bridge is enabled. USB reconnection alone does not establish fresh host effect states.
+The app includes a GPL-2.0 notice, upstream attribution and a native-backend source snapshot. See [the backend evaluation](../Research/rk3-coreaudio-backend-evaluation.md) for the pinned upstream revision, adaptation and validation limits. The existing experimental RK3 audio driver is unchanged; this controller migration does not adopt the upstream HAL driver or MIDI/UDP helper.
+
+Use the menu-bar item to check the connection, start or stop the bridge, quit, and optionally enable launch at login. **Setup & Test…** opens assignment instructions, live switch counts, pedal range, and received host LED states. Start manually until the playing setup has been verified. The app requests automatic reconnection after USB reattachment or waking the Mac when enabled. Held-switch USB recovery, menu stop/start and physical sleep/wake have passed on the native backend. USB reconnection alone does not establish fresh host effect states in a changed concert or patch.
 
 Run only one RK3 controller bridge at a time. Quit the legacy `rk3bridge` CLI before opening the app. The installed experimental RK3 audio driver claims the same USB interface when its audio starts: select the separate interface in MainStage or Guitar Rig and ensure no other application or system audio is streaming through the RK3. An installed but idle RK3 audio driver does not need removal.
 
@@ -32,7 +34,7 @@ The app publishes a MIDI source and a separate feedback destination, both named 
 
 Choose the input behavior from the app's **Control Mode** menu:
 
-- **MainStage (toggle buttons)** is the default. Each physical press sends value **127**; releasing sends no MIDI. It also sends no neutral reset before the next press. Configure MainStage's button as **Single Value** so the host can toggle its actual parameter on each trigger. This behavior has been physically verified for one Cry Wah power mapping: each press toggles once and the state remains after release.
+- **MainStage (toggle buttons)** is the default. Each physical press sends value **127**; releasing sends no MIDI. It also sends no neutral reset before the next press. Configure MainStage's button as **Single Value** so the host can toggle its actual parameter on each trigger. Native-backend testing verified one Cry Wah power mapping: four switch-1 presses each toggled once and retained the state after release.
 - **Guitar Rig standalone / other hosts** sends momentary values: **127 on press, 0 on release**. Use this for the standalone Macro-button instructions below or another host that expects press/release pairs.
 
 Changing modes clears cached host LED states and establishes a new USB switch baseline without sending effect commands. Release a switch held during the change before using it again. Both modes use the same authoritative host-feedback LED path; the mode changes input messages, not the meaning of an LED.
@@ -60,7 +62,11 @@ Start the controller app before MainStage so both MIDI directions exist when the
 5. Map the remaining switches to their own screen buttons and actual effect parameters using CC21–CC27. For the expression screen control, select **RigKontrol3 Bridge**, channel **16**, **CC11**, Type **Absolute**, and MIDI Thru **Do not pass through**. Map it to the actual wah position parameter. In the current test rack, **P018** is mapped and the user has confirmed that a full physical pedal sweep controls the wah through MainStage.
 6. Save the concert, then verify the mappings and feedback again after reopening it.
 
-The live setup has established one working Cry Wah power control and expression sweep. Committing the initial P017 mapping reported CC20 value 0, and changing AU P017 to 100% in Generic Controls produced CC20 value 127 at the app's feedback destination. With **MainStage (toggle buttons)** selected, the user verified that each physical press toggles the actual effect once, its state remains after release, and the physical LED matches that state. Clicking the actual Guitar Rig Cry Wah power control with the mouse also updates the LED and retains the correct on/off indication. The user has also confirmed the full physical expression sweep through P018 while the switch remains functional. This verifies press-only input, actual effect-to-LED feedback for that one mapping, and the wah sweep. The remaining switch mappings, complete initial state, patch/concert synchronization, and recovery are not yet verified.
+The live setup has established one working Cry Wah power control and expression sweep. Committing the initial P017 mapping reported CC20 value 0, and changing AU P017 to 100% in Generic Controls produced CC20 value 127 at the app's feedback destination. Following the native-backend migration, the user confirmed four switch-1 presses each toggle the actual effect once and retain the state after release, smooth pedal movement through the P018 mapping, and physical LED updates when clicking the actual Cry Wah power control with the mouse.
+
+Held-switch USB recovery passed one physical cycle: the app returned to ready without sending a switch command, then the next deliberate switch-1 press toggled the effect and received the matching host LED state. Subsequent testing produced CC20…CC27 from all eight physical switches and expression values 0…127, with no switch release/reset messages in MainStage mode. This verifies their MIDI input path; only switch 1 has a mapped host effect, so the other seven effect/LED mappings remain unverified. Setup UI stop/start also returned to ready without switch commands.
+
+Physical sleep/wake then passed: the app paused, returned to ready without a switch command during wake, and responded to subsequent switch-1 presses and pedal sweeps spanning 0…127. The user confirmed retained effect/LED state and working controls. This completes the native-backend migration's reproduced held-stall and recovery checks. Complete initial state, patch/concert synchronization and sustained sessions remain pending. See [the local native-session log](../.build/controller-rk3coreaudio-native.jsonl).
 
 The local test concert is saved at `.build/RK3 MainStage Feedback Test.concert`. It records this experimental setup; it is not a final concert prepared for distribution.
 
@@ -93,7 +99,7 @@ The [Guitar Rig 6 June 2023 manual, pp. 42–43](https://www.native-instruments.
 
 ## Joint playing verification
 
-The following include remaining acceptance checks; the one verified Cry Wah control does not establish the full setup:
+Use the following for joint verification and repeat them after transport or mapping changes. Native Cry Wah controls, all eight switch MIDI inputs, full expression range, held-switch recovery, stop/start and sleep/wake have passed. The remaining effect/LED mappings, host-context synchronization and sustained sessions still need verification:
 
 - Press every switch repeatedly and rapidly; each physical press toggles only its assigned effect, once. Releases and simultaneous switches behave correctly.
 - Confirm each LED matches its actual effect state after a footswitch press and remains correct after release. Change the actual effect with the mouse and require the LED to follow without a pedal press. Unknown controls must remain labelled unknown, rather than being inferred from presses.
@@ -108,7 +114,9 @@ Other VST hosts can receive the same CoreMIDI controls when their MIDI routing a
 
 ## Developer checks
 
-Run `swift test` for parsing, controller state, session lifecycle, expression endpoints, feedback decoding/state, and USB input backpressure tests. Build and sign the local app with `Scripts/build-rk3controller.sh`. The source and destination use distinct stable IDs, `0x524B3301` and `0x524B3302`, despite their shared display name.
+Run `swift test` for parsing, controller state, session lifecycle, expression endpoints, feedback decoding/state, USB input backpressure and native stream ownership tests. The live session uses `CoreAudioUSBEventReader` and the `CRK3CoreAudioUSB` C transport, with interface 0/alternate setting 0 for controls. Build and sign the local app with `Scripts/build-rk3controller.sh`. The source and destination use distinct stable IDs, `0x524B3301` and `0x524B3302`, despite their shared display name.
+
+The clean controller source snapshot at `82b5188a` executed **107 tests, with two native opt-in checks skipped and zero failures**. Its version 0.3.0/build 3 package passed arm64, plist, code-signature and bundled-source checks. The full working-tree run executed 116 tests with the same skips and no failures; its additional nine tests cover pre-existing experimental audio work excluded from that snapshot. Both native CoreMIDI opt-in checks also passed separately outside the sandbox; they do not access USB. All five native-stream tests passed, including removal/busy error translation and simulated recovery through the actual stream. The rebuilt app passed its attached three-second readiness check with no switch commands and clean shutdown; see [the final clean-package smoke log](../.build/controller-smoke.pc5o1j). Physical checks separately passed for the one mapped Cry Wah, all eight switch MIDI inputs, full expression range, held-switch recovery, stop/start and sleep/wake. The remaining joint checks retain their own acceptance limits.
 
 With the RK3 attached, its audio idle, and the controller app quit, run:
 

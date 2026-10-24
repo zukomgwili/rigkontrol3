@@ -2,7 +2,7 @@
 
 Native macOS Apple Silicon work for bringing Native Instruments Rig Kontrol 3 pedal and switch control data back as MIDI.
 
-The current controller milestone is a personal-use menu-bar app with eight effect switches, wah expression, host-driven LEDs, and USB/sleep recovery. Guitar Rig 6 standalone control has been tested; MainStage hosting is being verified for actual effect-state LED feedback. Use a separate audio interface for this setup. Simultaneous RK3 audio and controller use needs further integration.
+The current controller milestone is a personal-use menu-bar app with eight effect switches, wah expression, host-driven LEDs, and USB/sleep recovery. The app now uses an adapted rk3-coreaudio native USB transport. On this Mac, all eight switch MIDI outputs, calibrated expression, one hosted Cry Wah mapping with actual effect-state LED feedback, held-switch USB recovery, Stop/Start and sleep/wake have passed physical checks. Seven additional effect mappings and host patch/concert synchronization remain to be verified. Use a separate audio interface for this setup. Simultaneous RK3 audio and controller use needs further integration.
 
 ## Menu-bar effects controller
 
@@ -15,7 +15,7 @@ The app publishes source and feedback-destination ports both named **RigKontrol3
 
 USB reconnect and sleep/wake retain the MIDI endpoint and establish fresh switch state without replaying effect toggles. Quit the legacy CLI bridge before using the app, and keep RK3 audio idle in all applications. See [Controller Setup](Documentation/Controller-Setup.md) for assignment instructions and the joint hardware verification procedure. Build and automated results do not establish that host mapping or physical behavior has passed acceptance.
 
-The [current GitHub survey](Research/github-arm-survey-2026-10-24.md) compares existing RK3 Apple Silicon work. Evaluate `mihaimetal/rk3-coreaudio` before extending the experimental audio driver; its hardware LED interface still needs host effect-state feedback.
+The [backend evaluation](Research/rk3-coreaudio-backend-evaluation.md) records the pinned rk3-coreaudio source, controller-only IOUSBLib adaptation, licensing and validation. The app retains its MIDI ports, CC mappings, saved calibration, MainStage switch behavior and host-driven LEDs. The upstream audio engine and UDP/MIDI helper are outside this controller path. The [GitHub survey](Research/github-arm-survey-2026-10-24.md) compares other RK3 Apple Silicon work.
 
 ## Verified Starting Point
 

@@ -41,11 +41,11 @@ extension CoreMIDIVirtualFeedbackDestination: RigKontrolControllerFeedbackInput 
 
 struct RigKontrolControllerSessionDependencies {
     typealias Stream = (
-        _ didOpen: @escaping (LibUSBBulkOutputWriter) -> Void,
-        _ willClose: @escaping (LibUSBBulkOutputWriter) -> Void,
+        _ didOpen: @escaping (RigKontrolUSBOutputWriter) -> Void,
+        _ willClose: @escaping (RigKontrolUSBOutputWriter) -> Void,
         _ shouldContinue: () -> Bool,
-        _ packetHandler: (LibUSBBulkReadPacket, LibUSBBulkOutputWriter) -> Void
-    ) throws -> LibUSBBulkStreamSummary
+        _ packetHandler: (RigKontrolUSBReadPacket, RigKontrolUSBOutputWriter) -> Void
+    ) throws -> RigKontrolUSBStreamSummary
 
     let makeMIDISource: () throws -> any RigKontrolControllerMIDIOutput
     let makeFeedbackDestination: (
@@ -63,7 +63,7 @@ struct RigKontrolControllerSessionDependencies {
                     name: "RigKontrol3 Bridge", uniqueID: 0x524B3302, received: $0)
             },
             stream: { didOpen, willClose, shouldContinue, packetHandler in
-                try LibUSBBulkEventReader.streamRigKontrol3BulkInput(
+                try CoreAudioUSBEventReader.streamRigKontrol3BulkInput(
                     didOpen: didOpen, willClose: willClose,
                     shouldContinue: shouldContinue, packetHandler: packetHandler)
             }
@@ -380,10 +380,10 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
         var queryIssuedAt: Date?
         var isReady = false
         var lastRawExpression: Int?
-        var activeWriter: LibUSBBulkOutputWriter?
+        var activeWriter: RigKontrolUSBOutputWriter?
         var lastWrittenLEDState: RigKontrolLEDState?
 
-        func reconcileHostLEDs(using writer: LibUSBBulkOutputWriter) {
+        func reconcileHostLEDs(using writer: RigKontrolUSBOutputWriter) {
             guard self.ledMode == .hostFeedback else { return }
             var target = RigKontrolLEDState()
             for (index, isOn) in self.hostFeedbackState.knownSwitches {
@@ -479,15 +479,17 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
             if isActive(runEpoch) {
                 publish(failure ?? statusAfterStream(summary) ?? cleanupFailure ?? .waitingForDevice)
             }
-        } catch LibUSBBulkReadError.deviceNotFound {
+        } catch RigKontrolUSBReadError.deviceNotFound {
             if isActive(runEpoch) { publish(.waitingForDevice) }
+        } catch RigKontrolUSBReadError.operationFailed(let detail) {
+            if isActive(runEpoch) { publish(Self.usbFailure("USB: \(detail)")) }
         } catch {
             if isActive(runEpoch) { publish(.failed("USB: \(error)")) }
         }
     }
 
     private func writeLEDs(
-        _ state: RigKontrolLEDState, using writer: LibUSBBulkOutputWriter
+        _ state: RigKontrolLEDState, using writer: RigKontrolUSBOutputWriter
     ) -> RigKontrolControllerStatus? {
         writeCommand(state.writeIOCommandBytes, operation: "LED write", using: writer)
     }
@@ -522,7 +524,7 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
     }
 
     private func writeCommand(
-        _ bytes: [UInt8], operation: String, using writer: LibUSBBulkOutputWriter
+        _ bytes: [UInt8], operation: String, using writer: RigKontrolUSBOutputWriter
     ) -> RigKontrolControllerStatus? {
         let result = writer.write(bytes)
         guard Self.isSuccess(result.status), result.transferred == bytes.count else {
@@ -536,7 +538,7 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
         bytes.count == 8 && bytes[0] == 0x04 && bytes[2...7].allSatisfy { $0 == 0 }
     }
 
-    private func statusAfterStream(_ summary: LibUSBBulkStreamSummary) -> RigKontrolControllerStatus? {
+    private func statusAfterStream(_ summary: RigKontrolUSBStreamSummary) -> RigKontrolControllerStatus? {
         for (operation, status) in [
             ("open", summary.openStatus), ("configuration", summary.configurationStatus),
             ("claim interface", summary.claimStatus),
@@ -554,12 +556,14 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
     }
 
     private static func isSuccess(_ status: String) -> Bool {
-        status == "LIBUSB_SUCCESS" || status == "LIBUSB_SUCCESS / LIBUSB_TRANSFER_COMPLETED"
+        status == "IOKIT_SUCCESS" || status == "LIBUSB_SUCCESS"
+            || status == "LIBUSB_SUCCESS / LIBUSB_TRANSFER_COMPLETED"
     }
 
     private static func usbFailure(_ detail: String) -> RigKontrolControllerStatus {
-        if detail.contains("LIBUSB_ERROR_NO_DEVICE") { return .waitingForDevice }
-        if detail.contains("LIBUSB_ERROR_BUSY") {
+        if detail.contains("LIBUSB_ERROR_NO_DEVICE") || detail.contains("IOKIT_NO_DEVICE") { return .waitingForDevice }
+        if detail.contains("LIBUSB_ERROR_BUSY") || detail.contains("IOKIT_EXCLUSIVE_ACCESS")
+            || detail.contains("IOKIT_BUSY") {
             return .failed("\(detail). Stop RK3 audio and other controller bridges; retrying automatically.")
         }
         return .failed("\(detail). Retrying automatically.")

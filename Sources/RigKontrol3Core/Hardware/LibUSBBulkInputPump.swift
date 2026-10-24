@@ -1,53 +1,27 @@
-import CLibusb
 import Foundation
 
-enum LibUSBBulkInputReadResult {
-    case packet(LibUSBBulkReadPacket)
+enum RigKontrolUSBInputReadResult {
+    case packet(RigKontrolUSBReadPacket)
     case idle
     case failed(String)
 }
 
 /// The USB owner must stop and join this reader before releasing its handle.
 /// Only the reader calls `readPacket`; all mutable state is protected by `condition`.
-final class LibUSBBulkInputPump: @unchecked Sendable {
+final class RigKontrolUSBInputPump: @unchecked Sendable {
     private let condition = NSCondition()
     private let firstReadFinished = DispatchSemaphore(value: 0)
-    private let readPacket: () -> LibUSBBulkInputReadResult
+    private let readPacket: () -> RigKontrolUSBInputReadResult
     private let capacity: Int
-    private var packets: [LibUSBBulkReadPacket] = []
+    private var packets: [RigKontrolUSBReadPacket] = []
     private var stopRequested = false
     private var finished = false
     private var readFailure: String?
 
-    init(capacity: Int = 256, readPacket: @escaping () -> LibUSBBulkInputReadResult) {
+    init(capacity: Int = 256, readPacket: @escaping () -> RigKontrolUSBInputReadResult) {
         precondition(capacity > 0)
         self.capacity = capacity
         self.readPacket = readPacket
-    }
-
-    convenience init(
-        handle: OpaquePointer, endpointAddress: UInt8, packetSize: Int,
-        timeoutMilliseconds: UInt32
-    ) {
-        self.init {
-            var buffer = [UInt8](repeating: 0, count: packetSize)
-            var transferred: Int32 = 0
-            let status = buffer.withUnsafeMutableBufferPointer { pointer in
-                libusb_bulk_transfer(
-                    handle, endpointAddress, pointer.baseAddress, Int32(packetSize),
-                    &transferred, timeoutMilliseconds)
-            }
-            if status == Int32(LIBUSB_SUCCESS.rawValue) {
-                guard transferred > 0 else { return .idle }
-                return .packet(LibUSBBulkReadPacket(
-                    endpointAddress: Int(endpointAddress), timestamp: Date(),
-                    bytes: Array(buffer.prefix(Int(transferred)))))
-            }
-            if status == Int32(LIBUSB_ERROR_TIMEOUT.rawValue) { return .idle }
-            let name = libusb_error_name(status).map { String(cString: $0) }
-                ?? "LIBUSB_ERROR_\(status)"
-            return .failed(name)
-        }
     }
 
     /// Wait for the first bounded read, including an ordinary cold-plug timeout.
@@ -71,7 +45,7 @@ final class LibUSBBulkInputPump: @unchecked Sendable {
     }
 
     /// Called only by the owner. Its short wait keeps stop/sleep responsive.
-    func nextPacket() -> LibUSBBulkReadPacket? {
+    func nextPacket() -> RigKontrolUSBReadPacket? {
         condition.lock()
         defer { condition.unlock() }
         if packets.isEmpty, readFailure == nil, !finished {
@@ -129,3 +103,7 @@ final class LibUSBBulkInputPump: @unchecked Sendable {
         }
     }
 }
+
+// Keep legacy probe/test callers source compatible.
+typealias LibUSBBulkInputReadResult = RigKontrolUSBInputReadResult
+typealias LibUSBBulkInputPump = RigKontrolUSBInputPump

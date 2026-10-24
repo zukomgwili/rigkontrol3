@@ -1,18 +1,8 @@
 import CLibusb
 import Foundation
 
-public struct LibUSBBulkReadPacket: Sendable {
-    public let endpointAddress: Int
-    public let timestamp: Date
-    public let bytes: [UInt8]
-
-    public init(endpointAddress: Int, timestamp: Date, bytes: [UInt8]) {
-        self.endpointAddress = endpointAddress
-        self.timestamp = timestamp
-        self.bytes = bytes
-    }
-}
-
+// Compatibility names for the legacy CLI and diagnostic probes.
+public typealias LibUSBBulkReadPacket = RigKontrolUSBReadPacket
 public struct LibUSBBulkReadSummary: Sendable {
     public let openStatus: String
     public let configurationStatus: String?
@@ -41,67 +31,10 @@ public struct LibUSBBulkReadSummary: Sendable {
     }
 }
 
-public struct LibUSBBulkStreamSummary: Sendable {
-    public let openStatus: String
-    public let configurationStatus: String?
-    public let claimStatus: String?
-    public let alternateSettingStatus: String?
-    public let releaseStatus: String?
-    public let packetCount: Int
-    public let nonTimeoutErrors: [String]
-
-    public init(
-        openStatus: String,
-        configurationStatus: String?,
-        claimStatus: String?,
-        alternateSettingStatus: String?,
-        releaseStatus: String?,
-        packetCount: Int,
-        nonTimeoutErrors: [String]
-    ) {
-        self.openStatus = openStatus
-        self.configurationStatus = configurationStatus
-        self.claimStatus = claimStatus
-        self.alternateSettingStatus = alternateSettingStatus
-        self.releaseStatus = releaseStatus
-        self.packetCount = packetCount
-        self.nonTimeoutErrors = nonTimeoutErrors
-    }
-}
-
-public struct LibUSBBulkWriteResult: Equatable, Sendable {
-    public let status: String
-    public let transferred: Int
-
-    public init(status: String, transferred: Int) {
-        self.status = status
-        self.transferred = transferred
-    }
-}
-
-public struct LibUSBBulkOutputWriter {
-    public let endpointAddress: Int
-
-    private let writeBytes: ([UInt8], UInt32) -> LibUSBBulkWriteResult
-
-    init(endpointAddress: Int, writeBytes: @escaping ([UInt8], UInt32) -> LibUSBBulkWriteResult) {
-        self.endpointAddress = endpointAddress
-        self.writeBytes = writeBytes
-    }
-
-    public func write(
-        _ bytes: [UInt8],
-        timeoutMilliseconds: UInt32 = 200
-    ) -> LibUSBBulkWriteResult {
-        writeBytes(bytes, timeoutMilliseconds)
-    }
-}
-
-public enum LibUSBBulkReadError: Error, Equatable {
-    case initializationFailed(String)
-    case deviceListFailed(String)
-    case deviceNotFound
-}
+public typealias LibUSBBulkStreamSummary = RigKontrolUSBStreamSummary
+public typealias LibUSBBulkWriteResult = RigKontrolUSBWriteResult
+public typealias LibUSBBulkOutputWriter = RigKontrolUSBOutputWriter
+public typealias LibUSBBulkReadError = RigKontrolUSBReadError
 
 public enum LibUSBBulkEventReader {
     public static func streamRigKontrol3BulkInput(
@@ -427,4 +360,33 @@ public enum LibUSBBulkEventReader {
         }
         return String(cString: pointer)
     }
+}
+
+// Only the legacy adapter knows how to turn a libusb handle into pump reads.
+extension RigKontrolUSBInputPump {
+    convenience init(
+        handle: OpaquePointer, endpointAddress: UInt8, packetSize: Int,
+        timeoutMilliseconds: UInt32
+    ) {
+        self.init {
+            var buffer = [UInt8](repeating: 0, count: packetSize)
+            var transferred: Int32 = 0
+            let status = buffer.withUnsafeMutableBufferPointer { pointer in
+                libusb_bulk_transfer(
+                    handle, endpointAddress, pointer.baseAddress, Int32(packetSize),
+                    &transferred, timeoutMilliseconds)
+            }
+            if status == Int32(LIBUSB_SUCCESS.rawValue) {
+                guard transferred > 0 else { return .idle }
+                return .packet(LibUSBBulkReadPacket(
+                    endpointAddress: Int(endpointAddress), timestamp: Date(),
+                    bytes: Array(buffer.prefix(Int(transferred)))))
+            }
+            if status == Int32(LIBUSB_ERROR_TIMEOUT.rawValue) { return .idle }
+            let name = libusb_error_name(status).map { String(cString: $0) }
+                ?? "LIBUSB_ERROR_\(status)"
+            return .failed(name)
+        }
+    }
+
 }
