@@ -9,12 +9,35 @@ public enum RigKontrolControllerStatus: Equatable, Sendable {
     case failed(String)
 }
 
+public enum RigKontrolLEDMode: Equatable, Sendable {
+    case press
+    case hostFeedback
+}
+
+public enum RigKontrolSwitchOutputMode: String, CaseIterable, Sendable {
+    case momentary
+    case pressOnly
+}
+
+/// Missing switch indices are unknown, which differs from a confirmed off state.
+public struct RigKontrolLEDFeedbackState: Equatable, Sendable {
+    public let knownSwitches: [Int: Bool]
+    public var count: Int { knownSwitches.count }
+
+    public init(knownSwitches: [Int: Bool] = [:]) {
+        self.knownSwitches = knownSwitches.filter { (1...8).contains($0.key) }
+    }
+}
+
 // These dependencies keep lifecycle tests independent of attached hardware and CoreMIDI.
 protocol RigKontrolControllerMIDIOutput: AnyObject {
     func send(_ message: MIDIMessage) throws
 }
 
 extension CoreMIDIVirtualSource: RigKontrolControllerMIDIOutput {}
+
+protocol RigKontrolControllerFeedbackInput: AnyObject {}
+extension CoreMIDIVirtualFeedbackDestination: RigKontrolControllerFeedbackInput {}
 
 struct RigKontrolControllerSessionDependencies {
     typealias Stream = (
@@ -25,12 +48,19 @@ struct RigKontrolControllerSessionDependencies {
     ) throws -> LibUSBBulkStreamSummary
 
     let makeMIDISource: () throws -> any RigKontrolControllerMIDIOutput
+    let makeFeedbackDestination: (
+        _ received: @escaping @Sendable (MIDIMessage) -> Void
+    ) throws -> any RigKontrolControllerFeedbackInput
     let stream: Stream
 
     static var live: Self {
         Self(
             makeMIDISource: {
                 try CoreMIDIVirtualSource(name: "RigKontrol3 Bridge", uniqueID: 0x524B3301)
+            },
+            makeFeedbackDestination: {
+                try CoreMIDIVirtualFeedbackDestination(
+                    name: "RigKontrol3 Bridge", uniqueID: 0x524B3302, received: $0)
             },
             stream: { didOpen, willClose, shouldContinue, packetHandler in
                 try LibUSBBulkEventReader.streamRigKontrol3BulkInput(
@@ -50,26 +80,40 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
     private var shutdownFinished = false
     private var epoch: UInt64 = 0
     private var expressionCalibration: ExpressionCalibration
+    private var switchOutputMode: RigKontrolSwitchOutputMode
+    private var pendingFeedbackMessages: [MIDIMessage] = []
+    private var feedbackInvalidationRequested = false
 
     private let dependencies: RigKontrolControllerSessionDependencies
     private let retryInterval: TimeInterval
     private let statusChanged: @Sendable (RigKontrolControllerStatus) -> Void
     private let messageSent: @Sendable (MIDIMessage) -> Void
     private let rawExpressionChanged: @Sendable (Int) -> Void
+    private let ledMode: RigKontrolLEDMode
+    private let feedbackChanged: @Sendable (RigKontrolLEDFeedbackState) -> Void
+    private let feedbackMessageReceived: @Sendable (MIDIMessage) -> Void
     // Only accessed by the worker.
     private var lastStatus: RigKontrolControllerStatus?
     private var lastSentSwitchValues: [Int: UInt8] = [:]
+    private var hostFeedbackState = RigKontrolLEDFeedbackState()
+    private var lastPublishedFeedbackState: RigKontrolLEDFeedbackState?
 
     public convenience init(
         statusChanged: @escaping @Sendable (RigKontrolControllerStatus) -> Void,
         messageSent: @escaping @Sendable (MIDIMessage) -> Void = { _ in },
         rawExpressionChanged: @escaping @Sendable (Int) -> Void = { _ in },
-        expressionCalibration: ExpressionCalibration = ExpressionCalibration()
+        expressionCalibration: ExpressionCalibration = ExpressionCalibration(),
+        switchOutputMode: RigKontrolSwitchOutputMode = .momentary,
+        ledMode: RigKontrolLEDMode = .press,
+        feedbackChanged: @escaping @Sendable (RigKontrolLEDFeedbackState) -> Void = { _ in },
+        feedbackMessageReceived: @escaping @Sendable (MIDIMessage) -> Void = { _ in }
     ) {
         self.init(
             dependencies: .live, retryInterval: 1,
             statusChanged: statusChanged, messageSent: messageSent,
-            rawExpressionChanged: rawExpressionChanged, expressionCalibration: expressionCalibration)
+            rawExpressionChanged: rawExpressionChanged, expressionCalibration: expressionCalibration,
+            switchOutputMode: switchOutputMode, ledMode: ledMode,
+            feedbackChanged: feedbackChanged, feedbackMessageReceived: feedbackMessageReceived)
     }
 
     init(
@@ -78,7 +122,11 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
         statusChanged: @escaping @Sendable (RigKontrolControllerStatus) -> Void,
         messageSent: @escaping @Sendable (MIDIMessage) -> Void = { _ in },
         rawExpressionChanged: @escaping @Sendable (Int) -> Void = { _ in },
-        expressionCalibration: ExpressionCalibration = ExpressionCalibration()
+        expressionCalibration: ExpressionCalibration = ExpressionCalibration(),
+        switchOutputMode: RigKontrolSwitchOutputMode = .momentary,
+        ledMode: RigKontrolLEDMode = .press,
+        feedbackChanged: @escaping @Sendable (RigKontrolLEDFeedbackState) -> Void = { _ in },
+        feedbackMessageReceived: @escaping @Sendable (MIDIMessage) -> Void = { _ in }
     ) {
         self.dependencies = dependencies
         self.retryInterval = max(0.01, retryInterval)
@@ -86,6 +134,10 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
         self.messageSent = messageSent
         self.rawExpressionChanged = rawExpressionChanged
         self.expressionCalibration = expressionCalibration
+        self.switchOutputMode = switchOutputMode
+        self.ledMode = ledMode
+        self.feedbackChanged = feedbackChanged
+        self.feedbackMessageReceived = feedbackMessageReceived
         DispatchQueue(label: "com.zukomgwili.rigkontrol3.controller").async { [self] in
             runWorker()
         }
@@ -130,6 +182,72 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
         condition.unlock()
     }
 
+    /// A fresh USB snapshot prevents a held switch from crossing protocol modes.
+    /// Changing the mode never emits controller MIDI by itself.
+    public func setSwitchOutputMode(_ mode: RigKontrolSwitchOutputMode) {
+        changeControl {
+            guard switchOutputMode != mode else { return false }
+            switchOutputMode = mode
+            return true
+        }
+    }
+
+    private func currentSwitchOutputMode() -> RigKontrolSwitchOutputMode {
+        condition.lock()
+        defer { condition.unlock() }
+        return switchOutputMode
+    }
+
+    /// The host lifecycle owner calls this when the previous host state is no longer valid.
+    /// It changes neither USB ownership nor controller MIDI output.
+    public func invalidateHostFeedback() {
+        condition.lock()
+        if !shutdownRequested {
+            pendingFeedbackMessages.removeAll()
+            feedbackInvalidationRequested = true
+            condition.broadcast()
+        }
+        condition.unlock()
+    }
+
+    private func enqueueFeedback(_ message: MIDIMessage) {
+        condition.lock()
+        if !shutdownRequested {
+            // Overload must not leave stale states looking authoritative. Clear
+            // uncertain history and retain new messages as a partial refresh.
+            if pendingFeedbackMessages.count == 256 {
+                pendingFeedbackMessages.removeAll()
+                feedbackInvalidationRequested = true
+            }
+            pendingFeedbackMessages.append(message)
+            condition.broadcast()
+        }
+        condition.unlock()
+    }
+
+    /// Only the worker consumes feedback and invokes public callbacks.
+    private func drainFeedback() {
+        condition.lock()
+        let messages = pendingFeedbackMessages
+        let invalidate = feedbackInvalidationRequested
+        pendingFeedbackMessages.removeAll(keepingCapacity: true)
+        feedbackInvalidationRequested = false
+        condition.unlock()
+
+        var known = invalidate ? [:] : hostFeedbackState.knownSwitches
+        for message in messages {
+            feedbackMessageReceived(message)
+            if let feedback = RigKontrolLEDFeedback(message: message) {
+                known[feedback.switchIndex] = feedback.isOn
+            }
+        }
+        hostFeedbackState = RigKontrolLEDFeedbackState(knownSwitches: known)
+        if lastPublishedFeedbackState != hostFeedbackState {
+            lastPublishedFeedbackState = hostFeedbackState
+            feedbackChanged(hostFeedbackState)
+        }
+    }
+
     private func currentCalibration() -> ExpressionCalibration {
         condition.lock()
         defer { condition.unlock() }
@@ -167,6 +285,7 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
 
     private func runWorker() {
         var midiSource: (any RigKontrolControllerMIDIOutput)?
+        var feedbackDestination: (any RigKontrolControllerFeedbackInput)?
         var announcedEpoch: UInt64?
         while let runEpoch = waitForRunRequest() {
             if announcedEpoch != runEpoch {
@@ -178,14 +297,20 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
                     midiSource = try dependencies.makeMIDISource()
                     lastSentSwitchValues.removeAll()
                 }
+                if feedbackDestination == nil {
+                    feedbackDestination = try dependencies.makeFeedbackDestination { [weak self] message in
+                        self?.enqueueFeedback(message)
+                    }
+                }
                 guard isActive(runEpoch), let midiSource else { continue }
                 runUSBConnection(epoch: runEpoch, midiSource: midiSource)
             } catch {
-                if isActive(runEpoch) { publish(.failed("MIDI source: \(error)")) }
+                if isActive(runEpoch) { publish(.failed("MIDI ports: \(error)")) }
             }
             waitBeforeRetry(epoch: runEpoch)
         }
-        // Dispose the endpoint before acknowledging shutdown to the caller.
+        // Dispose both endpoints before acknowledging shutdown to the caller.
+        feedbackDestination = nil
         midiSource = nil
         publish(.stopped)
         condition.lock()
@@ -196,6 +321,7 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
 
     private func waitForRunRequest() -> UInt64? {
         while true {
+            drainFeedback()
             condition.lock()
             if shutdownRequested {
                 condition.unlock()
@@ -212,7 +338,9 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
             condition.unlock()
             publish(idleStatus)
             condition.lock()
-            if epoch == idleEpoch, !shutdownRequested { condition.wait() }
+            if epoch == idleEpoch, !shutdownRequested,
+                pendingFeedbackMessages.isEmpty, !feedbackInvalidationRequested
+            { condition.wait() }
             condition.unlock()
         }
     }
@@ -225,21 +353,46 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
 
     private func waitBeforeRetry(epoch runEpoch: UInt64) {
         let deadline = Date().addingTimeInterval(retryInterval)
-        condition.lock()
-        defer { condition.unlock() }
-        while !shutdownRequested && wantsRunning && !isSuspended && epoch == runEpoch {
-            if !condition.wait(until: deadline) { return }
+        while true {
+            drainFeedback()
+            condition.lock()
+            guard !shutdownRequested && wantsRunning && !isSuspended && epoch == runEpoch else {
+                condition.unlock()
+                return
+            }
+            if pendingFeedbackMessages.isEmpty, !feedbackInvalidationRequested {
+                let signaled = condition.wait(until: deadline)
+                condition.unlock()
+                if !signaled { return }
+            } else {
+                condition.unlock()
+            }
+            if Date() >= deadline { return }
         }
     }
 
     private func runUSBConnection(epoch runEpoch: UInt64, midiSource: any RigKontrolControllerMIDIOutput) {
         var processor = RigKontrolControllerProcessor(expressionCalibration: currentCalibration())
+        let outputMode = currentSwitchOutputMode()
         var failure: RigKontrolControllerStatus?
         var cleanupFailure: RigKontrolControllerStatus?
         var snapshotDeadline: TimeInterval?
         var queryIssuedAt: Date?
         var isReady = false
         var lastRawExpression: Int?
+        var activeWriter: LibUSBBulkOutputWriter?
+        var lastWrittenLEDState: RigKontrolLEDState?
+
+        func reconcileHostLEDs(using writer: LibUSBBulkOutputWriter) {
+            guard self.ledMode == .hostFeedback else { return }
+            var target = RigKontrolLEDState()
+            for (index, isOn) in self.hostFeedbackState.knownSwitches {
+                target.setSwitchLED(index: index, isOn: isOn)
+            }
+            guard lastWrittenLEDState != target else { return }
+            failure = self.writeLEDs(target, using: writer)
+            if failure == nil { lastWrittenLEDState = target }
+        }
 
         func snapshotTimedOut() -> Bool {
             guard !isReady, let snapshotDeadline,
@@ -253,8 +406,10 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
             let summary = try dependencies.stream(
                 { writer in
                     guard self.isActive(runEpoch) else { return }
+                    activeWriter = writer
                     failure = self.writeLEDs(RigKontrolLEDState(), using: writer)
                     guard failure == nil, self.isActive(runEpoch) else { return }
+                    lastWrittenLEDState = RigKontrolLEDState()
                     // Linux caiaq input initialization enables digital reports and a
                     // 10 ms analog interval. Reapply it after every claim: a cold plug
                     // must not depend on settings retained from an earlier bridge.
@@ -275,7 +430,12 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
                 { writer in
                     cleanupFailure = self.writeLEDs(RigKontrolLEDState(), using: writer)
                 },
-                { self.isActive(runEpoch) && failure == nil && !snapshotTimedOut() },
+                {
+                    self.drainFeedback()
+                    guard self.isActive(runEpoch), failure == nil, !snapshotTimedOut() else { return false }
+                    if isReady, let activeWriter { reconcileHostLEDs(using: activeWriter) }
+                    return failure == nil
+                },
                 { packet, writer in
                     guard self.isActive(runEpoch), failure == nil, !snapshotTimedOut() else { return }
                     if !isReady {
@@ -286,7 +446,9 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
                         else { return }
                         _ = processor.process(packet.bytes)
                         isReady = true
-                        self.publish(.connected)
+                        self.drainFeedback()
+                        reconcileHostLEDs(using: writer)
+                        if failure == nil, self.isActive(runEpoch) { self.publish(.connected) }
                         return
                     }
                     processor.setExpressionCalibration(self.currentCalibration())
@@ -299,14 +461,17 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
                     let frame = processor.process(packet.bytes)
                     for message in frame.messages {
                         guard self.isActive(runEpoch) else { return }
+                        if outputMode == .pressOnly, Self.switchController(in: message) != nil,
+                            message.bytes[2] == 0
+                        { continue }
                         do {
-                            try self.send(message, through: midiSource)
+                            try self.send(message, through: midiSource, outputMode: outputMode)
                         } catch {
                             failure = .failed("MIDI send: \(error)")
                             return
                         }
                     }
-                    if frame.ledsChanged, self.isActive(runEpoch) {
+                    if self.ledMode == .press, frame.ledsChanged, self.isActive(runEpoch) {
                         failure = self.writeLEDs(frame.ledState, using: writer)
                     }
                 }
@@ -327,12 +492,19 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
         writeCommand(state.writeIOCommandBytes, operation: "LED write", using: writer)
     }
 
-    private func send(_ message: MIDIMessage, through source: any RigKontrolControllerMIDIOutput) throws {
+    private static func switchController(in message: MIDIMessage) -> Int? {
         let bytes = message.bytes
-        let switchController: Int? =
-            bytes.count == 3 && bytes[0] == 0xbf && (20...27).contains(Int(bytes[1]))
+        return bytes.count == 3 && bytes[0] == 0xbf && (20...27).contains(Int(bytes[1]))
             ? Int(bytes[1]) : nil
-        if let controller = switchController, bytes[2] == 127,
+    }
+
+    private func send(
+        _ message: MIDIMessage, through source: any RigKontrolControllerMIDIOutput,
+        outputMode: RigKontrolSwitchOutputMode
+    ) throws {
+        let bytes = message.bytes
+        let switchController = Self.switchController(in: message)
+        if outputMode == .momentary, let controller = switchController, bytes[2] == 127,
             lastSentSwitchValues[controller] == 127
         {
             // A release can be lost when USB disappears or the controller stops.

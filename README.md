@@ -2,7 +2,7 @@
 
 Native macOS Apple Silicon work for bringing Native Instruments Rig Kontrol 3 pedal and switch control data back as MIDI.
 
-The current controller milestone is a personal-use menu-bar app for Guitar Rig 6 standalone, with eight effect switches, wah expression, press-only LEDs, and USB/sleep recovery. Use a separate audio interface for this setup. Simultaneous RK3 audio and controller use needs further integration.
+The current controller milestone is a personal-use menu-bar app with eight effect switches, wah expression, host-driven LEDs, and USB/sleep recovery. Guitar Rig 6 standalone control has been tested; MainStage hosting is being verified for actual effect-state LED feedback. Use a separate audio interface for this setup. Simultaneous RK3 audio and controller use needs further integration.
 
 ## Menu-bar effects controller
 
@@ -11,9 +11,11 @@ Scripts/build-rk3controller.sh
 open ".build/Rig Kontrol 3.app"
 ```
 
-The app publishes **RigKontrol3 Bridge** on MIDI channel 16. Switches 1–8 send momentary CC20–27, and expression sends CC11. Let Guitar Rig perform effect toggling through MIDI Learn; use one switch for wah bypass. LEDs indicate physical presses. The menu provides connection status, start/stop, **Setup & Test** with live control counts, saved pedal calibration, and optional launch at login.
+The app publishes source and feedback-destination ports both named **RigKontrol3 Bridge**, with separate persistent identities. All controls use MIDI channel 16. Switches 1–8 send CC20–27, and expression sends CC11. **Control Mode** defaults to MainStage: one CC127 per press, with no release message. The standalone/other-host mode sends CC127 on press and CC0 on release. Let the host perform effect toggling; use one switch for wah bypass. LEDs use returned CC20–27 values (127 on, 0 off); unknown states stay dark. The menu provides connection status, start/stop, **Setup & Test** with sent MIDI counts and known LED states, saved pedal calibration, and optional launch at login.
 
 USB reconnect and sleep/wake retain the MIDI endpoint and establish fresh switch state without replaying effect toggles. Quit the legacy CLI bridge before using the app, and keep RK3 audio idle in all applications. See [Controller Setup](Documentation/Controller-Setup.md) for assignment instructions and the joint hardware verification procedure. Build and automated results do not establish that host mapping or physical behavior has passed acceptance.
+
+The [current GitHub survey](Research/github-arm-survey-2026-10-24.md) compares existing RK3 Apple Silicon work. Evaluate `mihaimetal/rk3-coreaudio` before extending the experimental audio driver; its hardware LED interface still needs host effect-state feedback.
 
 ## Verified Starting Point
 

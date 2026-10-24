@@ -19,8 +19,12 @@ private struct RK3ControllerMain {
 private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     private let statusMenuItem = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
+    private let feedbackMenuItem = NSMenuItem(title: "LEDs: awaiting host state", action: nil, keyEquivalent: "")
     private let startStopItem = NSMenuItem(title: "Stop Controller", action: nil, keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Launch at Login", action: nil, keyEquivalent: "")
+    private let mainStageModeItem = NSMenuItem(title: "MainStage (toggle buttons)", action: nil, keyEquivalent: "")
+    private let standardModeItem = NSMenuItem(title: "Guitar Rig standalone / other hosts", action: nil, keyEquivalent: "")
+    private var switchOutputMode: RigKontrolSwitchOutputMode = .pressOnly
     private var session: RigKontrolControllerSession?
     private var status: RigKontrolControllerStatus = .connecting
     private var wantsRunning = true
@@ -38,6 +42,8 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
     private var calibrationRange: ClosedRange<Int>?
     private let calibrationButton = NSButton(title: "Calibrate Pedal…", target: nil, action: nil)
     private let windowStartStopButton = NSButton(title: "Stop Controller", target: nil, action: nil)
+    private let clearFeedbackButton = NSButton(title: "Clear Host State", target: nil, action: nil)
+    private var hostFeedbackState = RigKontrolLEDFeedbackState()
     private var recentEvents: [String] = []
     private var eventLog: FileHandle?
 
@@ -53,7 +59,10 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         }
 
         configureEventLog()
+        switchOutputMode = UserDefaults.standard.string(forKey: "switchOutputMode") == "momentary"
+            ? .momentary : .pressOnly
         buildMenu()
+        log(["type": "switch-mode", "mode": switchOutputMode.rawValue])
         let center = NSWorkspace.shared.notificationCenter
         workspaceObservers = [
             center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) {
@@ -63,6 +72,15 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
             center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) {
                 [weak self] _ in
                 Task { @MainActor in self?.session?.resume() }
+            },
+            center.addObserver(forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main) {
+                [weak self] notification in
+                let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                guard application?.bundleIdentifier == "com.apple.mainstage3" else { return }
+                Task { @MainActor in
+                    self?.session?.invalidateHostFeedback()
+                    self?.log(["type": "host-stopped", "host": "MainStage"])
+                }
             },
         ]
         expressionCalibration = loadCalibration()
@@ -76,7 +94,15 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
             rawExpressionChanged: { [weak self] raw in
                 Task { @MainActor in self?.recordRawExpression(raw) }
             },
-            expressionCalibration: expressionCalibration
+            expressionCalibration: expressionCalibration,
+            switchOutputMode: switchOutputMode,
+            ledMode: .hostFeedback,
+            feedbackChanged: { [weak self] state in
+                Task { @MainActor in self?.recordHostFeedback(state) }
+            },
+            feedbackMessageReceived: { [weak self] message in
+                Task { @MainActor in self?.log(["type": "host-midi", "bytes": message.bytes.map(Int.init)]) }
+            }
         )
         session?.start()
         updateLoginItem()
@@ -112,6 +138,8 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         menu.delegate = self
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
+        feedbackMenuItem.isEnabled = false
+        menu.addItem(feedbackMenuItem)
         menu.addItem(.separator())
         startStopItem.target = self
         startStopItem.action = #selector(toggleController)
@@ -119,6 +147,17 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         let setupItem = NSMenuItem(title: "Setup & Test…", action: #selector(showSetup), keyEquivalent: "")
         setupItem.target = self
         menu.addItem(setupItem)
+        let modeItem = NSMenuItem(title: "Control Mode", action: nil, keyEquivalent: "")
+        let modeMenu = NSMenu()
+        mainStageModeItem.target = self
+        mainStageModeItem.action = #selector(selectMainStageMode)
+        standardModeItem.target = self
+        standardModeItem.action = #selector(selectStandardMode)
+        modeMenu.addItem(mainStageModeItem)
+        modeMenu.addItem(standardModeItem)
+        modeItem.submenu = modeMenu
+        menu.addItem(modeItem)
+        updateControlModeItems()
         menu.addItem(.separator())
         loginItem.target = self
         loginItem.action = #selector(toggleLogin)
@@ -141,6 +180,25 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
     }
 
     func menuWillOpen(_ menu: NSMenu) { updateLoginItem() }
+
+    @objc private func selectMainStageMode() { setControlMode(.pressOnly) }
+    @objc private func selectStandardMode() { setControlMode(.momentary) }
+
+    private func setControlMode(_ mode: RigKontrolSwitchOutputMode) {
+        guard switchOutputMode != mode else { return }
+        switchOutputMode = mode
+        UserDefaults.standard.set(mode == .pressOnly ? "pressOnly" : "momentary", forKey: "switchOutputMode")
+        session?.invalidateHostFeedback()
+        session?.setSwitchOutputMode(mode)
+        updateControlModeItems()
+        log(["type": "switch-mode", "mode": mode == .pressOnly ? "pressOnly" : "momentary"])
+        refreshSetup()
+    }
+
+    private func updateControlModeItems() {
+        mainStageModeItem.state = switchOutputMode == .pressOnly ? .on : .off
+        standardModeItem.state = switchOutputMode == .momentary ? .on : .off
+    }
 
     @objc private func toggleController() {
         wantsRunning.toggle()
@@ -197,6 +255,18 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         statusItem?.button?.title = value == .connected ? " RK3 ●" : " RK3"
         log(["type": "status", "status": text])
         refreshSetup()
+    }
+
+    private func recordHostFeedback(_ state: RigKontrolLEDFeedbackState) {
+        hostFeedbackState = state
+        feedbackMenuItem.title = state.count == 0
+            ? "LEDs: awaiting host state" : "LEDs: \(state.count)/8 host states received"
+        log(["type": "host-state", "knownSwitches": Dictionary(uniqueKeysWithValues: state.knownSwitches.map { (String($0.key), $0.value) })])
+        refreshSetup()
+    }
+
+    @objc private func clearHostFeedback() {
+        session?.invalidateHostFeedback()
     }
 
     private func loadCalibration() -> ExpressionCalibration {
@@ -308,17 +378,28 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
             text.textContainer?.widthTracksTextView = true
             scroll.documentView = text
             window.contentView?.addSubview(scroll)
-            calibrationButton.frame = NSRect(x: 18, y: 12, width: 200, height: 28)
             calibrationButton.bezelStyle = .rounded
             calibrationButton.target = self
             calibrationButton.action = #selector(toggleCalibration)
             calibrationButton.isEnabled = status == .connected
-            window.contentView?.addSubview(calibrationButton)
-            windowStartStopButton.frame = NSRect(x: 230, y: 12, width: 150, height: 28)
             windowStartStopButton.bezelStyle = .rounded
             windowStartStopButton.target = self
             windowStartStopButton.action = #selector(toggleController)
-            window.contentView?.addSubview(windowStartStopButton)
+            clearFeedbackButton.bezelStyle = .rounded
+            clearFeedbackButton.target = self
+            clearFeedbackButton.action = #selector(clearHostFeedback)
+            let buttons = NSStackView(views: [calibrationButton, windowStartStopButton, clearFeedbackButton])
+            buttons.orientation = .horizontal
+            buttons.spacing = 10
+            buttons.translatesAutoresizingMaskIntoConstraints = false
+            window.contentView?.addSubview(buttons)
+            if let content = window.contentView {
+                NSLayoutConstraint.activate([
+                    buttons.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 18),
+                    buttons.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -12),
+                    buttons.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -18),
+                ])
+            }
             window.center()
             setupWindow = window
             setupText = text
@@ -332,29 +413,52 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         guard let text = setupText else { return }
         let range = expressionRange.map { "\($0.lowerBound)…\($0.upperBound)" } ?? "not swept yet"
         let switchLines = (0..<8).map {
-            "  \($0 + 1)      \(20 + $0)       \(presses[$0]) / \(releases[$0])"
+            let state = hostFeedbackState.knownSwitches[$0 + 1].map { $0 ? "ON" : "off" } ?? "unknown"
+            return "  \($0 + 1)      \(20 + $0)       \(presses[$0]) / \(releases[$0])       \(state)"
         }.joined(separator: "\n")
         let scrollPosition = text.enclosingScrollView?.contentView.bounds.origin
+        let hostSetup: String
+        if switchOutputMode == .pressOnly {
+            hostSetup = """
+            MAINSTAGE MODE — ONE COMMAND PER PRESS
+
+            1. Choose your separate audio interface in MainStage.
+               Keep RK3 audio unused in other apps too.
+            2. Load Guitar Rig 6 FX on an audio channel.
+            3. Assign screen buttons to RigKontrol3 Bridge,
+               channel 16, CC20–27, Type: Single Value.
+            4. Map each button to its actual effect on/off
+               parameter. Keep Show Input Value OFF and MIDI Thru
+               set to Do not pass through.
+            5. Set Send Value to: RigKontrol3 Bridge.
+               Feedback: channel 16, CC20–27, 127=ON and 0=off.
+            6. Map pedal CC11 to wah. Save and verify the concert.
+
+            Switch release sends no MIDI in this mode.
+            """
+        } else {
+            hostSetup = """
+            GUITAR RIG STANDALONE / OTHER HOSTS
+
+            Enable RigKontrol3 Bridge as a MIDI input, channel 16.
+            Switches send CC20–27: 127 on press, 0 on release.
+            In Guitar Rig, learn each CC on a Macro button with
+            Hold Mode off, then assign its target to effect power.
+            Learn pedal CC11 on the continuous wah parameter.
+
+            This mode requires the host's toggle configuration.
+            Standalone Guitar Rig effect-state feedback has not
+            been established. Unknown LED states stay dark.
+            """
+        }
         text.string = """
         \(statusText)
 
-        GUITAR RIG 6 SETUP
+        \(hostSetup)
 
-        1. Choose your separate audio interface in Guitar Rig.
-           Keep RK3 audio unused in other apps too.
-        2. Preferences → MIDI: enable RigKontrol3 Bridge.
-           Receive on channel 16 or Omni.
-        3. MIDI Learn an effect's on/off control, then press
-           the switch you want. Configure the host so one
-           press toggles once; release must not toggle again.
-           If it takes two presses, check Hold Mode.
-        4. Learn wah position, then sweep the pedal.
-           Use one of switches 1–8 for wah on/off.
-        5. Save the preset and verify assignments after reload.
+        MIDI SENT (SINCE APP LAUNCH)
 
-        LIVE INPUT (SINCE APP LAUNCH)
-
-        Switch  MIDI CC  Presses / release-reset messages
+        Switch  MIDI CC  Press / reset   Host LED state
         \(switchLines)
 
         Wah CC11: \(latestExpression.map(String.init) ?? "—")
@@ -362,11 +466,16 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         Calibrated raw travel: \(expressionCalibration.rawMinimum)…\(expressionCalibration.rawMaximum)
         \(isCalibrating ? "CALIBRATING: sweep fully heel-to-toe and back, then\nclick Finish Calibration. Raw range: \(calibrationRange.map { "\($0.lowerBound)…\($0.upperBound)" } ?? "waiting…")" : "Use Calibrate Pedal if normal travel misses 0 or 127.")
 
-        LEDs indicate physical presses, not effect state.
+        LED state received: \(hostFeedbackState.count)/8 controls.
+        Unknown states stay dark until the host reports them.
+        LEDs follow host feedback, not physical presses.
         Release all switches after connecting. A switch held
         on attachment is ignored until released and pressed.
-        After a lost release, a new press may send an extra
-        zero first to restore the host's switch detection.
+        \(switchOutputMode == .momentary ? "After a lost release, a new press may send an extra\nzero first to restore the host's switch detection." : "MainStage receives one 127 per deliberate press;\nrelease and reconnect send no switch commands.")
+
+        After changing mappings, clear host state and refresh
+        MainStage's patch feedback. Quit MainStage to clear
+        cached states. Initial/patch feedback must be verified.
 
         TEST RECOVERY
 

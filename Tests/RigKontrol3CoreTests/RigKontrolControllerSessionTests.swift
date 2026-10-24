@@ -337,6 +337,193 @@ final class RigKontrolControllerSessionTests: XCTestCase {
         ])
         XCTAssertEqual(rig.snapshot().sourcesCreated, 1)
     }
+
+    func testHostFeedbackChangesLEDsWhileInputIsIdleAndPhysicalPressesDoNotChangeThem() {
+        let rig = SessionRig()
+        let session = rig.makeSession(ledMode: .hostFeedback)
+        defer { session.shutdown(); session.waitUntilShutdown(timeout: 2) }
+        session.start()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .connected })
+        XCTAssertEqual(rig.snapshot().feedbackStates.last?.count, 0)
+        rig.sendFeedback([
+            .controlChange(channel: MIDIChannel(1), controller: 20, value: 127),
+            .controlChange(channel: MIDIChannel(16), controller: 28, value: 127),
+            .controlChange(channel: MIDIChannel(16), controller: 20, value: 64),
+            .noteOn(channel: MIDIChannel(16), note: 20),
+        ])
+        XCTAssertTrue(rig.wait { $0.feedbackMessages.count == 4 })
+        XCTAssertEqual(rig.snapshot().feedbackStates.last?.count, 0)
+        XCTAssertEqual(rig.snapshot().ledWrites, 1)
+        XCTAssertTrue(rig.snapshot().sentMessages.isEmpty)
+
+        rig.sendFeedback([.controlChange(channel: MIDIChannel(16), controller: 20, value: 127)])
+        XCTAssertTrue(rig.wait { $0.lastLEDState?.isSwitchLEDOn(index: 1) == true })
+        XCTAssertEqual(rig.snapshot().processedPackets, 1)
+        XCTAssertEqual(rig.snapshot().feedbackStates.last?.knownSwitches, [1: true])
+        XCTAssertTrue(rig.snapshot().sentMessages.isEmpty)
+        rig.enqueue([[0x04, 0x10], [0x04, 0], [0x04, 0x20], [0x04, 0]])
+        XCTAssertTrue(rig.wait { $0.processedPackets >= 5 })
+        XCTAssertEqual(rig.snapshot().sentMessages.count, 4)
+        XCTAssertEqual(rig.snapshot().ledWrites, 2)
+        XCTAssertTrue(rig.snapshot().lastLEDState?.isSwitchLEDOn(index: 1) == true)
+        XCTAssertFalse(rig.snapshot().lastLEDState?.isSwitchLEDOn(index: 2) == true)
+
+        rig.sendFeedback([.controlChange(channel: MIDIChannel(16), controller: 20, value: 0)])
+        XCTAssertTrue(rig.wait { $0.lastLEDState?.isSwitchLEDOn(index: 1) == false })
+        XCTAssertEqual(rig.snapshot().feedbackStates.last?.knownSwitches, [1: false])
+        XCTAssertEqual(rig.snapshot().sentMessages.count, 4)
+        XCTAssertFalse(rig.snapshot().ledWriteOnMainThread)
+    }
+
+    func testHostFeedbackInvalidationClearsUnknownWithoutResettingUSBOrSendingMIDI() {
+        let rig = SessionRig()
+        let session = rig.makeSession(ledMode: .hostFeedback)
+        defer { session.shutdown(); session.waitUntilShutdown(timeout: 2) }
+        session.start()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .connected })
+        rig.sendFeedback([
+            .controlChange(channel: MIDIChannel(16), controller: 20, value: 127),
+            .controlChange(channel: MIDIChannel(16), controller: 21, value: 0),
+        ])
+        XCTAssertTrue(rig.wait { $0.feedbackStates.last?.count == 2 && $0.lastLEDState?.isSwitchLEDOn(index: 1) == true })
+        session.invalidateHostFeedback()
+        XCTAssertTrue(rig.wait { $0.feedbackStates.last?.count == 0 && $0.lastLEDState == RigKontrolLEDState() })
+        XCTAssertEqual(rig.snapshot().attempts, 1)
+        XCTAssertEqual(rig.snapshot().sourcesCreated, 1)
+        XCTAssertEqual(rig.snapshot().feedbackDestinationsCreated, 1)
+        XCTAssertTrue(rig.snapshot().sentMessages.isEmpty)
+    }
+
+    func testHostFeedbackAndPortsSurviveStopSleepAndUSBReclaimUntilShutdown() {
+        let rig = SessionRig()
+        let session = rig.makeSession(ledMode: .hostFeedback)
+        defer { session.shutdown(); session.waitUntilShutdown(timeout: 2) }
+        session.start()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .connected })
+        rig.sendFeedback([.controlChange(channel: MIDIChannel(16), controller: 20, value: 127)])
+        XCTAssertTrue(rig.wait { $0.lastLEDState?.isSwitchLEDOn(index: 1) == true })
+        session.stop()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .stopped && $0.activeConnections == 0 })
+        let writesWhileStopped = rig.snapshot().ledWrites
+        rig.sendFeedback([.controlChange(channel: MIDIChannel(16), controller: 21, value: 127)])
+        XCTAssertTrue(rig.wait { $0.feedbackStates.last?.knownSwitches == [1: true, 2: true] })
+        XCTAssertEqual(rig.snapshot().ledWrites, writesWhileStopped)
+        let commandsBeforeRestart = rig.snapshot().commands.count
+        session.start()
+        XCTAssertTrue(rig.wait { $0.attempts == 2 && $0.statuses.last == .connected })
+        XCTAssertEqual(
+            rig.snapshot().commands.dropFirst(commandsBeforeRestart).prefix(4).compactMap(\.first),
+            [0x05, 0x0b, 0x04, 0x05])
+        XCTAssertTrue(rig.snapshot().ledStatesAtConnection.last?.isSwitchLEDOn(index: 1) == true)
+        XCTAssertTrue(rig.snapshot().ledStatesAtConnection.last?.isSwitchLEDOn(index: 2) == true)
+        session.suspend()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .sleeping && $0.activeConnections == 0 })
+        rig.sendFeedback([.controlChange(channel: MIDIChannel(16), controller: 20, value: 0)])
+        XCTAssertTrue(rig.wait { $0.feedbackStates.last?.knownSwitches == [1: false, 2: true] })
+        session.resume()
+        XCTAssertTrue(rig.wait { $0.attempts == 3 && $0.statuses.last == .connected })
+        rig.disconnect()
+        XCTAssertTrue(rig.wait { $0.attempts == 4 && $0.statuses.last == .connected })
+        XCTAssertFalse(rig.snapshot().ledStatesAtConnection.last?.isSwitchLEDOn(index: 1) == true)
+        XCTAssertTrue(rig.snapshot().ledStatesAtConnection.last?.isSwitchLEDOn(index: 2) == true)
+        XCTAssertTrue(rig.snapshot().sentMessages.isEmpty)
+        XCTAssertEqual(rig.snapshot().sourcesCreated, 1)
+        XCTAssertEqual(rig.snapshot().feedbackDestinationsCreated, 1)
+        XCTAssertEqual(rig.snapshot().sourcesDisposed, 0)
+        XCTAssertEqual(rig.snapshot().feedbackDestinationsDisposed, 0)
+        session.shutdown()
+        XCTAssertTrue(session.waitUntilShutdown(timeout: 2))
+        XCTAssertEqual(rig.snapshot().sourcesDisposed, 1)
+        XCTAssertEqual(rig.snapshot().feedbackDestinationsDisposed, 1)
+        XCTAssertEqual(rig.snapshot().lastLEDState, RigKontrolLEDState())
+    }
+
+    func testFailedHostStateRestorationNeverReportsConnectedAndKeepsPorts() {
+        let rig = SessionRig(shortLEDWriteAttempts: [5])
+        let session = rig.makeSession(retryInterval: 60, ledMode: .hostFeedback)
+        defer { session.shutdown(); session.waitUntilShutdown(timeout: 2) }
+        session.start()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .connected })
+        rig.sendFeedback([.controlChange(channel: MIDIChannel(16), controller: 20, value: 127)])
+        XCTAssertTrue(rig.wait { $0.lastLEDState?.isSwitchLEDOn(index: 1) == true })
+        session.stop()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .stopped && $0.activeConnections == 0 })
+        session.start()
+        XCTAssertTrue(rig.wait { state in
+            guard case .failed(let detail) = state.statuses.last else { return false }
+            return detail.contains("LED write") && detail.contains("63/64 bytes")
+        })
+        XCTAssertEqual(rig.snapshot().statuses.filter { $0 == .connected }.count, 1)
+        XCTAssertEqual(rig.snapshot().feedbackStates.last?.knownSwitches, [1: true])
+        XCTAssertEqual(rig.snapshot().sourcesCreated, 1)
+        XCTAssertEqual(rig.snapshot().feedbackDestinationsCreated, 1)
+        XCTAssertTrue(rig.snapshot().sentMessages.isEmpty)
+    }
+
+    func testPressOnlySendsOne127PerCycleAndLeavesExpressionAndHostLEDsIndependent() {
+        let rig = SessionRig()
+        let session = rig.makeSession(switchOutputMode: .pressOnly, ledMode: .hostFeedback)
+        defer { session.shutdown(); session.waitUntilShutdown(timeout: 2) }
+        session.start()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .connected })
+        rig.sendFeedback([.controlChange(channel: MIDIChannel(16), controller: 20, value: 127)])
+        XCTAssertTrue(rig.wait { $0.lastLEDState?.isSwitchLEDOn(index: 1) == true })
+        let ledWrites = rig.snapshot().ledWrites
+        rig.enqueue([
+            [0x04, 0x10], [0x04, 0], [0x04, 0x10], [0x04, 0],
+            [0x03, 0, 0, 0, 0, 0, 100],
+        ])
+        XCTAssertTrue(rig.wait { $0.processedPackets >= 6 })
+        XCTAssertEqual(rig.snapshot().sentMessages, [
+            .controlChange(channel: MIDIChannel(16), controller: 20, value: 127),
+            .controlChange(channel: MIDIChannel(16), controller: 20, value: 127),
+            .controlChange(channel: MIDIChannel(16), controller: 11, value: 7),
+        ])
+        XCTAssertEqual(rig.snapshot().feedbackStates.last?.knownSwitches, [1: true])
+        XCTAssertEqual(rig.snapshot().ledWrites, ledWrites)
+    }
+
+    func testPressOnlyReconnectAfterLostReleaseDoesNotInjectNeutralZero() {
+        let rig = SessionRig(snapshotMasks: [0, 0x10])
+        let session = rig.makeSession(switchOutputMode: .pressOnly)
+        defer { session.shutdown(); session.waitUntilShutdown(timeout: 2) }
+        session.start()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .connected })
+        rig.enqueue([[0x04, 0x10]])
+        XCTAssertTrue(rig.wait { $0.sentMessages.count == 1 })
+        rig.disconnect()
+        XCTAssertTrue(rig.wait { $0.attempts == 2 && $0.statuses.last == .connected })
+        rig.enqueue([[0x04, 0x10], [0x04, 0]])
+        XCTAssertTrue(rig.wait { $0.processedPackets >= 5 })
+        XCTAssertEqual(rig.snapshot().sentMessages.count, 1)
+        rig.enqueue([[0x04, 0x10], [0x04, 0]])
+        XCTAssertTrue(rig.wait { $0.processedPackets >= 7 })
+        XCTAssertEqual(rig.snapshot().sentMessages.map { $0.bytes }, [[0xbf, 20, 127], [0xbf, 20, 127]])
+        XCTAssertEqual(rig.snapshot().sourcesCreated, 1)
+    }
+
+    func testChangingOutputModeReclaimsFreshHeldSnapshotWithoutSendingMIDI() {
+        let rig = SessionRig(snapshotMasks: [0, 0x10])
+        let session = rig.makeSession()
+        defer { session.shutdown(); session.waitUntilShutdown(timeout: 2) }
+        session.start()
+        XCTAssertTrue(rig.wait { $0.statuses.last == .connected })
+        rig.enqueue([[0x04, 0x10]])
+        XCTAssertTrue(rig.wait { $0.sentMessages.count == 1 })
+        session.setSwitchOutputMode(.pressOnly)
+        XCTAssertTrue(rig.wait { $0.attempts == 2 && $0.statuses.last == .connected })
+        XCTAssertEqual(rig.snapshot().sentMessages.count, 1)
+        session.setSwitchOutputMode(.pressOnly)
+        rig.enqueue([[0x04, 0x10], [0x04, 0]])
+        XCTAssertTrue(rig.wait { $0.processedPackets >= 5 })
+        XCTAssertEqual(rig.snapshot().sentMessages.count, 1)
+        rig.enqueue([[0x04, 0x10], [0x04, 0]])
+        XCTAssertTrue(rig.wait { $0.processedPackets >= 7 })
+        XCTAssertEqual(rig.snapshot().sentMessages.map { $0.bytes }, [[0xbf, 20, 127], [0xbf, 20, 127]])
+        XCTAssertEqual(rig.snapshot().attempts, 2)
+        XCTAssertEqual(rig.snapshot().sourcesCreated, 1)
+        XCTAssertEqual(rig.snapshot().feedbackDestinationsCreated, 1)
+    }
 }
 
 /// A transport that can disappear, refuse a claim, and block until cancellation.
@@ -349,6 +536,8 @@ private final class SessionRig: @unchecked Sendable {
         var maximumConnections = 0
         var sourcesCreated = 0
         var sourcesDisposed = 0
+        var feedbackDestinationsCreated = 0
+        var feedbackDestinationsDisposed = 0
         var ledWrites = 0
         var queryWrites = 0
         var processedPackets = 0
@@ -358,6 +547,15 @@ private final class SessionRig: @unchecked Sendable {
         var sentMessages: [MIDIMessage] = []
         var reportedMessages: [MIDIMessage] = []
         var rawExpressions: [Int] = []
+        var feedbackStates: [RigKontrolLEDFeedbackState] = []
+        var feedbackMessages: [MIDIMessage] = []
+        var ledWriteOnMainThread = false
+        var ledStatesAtConnection: [RigKontrolLEDState] = []
+        var lastLEDState: RigKontrolLEDState? {
+            commands.last(where: { $0.first == 0x05 }).map {
+                RigKontrolLEDState(payloadBytes: Array($0.dropFirst()))
+            }
+        }
     }
     private let condition = NSCondition()
     private var state = State()
@@ -373,10 +571,13 @@ private final class SessionRig: @unchecked Sendable {
     private let shortAutomaticControlWrites: Bool
     private let primingPacket: [UInt8]?
     private var snapshotMasks: [UInt8]
+    private var feedbackReceiver: (@Sendable (MIDIMessage) -> Void)?
+    private let shortLEDWriteAttempts: Set<Int>
 
     init(
         initialOutcomes: [Outcome] = [], alwaysMissing: Bool = false,
-        shortLEDWrites: Bool = false, failMIDISends: Bool = false,
+        shortLEDWrites: Bool = false, shortLEDWriteAttempts: Set<Int> = [],
+        failMIDISends: Bool = false,
         failMIDISendAttempts: Set<Int> = [],
         automaticallyReplyToQuery: Bool = true, shortQueryWrites: Bool = false,
         shortAutomaticControlWrites: Bool = false,
@@ -386,6 +587,7 @@ private final class SessionRig: @unchecked Sendable {
         self.initialOutcomes = initialOutcomes
         self.alwaysMissing = alwaysMissing
         self.shortLEDWrites = shortLEDWrites
+        self.shortLEDWriteAttempts = shortLEDWriteAttempts
         self.failMIDISends = failMIDISends
         self.failMIDISendAttempts = failMIDISendAttempts
         self.automaticallyReplyToQuery = automaticallyReplyToQuery
@@ -397,18 +599,41 @@ private final class SessionRig: @unchecked Sendable {
 
     func makeSession(
         retryInterval: TimeInterval = 0.01,
-        expressionCalibration: ExpressionCalibration = ExpressionCalibration()
+        expressionCalibration: ExpressionCalibration = ExpressionCalibration(),
+        switchOutputMode: RigKontrolSwitchOutputMode = .momentary,
+        ledMode: RigKontrolLEDMode = .press
     ) -> RigKontrolControllerSession {
         RigKontrolControllerSession(
             dependencies: RigKontrolControllerSessionDependencies(
                 makeMIDISource: { self.change { $0.sourcesCreated += 1 }; return TestSource(rig: self) },
+                makeFeedbackDestination: { received in
+                    self.condition.lock()
+                    self.state.feedbackDestinationsCreated += 1
+                    self.feedbackReceiver = received
+                    self.condition.broadcast()
+                    self.condition.unlock()
+                    return TestFeedbackDestination(rig: self)
+                },
                 stream: { try self.stream($0, $1, $2, $3) }
             ),
             retryInterval: retryInterval,
-            statusChanged: { status in self.change { $0.statuses.append(status) } },
+            statusChanged: { status in
+                self.change {
+                    $0.statuses.append(status)
+                    if status == .connected,
+                        let command = $0.commands.last(where: { $0.first == 0x05 })
+                    {
+                        $0.ledStatesAtConnection.append(RigKontrolLEDState(payloadBytes: Array(command.dropFirst())))
+                    }
+                }
+            },
             messageSent: { message in self.change { $0.reportedMessages.append(message) } },
             rawExpressionChanged: { raw in self.change { $0.rawExpressions.append(raw) } },
-            expressionCalibration: expressionCalibration
+            expressionCalibration: expressionCalibration,
+            switchOutputMode: switchOutputMode,
+            ledMode: ledMode,
+            feedbackChanged: { feedback in self.change { $0.feedbackStates.append(feedback) } },
+            feedbackMessageReceived: { message in self.change { $0.feedbackMessages.append(message) } }
         )
     }
 
@@ -449,6 +674,13 @@ private final class SessionRig: @unchecked Sendable {
         condition.unlock()
     }
 
+    func sendFeedback(_ messages: [MIDIMessage]) {
+        condition.lock()
+        let receive = feedbackReceiver
+        condition.unlock()
+        for message in messages { receive?(message) }
+    }
+
     private func stream(
         _ didOpen: (LibUSBBulkOutputWriter) -> Void,
         _ willClose: (LibUSBBulkOutputWriter) -> Void,
@@ -483,11 +715,14 @@ private final class SessionRig: @unchecked Sendable {
                 }
             } else if !isAutomaticControlCommand {
                 self.state.ledWrites += 1
+                self.state.ledWriteOnMainThread = self.state.ledWriteOnMainThread || Thread.isMainThread
             }
+            let ledAttempt = self.state.ledWrites
             self.condition.broadcast()
             self.condition.unlock()
             let isShort = isQuery ? self.shortQueryWrites
-                : (isAutomaticControlCommand ? self.shortAutomaticControlWrites : self.shortLEDWrites)
+                : (isAutomaticControlCommand ? self.shortAutomaticControlWrites
+                    : self.shortLEDWrites || self.shortLEDWriteAttempts.contains(ledAttempt))
             return LibUSBBulkWriteResult(
                 status: "LIBUSB_SUCCESS", transferred: bytes.count - (isShort ? 1 : 0))
         }
@@ -538,6 +773,18 @@ private final class SessionRig: @unchecked Sendable {
                 throw CoreMIDIError.osStatus(-1, operation: "test send")
             }
             rig.change { $0.sentMessages.append(message) }
+        }
+    }
+
+    private final class TestFeedbackDestination: RigKontrolControllerFeedbackInput {
+        let rig: SessionRig
+        init(rig: SessionRig) { self.rig = rig }
+        deinit {
+            rig.condition.lock()
+            rig.feedbackReceiver = nil
+            rig.state.feedbackDestinationsDisposed += 1
+            rig.condition.broadcast()
+            rig.condition.unlock()
         }
     }
 }
