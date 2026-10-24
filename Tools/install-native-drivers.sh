@@ -98,7 +98,7 @@ def run(command):
     return result.stdout + result.stderr
 
 
-def check_bundle(bundle, definition):
+def check_bundle(bundle, definition, require_apple_certificate=False):
     entries(bundle)  # Refuse links/special files before passing paths to tools.
     info_file = bundle / 'Contents/Info.plist'
     info = plistlib.loads(info_file.read_bytes())
@@ -114,6 +114,13 @@ def check_bundle(bundle, definition):
     if architecture != 'arm64':
         fail('Expected arm64-only executable: ' + str(executable))
     run(['/usr/bin/codesign', '--verify', '--strict', '--deep', str(bundle)])
+    # The actual local MIDIServer rejected ad-hoc MIDI code before Start.
+    # Fixture bundles intentionally remain ad-hoc inside their isolated root.
+    # Historical same-namespace versions may be ad-hoc: they must remain
+    # verifiable/backuppable/restorable even when new MIDI artifacts require
+    # an Apple-issued certificate to load in the actual MIDIServer.
+    if require_apple_certificate and definition['id'] == 'org.rigkontrol3.ni-arm.midi' and not args.staging_root:
+        run(['/usr/bin/codesign', '--verify', '--strict', '-R=anchor apple generic', str(bundle)])
     signing = run(['/usr/bin/codesign', '--display', '--verbose=4', str(bundle)])
     identifiers = [line.removeprefix('Identifier=') for line in signing.splitlines() if line.startswith('Identifier=')]
     if identifiers != [definition['id']]:
@@ -139,7 +146,7 @@ def check_package(directory, manifest=None):
     actual = {}
     for definition in BUNDLES:
         bundle = directory / definition['name']
-        check_bundle(bundle, definition)
+        check_bundle(bundle, definition, require_apple_certificate=True)
         for record in entries(bundle):
             if record['kind'] == 'file':
                 actual[definition['name'] + '/' + record['path']] = record['sha256']
@@ -280,7 +287,7 @@ def install_locked():
             if target.exists() or target.is_symlink():
                 fail('Install destination unexpectedly exists: ' + str(target))
             os.rename(package / definition['name'], target)
-            check_bundle(target, definition)
+            check_bundle(target, definition, require_apple_certificate=True)
             if snapshot(target) != item['new']:
                 fail('Post-install content/ownership/mode mismatch: ' + str(target))
             print('INSTALLED ' + str(target))

@@ -51,6 +51,8 @@ sh Tools/install-native-drivers.sh --check
 sudo /bin/sh Tools/install-native-drivers.sh --install --restart-services
 ```
 
+A valid Apple-issued code-signing identity is required for the MIDI bundle.
+The build selects the local identity or accepts `RK3_CODE_SIGN_IDENTITY`.
 The two bundles are `RigKontrol3Audio.driver` and `RigKontrol3MIDI.plugin`.
 The installer checks their identities, ARM64 code, signatures and content,
 preserves previous versions, and prints a reversible session path. See

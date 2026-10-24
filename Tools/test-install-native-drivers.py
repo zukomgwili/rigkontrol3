@@ -10,6 +10,7 @@ import shutil
 import stat
 import subprocess
 import tempfile
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent
 INSTALLER = ROOT / 'Tools/install-native-drivers.sh'
@@ -81,6 +82,37 @@ def main():
                         assert stat.S_IMODE(item.stat().st_mode) == expected_mode
                         assert item.stat().st_uid == os.getuid()
                         assert item.stat().st_gid == os.getgid()
+
+        # Exercise the actual read-only policy without a fixture-root bypass.
+        # This cannot enter the privileged install/restore/service code paths.
+        untrusted = subprocess.run(['/bin/sh', str(INSTALLER), '--source', str(first), '--check'],
+                                   capture_output=True, text=True, timeout=30)
+        assert untrusted.returncode != 0 and '/usr/bin/codesign failed:' in untrusted.stderr
+        versions(None)
+        print('PASS nonfixture read-only check rejects ad-hoc MIDI artifact')
+
+        # Load only the validation helper definitions, with no argument parser
+        # or main/action execution. Mock only Apple-anchor verification so an
+        # existing ad-hoc fixture can model the new-vs-historical role split.
+        embedded = INSTALLER.read_text().split("<<'PY'\n", 1)[1].rsplit('\nPY\n', 1)[0]
+        helpers = embedded.split('\nparser = argparse.ArgumentParser', 1)[0]
+        library = {}; exec(compile(helpers, str(INSTALLER), 'exec'), library)
+        library['args'] = SimpleNamespace(staging_root=None)
+        original_run = library['run']; anchors = []
+
+        def mock_anchor(arguments):
+            if '-R=anchor apple generic' in arguments:
+                anchors.append(arguments[-1]); return ''
+            return original_run(arguments)
+
+        library['run'] = mock_anchor
+        library['check_bundle'](first / DEFINITIONS[1][0], library['BUNDLES'][1])
+        assert anchors == []  # Previously installed/backup integrity checks.
+        library['check_package'](first)
+        assert anchors == [str(first / DEFINITIONS[1][0])]  # New source/stage.
+        library['check_bundle'](first / DEFINITIONS[1][0], library['BUNDLES'][1], require_apple_certificate=True)
+        assert len(anchors) == 2  # Newly copied target can repeat the new policy.
+        print('PASS Apple certificate policy is scoped to new artifacts; historical integrity remains restorable')
 
         run('--check'); versions(None)
         fresh = install(first); versions(1)

@@ -153,3 +153,14 @@ overrun baselines,
 controller/DIN separation, feedback LED override, leased LED05 queue entries,
 feedback generation rejection, default and invalid calibration properties, and
 atomic calibration application.
+
+## System-host signing
+
+A successful factory smoke test does not establish MIDIServer acceptance. The
+installed system host rejected the initial ad-hoc signature before `Start`.
+Apple Development signing is the local-development test; actual MIDIServer
+loading must confirm its host-specific policy. The plug-in does not require
+DriverKit entitlements, and entitlements should not be attached to library code.
+See [CoreMIDISigning.md](../../ReverseEngineering/CoreMIDISigning.md) for primary
+Apple sources, provisioning-profile limits and the separate Developer ID
+distribution path.

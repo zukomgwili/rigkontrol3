@@ -18,13 +18,22 @@ sh Tools/build-drivers.sh
 sh Tools/install-native-drivers.sh --check
 ```
 
-The build uses local ad-hoc code signing. The installer verifies exact
+The build selects a single valid Apple-issued signing identity from the local
+keychain, preferring Developer ID Application then Apple Development. Set
+`RK3_CODE_SIGN_IDENTITY` to choose explicitly. An Apple Development identity is
+used for this Mac’s local build; its actual MIDIServer acceptance is tested
+after installation. The observed MIDI host rejected ad-hoc signing before
+calling Start. No library entitlements or provisioning profile are added. The installer verifies exact
 bundle/executable identifiers, BNDL type, arm64-only Mach-O architecture,
 strict code-signature integrity, and the manifest's exact file set and
 SHA-256 hashes. It refuses symlinks and special files. It copies both
 bundles into a private staging session and repeats those checks before
 moving either active path. Installed ownership is root:wheel, directories
 0755, regular resources 0644, and the executable 0755.
+New production MIDI artifacts require an Apple-issued certificate chain.
+Historical same-namespace active/backup versions retain strict signature
+integrity, identity and architecture checks without that new-artifact
+certificate requirement, so the initial ad-hoc version remains recoverable.
 Protected backup and destination directory ancestors must be root-owned
 and must disallow group/other writes before privileged mutations proceed.
 
@@ -84,3 +93,6 @@ symlink source/destination refusal, writable-ancestor refusal, missing
 retained backups, and legacy quarantine preservation. Passing these
 tests establishes installer behavior; working system audio/MIDI requires
 separate hardware and host validation after the real installation.
+The suite also requires nonfixture read-only `--check` to reject an ad-hoc
+MIDI artifact and checks that the Apple-certificate rule applies to new
+source/stage/target validation while historical versions remain restorable.

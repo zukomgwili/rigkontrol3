@@ -525,8 +525,28 @@ static void asynchronous_write_test(void) {
     defer_write = short_write_callback = signal_deferred = false;
 }
 
+static void connection_state_test(void) {
+    rk3_usb_session session; initialize(&session);
+    static const struct { rk3_usb_state state; uint32_t flags; } cases[] = {
+        {RK3_USB_OPENING, 0},
+        {RK3_USB_READY, RK3_NATIVE_CONNECTED},
+        {RK3_USB_STARTING, RK3_NATIVE_CONNECTED},
+        {RK3_USB_RUNNING, RK3_NATIVE_CONNECTED | RK3_NATIVE_AUDIO_RUNNING},
+        {RK3_USB_STOPPING, RK3_NATIVE_CONNECTED},
+        {RK3_USB_FAILED, RK3_NATIVE_FAILED},
+        {RK3_USB_CLOSED, 0},
+    };
+    for (size_t index = 0; index < sizeof(cases)/sizeof(*cases); ++index) {
+        session.status.state = cases[index].state;
+        RK3NativeInfo info;
+        assert(rk3_usb_info(&session, &info) && info.flags == cases[index].flags);
+        assert(info.generation == session.generation);
+    }
+    finish(&session);
+}
+
 int main(void) {
-    history_test(); request_test(); active_deadline_test(); clock_startup_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); stop_ack_test(); controller_startup_test(); asynchronous_write_test();
+    history_test(); request_test(); active_deadline_test(); clock_startup_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); stop_ack_test(); controller_startup_test(); asynchronous_write_test(); connection_state_test();
     puts("NativeUSB hardware-free history, cancellation, command policy and generation tests passed");
     return 0;
 }

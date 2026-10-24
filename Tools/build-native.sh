@@ -64,7 +64,7 @@ xcrun clang $flags -I"$root/Driver" "$root/Tools/rk3-native-test.c" \
     "$root/Driver/NativeUSB.c" "$root/Driver/NativeAudioISO.c" "$root/Driver/AudioCodec.c" \
     "$root/Driver/AudioSchedule.c" "$root/Driver/DeviceProtocol.c" \
     -framework IOKit -framework CoreFoundation -o "$out/rk3-native-test"
-for unit in rk3-calibrate rk3-midi-monitor; do
+for unit in rk3-calibrate rk3-midi-monitor rk3-midi-feedback; do
     xcrun clang $flags -I"$root/Driver" "$root/Tools/$unit.c" \
         -framework CoreAudio -framework CoreMIDI -framework CoreFoundation -o "$out/$unit"
 done

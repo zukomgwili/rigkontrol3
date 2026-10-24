@@ -823,7 +823,9 @@ bool rk3_usb_info(rk3_usb_session *session, RK3NativeInfo *info) {
         .midi_inputs = session->status.info.midi_inputs, .midi_outputs = session->status.info.midi_outputs,
         .wire_mode = session->status.info.wire_mode,
         .digital_snapshot = session->digital_known ? UINT32_C(0x80000000) | session->digital_snapshot : 0 };
-    if (session->status.state == RK3_USB_READY || session->status.state == RK3_USB_RUNNING || session->status.state == RK3_USB_STARTING || session->status.state == RK3_USB_STOPPING)
+    /* Stopping ISO does not disconnect USB or its DIN/controller endpoints. */
+    if (session->status.state == RK3_USB_READY || session->status.state == RK3_USB_RUNNING ||
+        session->status.state == RK3_USB_STARTING || session->status.state == RK3_USB_STOPPING)
         info->flags |= RK3_NATIVE_CONNECTED;
     if (session->status.state == RK3_USB_RUNNING) info->flags |= RK3_NATIVE_AUDIO_RUNNING;
     if (session->status.state == RK3_USB_FAILED) info->flags |= RK3_NATIVE_FAILED;
