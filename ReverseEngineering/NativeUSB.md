@@ -74,7 +74,9 @@ still fails; other startup requirements and ISO scheduling are unchanged.
 The last 256 incoming command reports form a non-destructive history. Each
 has a session-wide monotonic sequence and a `mach_absolute_time()` receipt
 timestamp. Separate clients keep independent cursors through the fixed
-`NativeControl.h` ABI. Reconnect clears report contents before arming the
+`NativeControl.h` records. `NativeClient.h` wraps these records in CFDataRef
+property-list values and qualifiers for supported cross-process CoreAudio
+marshalling; None does not describe opaque bytes. Reconnect clears report contents before arming the
 new reader, increments connection generation after validation, and keeps
 the global sequence increasing. A new generation cannot replay old MIDI.
 History overrun is explicit in each returned batch.

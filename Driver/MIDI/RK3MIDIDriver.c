@@ -18,6 +18,7 @@
 #include "MIDIEvent.h"
 #include "MIDIStream.h"
 #include "NativeControl.h"
+#include "NativeClient.h"
 #include "Controller.h"
 
 enum { OUTPUT_SLOTS = 256, OUTPUT_BYTES = OUTPUT_SLOTS * 8,
@@ -141,11 +142,8 @@ static AudioObjectPropertyAddress address(AudioObjectPropertySelector selector) 
 }
 
 static bool read_info(AudioDeviceID device, RK3NativeInfo *info) {
-    AudioObjectPropertyAddress property = address(RK3_PROPERTY_INFO);
-    UInt32 size = sizeof(*info);
     memset(info,0,sizeof(*info));
-    return AudioObjectGetPropertyData(device,&property,0,NULL,&size,info) == noErr &&
-        size == sizeof(*info) && info->version == RK3_CONTROL_VERSION &&
+    return rk3_native_copy_info(device,info) == noErr && info->version == RK3_CONTROL_VERSION &&
         memchr(info->device_uid,0,sizeof(info->device_uid)) != NULL &&
         memchr(info->product_name,0,sizeof(info->product_name)) != NULL &&
         strcmp(info->device_uid,RK3_NATIVE_DEVICE_UID) == 0;
@@ -527,11 +525,9 @@ static void input_tick(CFRunLoopTimerRef timer, void *context) {
     RK3NativeInfo info;
     if (!read_info(device,&info) || info.generation != generation ||
         (info.flags & RK3_NATIVE_CONNECTED) == 0) return;
-    AudioObjectPropertyAddress property = address(RK3_PROPERTY_REPORTS);
     RK3NativeReports batch;
-    UInt32 size = sizeof(batch);
-    OSStatus result = AudioObjectGetPropertyData(device,&property,sizeof(query),&query,&size,&batch);
-    if (result != noErr || size != sizeof(batch) || batch.version != RK3_CONTROL_VERSION ||
+    OSStatus result = rk3_native_copy_reports(device,&query,&batch);
+    if (result != noErr || batch.version != RK3_CONTROL_VERSION ||
         batch.count > RK3_NATIVE_REPORT_LIMIT || batch.next_sequence < query.after_sequence ||
         batch.next_sequence > batch.latest_sequence) {
         record_io_failure(driver,device,generation,epoch);
@@ -621,10 +617,8 @@ static void *output_worker(void *context) {
             driver->feedback[head%OUTPUT_SLOTS]=entry;
             atomic_store_explicit(&driver->feedback_write,head+1,memory_order_release);continue;
         }
-        AudioObjectPropertyAddress property = address(RK3_PROPERTY_COMMAND);
         RK3NativeCommandLease lease = {RK3_CONTROL_VERSION,0,entry.generation};
-        OSStatus result = AudioObjectSetPropertyData(entry.audio_device,&property,sizeof(lease),&lease,
-                                                     sizeof(entry.command),&entry.command);
+        OSStatus result = rk3_native_send_command(entry.audio_device,&lease,&entry.command);
         if (result != noErr) {
             fprintf(stderr,"RK3 MIDI hardware write failed: %d\n",(int)result);
             record_io_failure(driver,entry.audio_device,entry.generation,entry.lifecycle_epoch);
@@ -768,9 +762,8 @@ static OSStatus enable_source(MIDIDriverRef self, MIDIEndpointRef source, Boolea
     if(!valid_source)return kMIDIUnknownEndpoint;
     uint64_t latest=0,baseline_sequence=0;uint32_t snapshot=0;
     if(enabled&&online) {
-        RK3NativeReportQuery query={RK3_CONTROL_VERSION,0,0};RK3NativeReports reports;UInt32 size=sizeof(reports);
-        AudioObjectPropertyAddress property=address(RK3_PROPERTY_REPORTS);
-        if(AudioObjectGetPropertyData(device,&property,sizeof(query),&query,&size,&reports)!=noErr||size!=sizeof(reports)||reports.version!=RK3_CONTROL_VERSION)
+        RK3NativeReportQuery query={RK3_CONTROL_VERSION,0,0};RK3NativeReports reports;
+        if(rk3_native_copy_reports(device,&query,&reports)!=noErr||reports.version!=RK3_CONTROL_VERSION)
             return kMIDIMessageSendErr;
         latest=reports.latest_sequence;
         if(controller) {
@@ -780,9 +773,9 @@ static OSStatus enable_source(MIDIDriverRef self, MIDIEndpointRef source, Boolea
             /* The snapshot and history are separate HAL reads. Keep the first
              * cursor for silent catch-up; a second barrier suppresses delivery
              * of transitions which occurred while obtaining that snapshot. */
-            baseline_sequence=latest;size=sizeof(reports);
-            if(AudioObjectGetPropertyData(device,&property,sizeof(query),&query,&size,&reports)!=noErr||
-                size!=sizeof(reports)||reports.version!=RK3_CONTROL_VERSION||reports.latest_sequence<latest)
+            baseline_sequence=latest;
+            if(rk3_native_copy_reports(device,&query,&reports)!=noErr||
+                reports.version!=RK3_CONTROL_VERSION||reports.latest_sequence<latest)
                 return kMIDIMessageSendErr;
             latest=reports.latest_sequence;
         }

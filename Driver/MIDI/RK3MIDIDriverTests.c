@@ -60,6 +60,30 @@ static uint64_t delivered_time;
 static Driver *working_driver;
 static size_t writes;
 static OSStatus write_result;
+enum { CF_FAULT_NONE, CF_FAULT_TYPE, CF_FAULT_LENGTH, CF_FAULT_SIZE, CF_FAULT_NULL, CF_FAULT_STATUS };
+static unsigned cf_fault;
+static AudioObjectPropertySelector cf_fault_selector;
+
+static OSStatus return_wire(AudioObjectPropertySelector selector,UInt32 *size,void *data,const void *wire,size_t length) {
+    assert(*size==sizeof(CFPropertyListRef));
+    unsigned fault=selector==cf_fault_selector?cf_fault:CF_FAULT_NONE;
+    if(fault==CF_FAULT_STATUS)return kAudioHardwareUnspecifiedError;
+    CFPropertyListRef property=NULL;
+    if(fault==CF_FAULT_TYPE) property=CFRetain(CFSTR("wrong property type"));
+    else if(fault!=CF_FAULT_NULL) property=CFDataCreate(NULL,wire,(CFIndex)(length-(fault==CF_FAULT_LENGTH?1u:0u)));
+    assert(fault==CF_FAULT_NULL||property!=NULL);
+    memcpy(data,&property,sizeof(property));
+    *size=fault==CF_FAULT_SIZE?0:(UInt32)sizeof(property);
+    return noErr;
+}
+
+static void read_cf_wire(UInt32 size,const void *data,void *wire,size_t length) {
+    assert(size==sizeof(CFPropertyListRef)&&data!=NULL);
+    CFPropertyListRef property=NULL;memcpy(&property,data,sizeof(property));
+    assert(property!=NULL&&CFGetTypeID(property)==CFDataGetTypeID());
+    assert(CFDataGetLength((CFDataRef)property)==(CFIndex)length);
+    memcpy(wire,CFDataGetBytePtr((CFDataRef)property),length);
+}
 
 static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *property,
                          UInt32 qualifier_size,const void *qualifier,UInt32 *size,void *data) {
@@ -71,31 +95,28 @@ static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *
             input_batch.reports[0]=(RK3NativeReport){.sequence=1,.length=3,.bytes={4,1,0}};
             input_batch.reports[1]=(RK3NativeReport){.sequence=2,.length=3,.bytes={4,0,0}};
         }
-        assert(*size == sizeof(RK3NativeInfo) && qualifier_size == 0);
+        assert(qualifier_size == 0);
         RK3NativeInfo info = {.version=RK3_CONTROL_VERSION,.flags=RK3_NATIVE_CONNECTED,
             .generation=info_generation,.midi_inputs=1,.midi_outputs=1,.digital_snapshot=digital_snapshot};
         strcpy(info.device_uid,RK3_NATIVE_DEVICE_UID);
         strcpy(info.product_name,"Rig Kontrol 3 Native");
-        memcpy(data,&info,sizeof(info));
-        return noErr;
+        return return_wire(property->mSelector,size,data,&info,sizeof(info));
     }
-    assert(property->mSelector == RK3_PROPERTY_REPORTS && *size == sizeof(input_batch));
-    assert(qualifier_size == sizeof(RK3NativeReportQuery));
-    const RK3NativeReportQuery *query = qualifier;
-    assert(query->version == RK3_CONTROL_VERSION && (query->after_sequence == expected_after || query->after_sequence == 0));
-    memcpy(data,&input_batch,sizeof(input_batch));
-    return noErr;
+    assert(property->mSelector == RK3_PROPERTY_REPORTS);
+    RK3NativeReportQuery query;read_cf_wire(qualifier_size,qualifier,&query,sizeof(query));
+    assert(query.version == RK3_CONTROL_VERSION && (query.after_sequence == expected_after || query.after_sequence == 0));
+    return return_wire(property->mSelector,size,data,&input_batch,sizeof(input_batch));
 }
 
 static OSStatus mock_set(AudioObjectID object,const AudioObjectPropertyAddress *property,
                          UInt32 qualifier_size,const void *qualifier,UInt32 size,const void *data) {
     assert(object == 42 && property->mSelector == RK3_PROPERTY_COMMAND);
-    assert(qualifier_size == sizeof(RK3NativeCommandLease) && size == sizeof(RK3NativeCommand));
-    const RK3NativeCommandLease *lease = qualifier;
-    const RK3NativeCommand *command = data;
-    assert(lease->version == RK3_CONTROL_VERSION && lease->generation == 7);
-    assert(command->version == RK3_CONTROL_VERSION && command->length == 6);
-    assert(command->bytes[0] == 7 && command->bytes[1] == 0 && command->bytes[2] == 3);
+    RK3NativeCommandLease lease;RK3NativeCommand command;
+    read_cf_wire(qualifier_size,qualifier,&lease,sizeof(lease));
+    read_cf_wire(size,data,&command,sizeof(command));
+    assert(lease.version == RK3_CONTROL_VERSION && lease.generation == 7);
+    assert(command.version == RK3_CONTROL_VERSION && command.length == 6);
+    assert(command.bytes[0] == 7 && command.bytes[1] == 0 && command.bytes[2] == 3);
     ++writes;
     atomic_store(&working_driver->worker_stop,true);
     return write_result;
@@ -356,6 +377,32 @@ static void test_controller_activation_snapshot_barrier(void) {
     free_driver(driver);
 }
 
+static void test_cf_transport_rejection(void) {
+    assert(rk3_native_copy_info(42,NULL)==kAudioHardwareIllegalOperationError);
+    assert(rk3_native_copy_reports(42,NULL,NULL)==kAudioHardwareIllegalOperationError);
+    assert(rk3_native_send_command(42,NULL,NULL)==kAudioHardwareIllegalOperationError);
+    for(unsigned fault=CF_FAULT_TYPE;fault<=CF_FAULT_STATUS;++fault) {
+        Driver *driver=make_driver();RK3NativeInfo info,saved_info;
+        RK3NativeReports reports,saved_reports;
+        memset(&saved_info,0xa5,sizeof(saved_info));info=saved_info;
+        memset(&saved_reports,0x5a,sizeof(saved_reports));reports=saved_reports;
+        input_batch=(RK3NativeReports){.version=1};expected_after=0;deliveries=0;
+        cf_fault=fault;cf_fault_selector=RK3_PROPERTY_INFO;
+        assert(rk3_native_copy_info(42,&info)!=noErr&&memcmp(&info,&saved_info,sizeof(info))==0);
+        assert(!read_info(42,&info));
+        assert(enable_source(driver_ref(driver),124,true)==kMIDINoConnection);
+        assert(!atomic_load(&driver->controller_enabled));
+        cf_fault_selector=RK3_PROPERTY_REPORTS;
+        const RK3NativeReportQuery query={RK3_CONTROL_VERSION,0,0};
+        assert(rk3_native_copy_reports(42,&query,&reports)!=noErr&&memcmp(&reports,&saved_reports,sizeof(reports))==0);
+        assert(enable_source(driver_ref(driver),124,true)==kMIDIMessageSendErr);
+        assert(!atomic_load(&driver->controller_enabled));
+        input_tick(NULL,driver);
+        assert(!atomic_load(&driver->online)&&deliveries==0);
+        cf_fault=CF_FAULT_NONE;cf_fault_selector=0;free_driver(driver);
+    }
+}
+
 static void test_worker_generation_and_error(void) {
     for (unsigned fail = 0; fail < 2; ++fail) {
         Driver *driver = make_driver();
@@ -379,7 +426,7 @@ static void test_worker_generation_and_error(void) {
 
 int main(void) {
     assert(CFPlugInRegisterFactoryFunction(factory_id(),RK3MIDIDriverFactory));
-    test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_worker_generation_and_error();
+    test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_cf_transport_rejection(); test_worker_generation_and_error();
     assert(CFPlugInUnregisterFactory(factory_id()));
     puts("RK3 CoreMIDI: COM, bounded queue, generation lease, history cursor and input routing passed");
     return 0;

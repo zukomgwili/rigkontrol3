@@ -29,17 +29,29 @@ partial-transfer and ring-wrap checks. The native ARM diagnostic has configured
 the cleaned device and validated its real device-info reply: **2 audio inputs,
 2 outputs, wire mode2, 1 MIDI input and 1 MIDI output**.
 
-The ARM64 audio and MIDI system-driver bundles are implemented and signed for
-local installation. Real hardware tests passed five seconds of stereo48kHz
-capture, silent output transfers, clock progression and clean shutdown. The
-actual audio bundle also passed Initialize/StartIO/PCM/ZeroTimeStamp/StopIO
-against the device. Both built plug-in factories pass COM smoke tests.
+Version **0.1.2 (build 3)** is installed on the test Mac. Both signed ARM64
+bundles match the build's 12-file manifest. CoreAudio exposes the native device
+with **2 inputs and 2 outputs at 48 kHz**. Standard CoreAudio clients passed
+three- and five-second capture runs with completed callbacks and clean stops;
+these runs sent silence. The installed MIDI plug-in, signed with an Apple-issued
+development identity, loads in MIDIServer and exposes the Controller source.
+The corrected CFData-based properties also pass actual cross-process
+communication between the installed audio owner and its clients.
 
 The MIDI bundle includes a separate Controller source and LED Feedback
-destination, alongside the verified hardware DIN pair. Its profile follows NI's
-original CC assignments and calibration formula. Source/feedback/calibration
-and reconnect rules are documented in [the MIDI component](Driver/MIDI/README.md).
-Physical MIDI/LED checks and installed-host acceptance remain to be performed.
+destination, alongside the hardware DIN endpoints. Its profile follows NI's
+original CC assignments and calibration formula. A persistent CoreMIDI client
+recorded two presses of each of the eight switches, with each assignment
+reaching 0 and 127. The pedal reached the full MIDI 0–127 range after fresh
+calibration measured **88–648** from 555 samples. The user completed the repeated
+switch/pedal test without reporting faults and confirmed that host CC80 values
+of 127 and 0 respectively lit and extinguished LED 1.
+
+These installed tests use standard CoreAudio and CoreMIDI clients, without the
+retired app or MainStage. **Audible guitar playback, actual reconnect recovery,
+and physical DIN loopback remain unvalidated.** Source/feedback/calibration
+and reconnect rules are documented in [the MIDI component](Driver/MIDI/README.md),
+with measured results in [hardware validation](ReverseEngineering/HardwareValidation.md).
 Task status is tracked in Beads under `rigkontrol3-40h`.
 
 ## Build and install
@@ -73,6 +85,22 @@ The original built-in pedal is CC4, switches1–4 CC80–83, and switches5–8 C
 channel1. LEDs follow the controller's toggle assignments; the feedback
 destination can receive host CC values. This does not add effect-state output
 to applications that do not send it.
+
+For guided tests, keep the diagnostic client open until the physical checks are
+finished, rather than relying on a short recording window:
+
+```sh
+.build/native/test/rk3-midi-monitor --live
+.build/native/test/rk3-audio-client --monitor --live
+```
+
+Run these in separate terminals when testing audio and controls together. The
+audio client sends guitar input 1 quietly to both outputs with 0.1 gain and a
+±0.2 clamp; its presence here is a test procedure, not an audible-result claim.
+Each client prints its PID. `kill -USR1 <PID>` prints cumulative statistics
+without stopping; Control-C stops the client cleanly. The timed `--seconds`
+option remains available. With no MIDI applications or test clients open,
+MIDIServer may exit; a test client closing is not evidence of USB failure.
 
 ## Reproduce the core checks
 

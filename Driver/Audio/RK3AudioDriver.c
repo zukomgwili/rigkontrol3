@@ -45,6 +45,19 @@ static RK3NativeInfo info(void) {
     if(usb) (void)rk3_usb_info(usb,&value);
     return value;
 }
+static OSStatus read_cfdata(UInt32 size,const void *data,void *wire,size_t wire_size) {
+    if(size!=sizeof(CFPropertyListRef)||!data)return kAudioHardwareBadPropertySizeError;
+    CFPropertyListRef object=NULL;memcpy(&object,data,sizeof(object));
+    if(!object||CFGetTypeID(object)!=CFDataGetTypeID()||CFDataGetLength((CFDataRef)object)!=(CFIndex)wire_size)
+        return kAudioHardwareBadPropertySizeError;
+    memcpy(wire,CFDataGetBytePtr((CFDataRef)object),wire_size);return 0;
+}
+static OSStatus return_cfdata(const void *wire,size_t wire_size,void *output) {
+    CFDataRef object=CFDataCreate(NULL,wire,(CFIndex)wire_size);
+    if(!object)return kAudioHardwareUnspecifiedError;
+    /* CoreAudio takes the returned +1 property-list reference. */
+    memcpy(output,&object,sizeof(object));return 0;
+}
 static void notify(AudioObjectPropertySelector selector) {
     AudioObjectPropertyAddress a={selector,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
     if(host) (void)host->PropertiesChanged(host,DEVICE,1,&a);
@@ -180,9 +193,7 @@ static UInt32 size_for(AudioObjectID o,const AudioObjectPropertyAddress *a) {
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:return sizeof(AudioStreamBasicDescription);
         case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:return sizeof(AudioStreamRangedDescription);
         case kAudioObjectPropertyCustomPropertyInfoList:return 3*sizeof(AudioServerPlugInCustomPropertyInfo);
-        case RK3_PROPERTY_INFO:return sizeof(RK3NativeInfo);
-        case RK3_PROPERTY_REPORTS:return sizeof(RK3NativeReports);
-        case RK3_PROPERTY_COMMAND:return sizeof(RK3NativeCommand);
+        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:return sizeof(CFPropertyListRef);
         default:return sizeof(UInt32);
     }
 }
@@ -236,15 +247,18 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:{AudioStreamRangedDescription f={format(),{RATE,RATE}};memcpy(out,&f,sizeof(f));return 0;}
         case kAudioObjectPropertyCustomPropertyInfoList:{
             AudioServerPlugInCustomPropertyInfo custom[]={
-                {RK3_PROPERTY_INFO,kAudioServerPlugInCustomPropertyDataTypeNone,kAudioServerPlugInCustomPropertyDataTypeNone},
-                {RK3_PROPERTY_REPORTS,kAudioServerPlugInCustomPropertyDataTypeNone,kAudioServerPlugInCustomPropertyDataTypeNone},
-                {RK3_PROPERTY_COMMAND,kAudioServerPlugInCustomPropertyDataTypeNone,kAudioServerPlugInCustomPropertyDataTypeNone}};
+                {RK3_PROPERTY_INFO,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeNone},
+                {RK3_PROPERTY_REPORTS,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
+                {RK3_PROPERTY_COMMAND,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
             memcpy(out,custom,sizeof(custom));return 0;}
-        case RK3_PROPERTY_INFO:{RK3NativeInfo current=info();memcpy(out,&current,sizeof(current));return 0;}
-        case RK3_PROPERTY_REPORTS:
-            if(qs!=sizeof(RK3NativeReportQuery)||!q)return kAudioHardwareBadPropertySizeError;
-            if(!usb||!rk3_usb_reports(usb,q,out))return kAudioHardwareIllegalOperationError;
-            return 0;
+        case RK3_PROPERTY_INFO:{RK3NativeInfo current=info();return return_cfdata(&current,sizeof(current),out);}
+        case RK3_PROPERTY_REPORTS:{
+            RK3NativeReportQuery query;RK3NativeReports reports;
+            OSStatus decoded=read_cfdata(qs,q,&query,sizeof(query));if(decoded)return decoded;
+            if(query.version!=RK3_CONTROL_VERSION||query.reserved||!usb||!rk3_usb_reports(usb,&query,&reports))
+                return kAudioHardwareIllegalOperationError;
+            return return_cfdata(&reports,sizeof(reports),out);
+        }
         case RK3_PROPERTY_COMMAND:return kAudioHardwareIllegalOperationError;
         default:break;
     }
@@ -256,9 +270,11 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
     if(!has(o,a)||!settable(o,a->mSelector))return kAudioHardwareUnknownPropertyError;
     if(size!=size_for(o,a)||!data)return kAudioHardwareBadPropertySizeError;
     if(a->mSelector==RK3_PROPERTY_COMMAND){
-        const RK3NativeCommand *command=data;
-        if(qs!=sizeof(RK3NativeCommandLease)||!q)return kAudioHardwareBadPropertySizeError;
-        const RK3NativeCommandLease *lease=q;
+        RK3NativeCommand command_value;RK3NativeCommandLease lease_value;
+        OSStatus decoded=read_cfdata(size,data,&command_value,sizeof(command_value));if(decoded)return decoded;
+        decoded=read_cfdata(qs,q,&lease_value,sizeof(lease_value));if(decoded)return decoded;
+        const RK3NativeCommand *command=&command_value;
+        const RK3NativeCommandLease *lease=&lease_value;
         if(lease->version!=RK3_CONTROL_VERSION||lease->reserved)return kAudioHardwareIllegalOperationError;
         RK3NativeInfo current=info();
         bool midi=command->length>=4&&command->length<=64&&command->bytes[0]==7&&

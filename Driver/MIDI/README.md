@@ -21,7 +21,11 @@ serial-based multiunit identity remains future work. Saved devices are reused
 by a private persistent identity property and marked offline on disconnect.
 
 The native AudioServerPlugIn owns USB. The MIDI bundle accesses its versioned
-`NativeControl.h` properties on the audio device object. It has no controller
+`NativeControl.h` properties on the audio device object. `NativeClient.h` wraps
+those fixed-width records inside CFData property-list values and qualifiers,
+which CoreAudio can marshal between processes. The public property/qualifier
+size is a CF object pointer; the record sizes describe the data inside CFData.
+It has no controller
 application, GUI bridge, socket, daemon, or Intel driver dependency. Analog and digital reports are handled by the freshly reconstructed
 `Controller.c` mapping, based on the original Controller Editor/NIHardwareAgent
 analysis. Nine switches use CC76..83 and CC64; the three pedals use CC16/17/4,
@@ -99,7 +103,10 @@ counts, cross-packet output chunking, all-or-nothing queue pressure, wrap,
 contention, endpoint/offline errors, generation leases/stale-work rejection,
 DIN/controller separation, input timestamps, activation baselines, history
 loss recovery, malformed records, complete-message reconstruction, Stop/Start entrant cancellation, listener reactivation races, and USB failure/offline behavior. It never
-calls Start or real AudioObject transport functions.
+calls Start or real AudioObject transport functions. Its mock transport requires
+the actual CFData/pointer-size API, verifies serialized report queries and command
+leases, and rejects wrong CF types, short data, wrong outer sizes, NULL objects
+and transport errors without changing failed-copy output buffers.
 
 `MIDIStreamTests.c` verifies every split point, explicit running status, partial
 system-common messages, realtime interleaving, long SysEx, interrupted SysEx,

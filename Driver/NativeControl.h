@@ -5,7 +5,8 @@
 
 /* Private cross-process transport between the two native driver bundles.
  * Fixed-width values only. Host byte order (both bundles are ARM64).
- * Access these selectors on the audio DEVICE object, global scope/main element.
+ * The structs below are wrapped in CFDataRef objects for CoreAudio transport;
+ * see NativeClient.h. Access these selectors on the audio DEVICE object, global scope/main element.
  * No former app, virtual MIDI bridge, socket or MainStage dependency. */
 enum {
     RK3_CONTROL_VERSION = 1,
@@ -72,7 +73,7 @@ typedef struct {
     uint8_t bytes[64];
 } RK3NativeCommand;
 
-/* REPORTS requires the exact Query as property qualifier. Start after_sequence
+/* REPORTS requires a CFData-wrapped exact Query as property qualifier. Start after_sequence
  * at zero on discovery/generation change. Set it to next_sequence after each
  * successful read; latest_sequence may exceed next_sequence when more wait.
  * dropped reports a history overrun, requiring per-port parser reset.

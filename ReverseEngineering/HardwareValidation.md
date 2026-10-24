@@ -97,3 +97,74 @@ Both built bundles passed real CFPlugIn factory/COM smoke tests. These tests
 sent silence. They demonstrate real capture and completed output transport,
 not an audible listening result, installed-driver acceptance, DIN loopback,
 or a physical switch/pedal/LED result. Those require the following live stage.
+
+## Installed version 0.1.2 (build 3)
+
+The user installed both fresh bundles using the reversible native installer.
+The reported installation session is:
+
+`/Library/Application Support/RigKontrol3/NativeDriverBackups/20261024T222056Z-8acc1adb`
+
+Both installed ARM64 bundles have valid signatures and match all 12 files in the
+build manifest. CoreAudio exposes the native RK3 device as 2 inputs and 2 outputs
+at 48 kHz. The Apple Development-signed MIDI plug-in now actually loads in
+MIDIServer, and the native Controller source is present. This demonstrates
+local host acceptance on this Mac; it is not a distribution-signing result.
+
+The first custom-property implementation used raw structures with a no-data
+type declaration, which did not survive CoreAudio's process boundary. The
+corrected properties marshal their fixed-width messages inside CFData values.
+An installed-client query now returns the native device UID, connected state,
+controller snapshot, generation, and 2/2 audio plus 1/1 MIDI counts. This verifies
+the actual cross-process path rather than only a direct plug-in-table test.
+
+A standard CoreAudio client exercised the installed audio device twice:
+
+| Duration | Callbacks | Input1 frames | RMS | Stop status |
+| --- | ---: | ---: | ---: | ---: |
+| 3 seconds | 283 | 144896 | 0.002870 | 0 |
+| 5 seconds | 469 | 240128 | 0.002229 | 0 |
+
+These runs sent silence to the outputs. The five-second run took place while
+the native controller calibration client was active. Neither run establishes
+that guitar playback is audible, clean, or acceptably low-latency.
+
+## Installed controller and calibration
+
+The user swept the built-in pedal through its full travel three times and left
+it at heel. The native calibration utility measured 555 samples and saved a
+fresh raw range of **88–648** on the Controller MIDI device. This measurement
+supersedes the retired app's calibration; no old calibration was imported.
+
+The first physical switch test was interrupted when the 45-second monitor
+expired. Only CC80 and CC81 were recorded twice, and MIDIServer then exited with
+no MIDI client remaining. The user observed controls stopping partway through
+the sequence. Repeating with a persistent `--live` CoreMIDI client removed the
+test's lifetime limit; no driver change was made for that symptom.
+
+In the repeated test, the user pressed and released switches 1–8 twice and swept
+the pedal twice, then reported completion without faults. The native monitor
+recorded:
+
+| Controller CC | Count | Minimum | Maximum | Last |
+| --- | ---: | ---: | ---: | ---: |
+| 76–83, each | 2 | 0 | 127 | 0 |
+| 4 (built-in pedal) | 55 | 0 | 127 | 0 |
+
+Thus all eight NI-profile switch assignments and the full calibrated pedal
+range reached CoreMIDI. The Controller LED Feedback destination was then sent
+CC80=127 and CC80=0. The user confirmed that LED 1 lit and extinguished,
+respectively. This feedback check
+does not establish automatic effect-state output from Guitar Rig or another
+host.
+
+All installed acceptance checks above use standard CoreAudio and CoreMIDI
+clients. The former controller app and MainStage are not involved. For a guided
+physical test, `rk3-midi-monitor --live` and
+`rk3-audio-client --monitor --live` keep their clients open until stopped.
+Each prints its PID; SIGUSR1 requests statistics, while SIGINT or SIGTERM ends
+the test cleanly. The audio monitor retains 0.1 gain and a ±0.2 output clamp.
+
+**Still pending:** audible guitar playback through the RK3, actual reconnect
+recovery, and a physical DIN MIDI loopback test. Other sample rates are outside
+this stereo 48 kHz build's validated scope.

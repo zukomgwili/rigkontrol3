@@ -2,6 +2,7 @@
  * real host interface. Does not install a driver or emit audible output. */
 #include "../Driver/NativeControl.h"
 #include <CoreAudio/AudioServerPlugIn.h>
+#include <CoreAudio/CoreAudio.h>
 #include <CoreFoundation/CFPlugInCOM.h>
 #include <mach/mach_time.h>
 #include <math.h>
@@ -15,10 +16,37 @@ static OSStatus write_storage(AudioServerPlugInHostRef h,CFStringRef key,CFPrope
 static OSStatus delete_storage(AudioServerPlugInHostRef h,CFStringRef key){(void)h;(void)key;return 0;}
 static OSStatus configuration(AudioServerPlugInHostRef h,AudioObjectID device,UInt64 action,void *data){(void)h;(void)device;(void)action;(void)data;return kAudioHardwareUnsupportedOperationError;}
 static struct AudioServerPlugInHostInterface host={changed,copy_storage,write_storage,delete_storage,configuration};
+static bool system_driver_present(void){
+    AudioObjectPropertyAddress a={kAudioHardwarePropertyDevices,kAudioObjectPropertyScopeGlobal,0};
+    AudioObjectID ids[1024];UInt32 bytes=sizeof(ids);
+    if(AudioObjectGetPropertyData(1,&a,0,NULL,&bytes,ids))return false;
+    for(UInt32 i=0;i<bytes/sizeof(ids[0]);++i){
+        a.mSelector=kAudioDevicePropertyDeviceUID;CFStringRef uid=NULL;UInt32 size=sizeof(uid);
+        if(!AudioObjectGetPropertyData(ids[i],&a,0,NULL,&size,&uid)&&uid){
+            bool found=CFEqual(uid,CFSTR(RK3_NATIVE_DEVICE_UID));CFRelease(uid);if(found)return true;
+        }
+    }
+    return false;
+}
 static double now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec/1e9;}
 static void pause_ms(long ms){struct timespec t={ms/1000,ms%1000*1000000};nanosleep(&t,NULL);}
+static OSStatus copy_info(AudioServerPlugInDriverRef driver,AudioObjectID device,RK3NativeInfo *info){
+    AudioObjectPropertyAddress address={RK3_PROPERTY_INFO,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
+    CFPropertyListRef object=NULL;UInt32 size=0;
+    OSStatus error=(*driver)->GetPropertyData(driver,device,0,&address,0,NULL,sizeof(object),&size,&object);
+    if(!error&&(size!=sizeof(object)||!object||CFGetTypeID(object)!=CFDataGetTypeID()||
+        CFDataGetLength((CFDataRef)object)!=(CFIndex)sizeof(*info)))error=kAudioHardwareBadPropertySizeError;
+    if(!error){
+        RK3NativeInfo decoded;memcpy(&decoded,CFDataGetBytePtr((CFDataRef)object),sizeof(decoded));
+        if(decoded.version!=RK3_CONTROL_VERSION)error=kAudioHardwareIllegalOperationError;
+        else *info=decoded;
+    }
+    if(object)CFRelease(object);
+    return error;
+}
 int main(int argc,char **argv){
     if(argc!=2){fprintf(stderr,"Usage: %s AUDIO_BUNDLE\n",argv[0]);return 2;}
+    if(system_driver_present()){fprintf(stderr,"The installed driver owns this device. Use rk3-audio-client for installed-driver checks.\n");return 2;}
     CFURLRef url=CFURLCreateFromFileSystemRepresentation(NULL,(const UInt8 *)argv[1],strlen(argv[1]),true);
     CFPlugInRef plugin=url?CFPlugInCreate(NULL,url):NULL;if(url)CFRelease(url);
     if(!plugin){fprintf(stderr,"Bundle load failed\n");return 1;}
@@ -30,9 +58,9 @@ int main(int argc,char **argv){
     AudioObjectPropertyAddress a={kAudioPlugInPropertyDeviceList,kAudioObjectPropertyScopeGlobal,0};
     AudioObjectID device=0;UInt32 size=0;
     if((*driver)->GetPropertyData(driver,1,0,&a,0,NULL,sizeof(device),&size,&device)||!device)return 1;
-    a.mSelector=RK3_PROPERTY_INFO;RK3NativeInfo info={0};double deadline=now()+10;
+    RK3NativeInfo info={0};double deadline=now()+10;
     while(now()<deadline){
-        if((*driver)->GetPropertyData(driver,device,0,&a,0,NULL,sizeof(info),&size,&info))return 1;
+        if(copy_info(driver,device,&info))return 1;
         if(info.flags&(RK3_NATIVE_CONNECTED|RK3_NATIVE_FAILED))break;pause_ms(10);
     }
     if(!(info.flags&RK3_NATIVE_CONNECTED)){fprintf(stderr,"Driver connection failed:%d flags%u\n",info.last_error,info.flags);return 1;}

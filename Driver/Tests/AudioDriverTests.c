@@ -29,6 +29,18 @@ int32_t rk3_usb_audio_stop(rk3_usb_session *s,uint32_t timeout){(void)s;(void)ti
 size_t rk3_usb_capture(rk3_usb_session *s,float *samples,size_t n){(void)s;for(size_t i=0;i<n;++i){samples[2*i]=0.25f;samples[2*i+1]=-0.25f;}return n;}
 size_t rk3_usb_render(rk3_usb_session *s,const float *samples,size_t n){(void)s;(void)samples;return fail_output?0:n;}
 
+static OSStatus bridge_get(AudioObjectID device,const AudioObjectPropertyAddress *a,UInt32 qs,const void *q,UInt32 *size,void *out){
+    UInt32 written=0;OSStatus error=table.GetPropertyData(driver,device,0,a,qs,q,*size,&written,out);
+    if(!error)*size=written;return error;
+}
+static OSStatus bridge_set(AudioObjectID device,const AudioObjectPropertyAddress *a,UInt32 qs,const void *q,UInt32 size,const void *data){
+    return table.SetPropertyData(driver,device,0,a,qs,q,size,data);
+}
+#define AudioObjectGetPropertyData bridge_get
+#define AudioObjectSetPropertyData bridge_set
+#include "../NativeClient.h"
+#undef AudioObjectGetPropertyData
+#undef AudioObjectSetPropertyData
 static void properties(void){
     UInt32 size,written;AudioObjectPropertyAddress a={kAudioStreamPropertyVirtualFormat,kAudioObjectPropertyScopeGlobal,0};
     assert(table.HasProperty(driver,INPUT,0,&a));
@@ -51,17 +63,41 @@ static void properties(void){
     a.mSelector=RK3_PROPERTY_COMMAND;a.mScope=kAudioObjectPropertyScopeGlobal;
     RK3NativeCommand command={1,4,{7,0,1,0xf8}};
     RK3NativeCommandLease lease={1,0,7};
+    assert(rk3_native_send_command(DEVICE,NULL,&command)!=0);
     assert(table.SetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(command),&command)==kAudioHardwareBadPropertySizeError);
-    assert(table.SetPropertyData(driver,DEVICE,0,&a,sizeof(lease),&lease,sizeof(command),&command)==0);
+    assert(rk3_native_send_command(DEVICE,&lease,&command)==0);
     lease.generation=6;
-    assert(table.SetPropertyData(driver,DEVICE,0,&a,sizeof(lease),&lease,sizeof(command),&command)!=0);
+    assert(rk3_native_send_command(DEVICE,&lease,&command)!=0);
     lease.generation=7;
     RK3NativeCommand leds={1,9,{5,0,0x40,0x40,0,0xff,1,0,0}};
-    assert(table.SetPropertyData(driver,DEVICE,0,&a,sizeof(lease),&lease,sizeof(leds),&leds)==0);
+    assert(rk3_native_send_command(DEVICE,&lease,&leds)==0);
     leds.bytes[6]=2;
-    assert(table.SetPropertyData(driver,DEVICE,0,&a,sizeof(lease),&lease,sizeof(leds),&leds)!=0);
+    assert(rk3_native_send_command(DEVICE,&lease,&leds)!=0);
     command.bytes[1]=1;
-    assert(table.SetPropertyData(driver,DEVICE,0,&a,sizeof(lease),&lease,sizeof(command),&command)!=0);
+    assert(rk3_native_send_command(DEVICE,&lease,&command)!=0);
+    a.mSelector=RK3_PROPERTY_INFO;
+    assert(table.GetPropertyDataSize(driver,DEVICE,0,&a,0,NULL,&size)==0&&size==sizeof(CFPropertyListRef));
+    RK3NativeInfo current={0};
+    assert(rk3_native_copy_info(DEVICE,&current)==0&&current.version==1&&current.generation==7);
+    a.mSelector=kAudioObjectPropertyCustomPropertyInfoList;
+    AudioServerPlugInCustomPropertyInfo metadata[3];
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(metadata),&written,metadata)==0);
+    for(unsigned i=0;i<3;++i)assert(metadata[i].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
+    assert(metadata[0].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone);
+    assert(metadata[1].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
+    RK3NativeReportQuery query={1,0,0};RK3NativeReports reports;
+    assert(rk3_native_copy_blob(DEVICE,RK3_PROPERTY_REPORTS,&query,SIZE_MAX,&reports,sizeof(reports))==kAudioHardwareIllegalOperationError);
+    assert(rk3_native_copy_blob(DEVICE,RK3_PROPERTY_REPORTS,NULL,0,&reports,SIZE_MAX)==kAudioHardwareIllegalOperationError);
+    assert(rk3_native_copy_reports(DEVICE,&query,&reports)==0&&reports.version==1);
+    a.mSelector=RK3_PROPERTY_REPORTS;CFPropertyListRef wrong=CFSTR("wrong-type"),output=NULL;
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,sizeof(wrong),&wrong,sizeof(output),&written,&output)==kAudioHardwareBadPropertySizeError&&output==NULL);
+    CFDataRef short_query=CFDataCreate(NULL,(const UInt8 *)&query,sizeof(query)-1);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,sizeof(short_query),&short_query,sizeof(output),&written,&output)==kAudioHardwareBadPropertySizeError&&output==NULL);
+    CFRelease(short_query);
+    a.mSelector=RK3_PROPERTY_COMMAND;
+    CFDataRef valid_lease=CFDataCreate(NULL,(const UInt8 *)&lease,sizeof(lease));
+    assert(table.SetPropertyData(driver,DEVICE,0,&a,sizeof(valid_lease),&valid_lease,sizeof(wrong),&wrong)==kAudioHardwareBadPropertySizeError);
+    CFRelease(valid_lease);
 }
 static void audio(void){
     usb=&mock_session;

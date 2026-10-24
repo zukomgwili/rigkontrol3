@@ -3,14 +3,25 @@
 #include "../Driver/NativeControl.h"
 #include <CoreAudio/CoreAudio.h>
 #include <math.h>
+#include <signal.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 static atomic_uint_fast64_t cycles,samples,energy_scaled;
 static bool monitor_input;
+static volatile sig_atomic_t stop_requested,dump_requested;
+static void handle_signal(int signal_number){if(signal_number==SIGUSR1)dump_requested=1;else stop_requested=1;}
+static double monotonic_now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec/1e9;}
+static void print_stats(bool final,OSStatus stopped){
+    uint64_t count=atomic_load(&samples),calls=atomic_load(&cycles),energy=atomic_load(&energy_scaled);
+    printf("CoreAudio callbacks=%llu input1frames=%llu RMS=%.6f",(unsigned long long)calls,(unsigned long long)count,count?sqrt((double)energy/(count*1000000000.0)):0);
+    if(final)printf(" stop=%d\n",(int)stopped);else printf(" (running)\n");
+    fflush(stdout);
+}
 static OSStatus process(AudioDeviceID device,const AudioTimeStamp *now,const AudioBufferList *input,const AudioTimeStamp *input_time,AudioBufferList *output,const AudioTimeStamp *output_time,void *context){
     (void)device;(void)now;(void)input_time;(void)output_time;(void)context;
     atomic_fetch_add_explicit(&cycles,1,memory_order_relaxed);
@@ -33,12 +44,15 @@ static OSStatus process(AudioDeviceID device,const AudioTimeStamp *now,const Aud
 }
 static AudioObjectPropertyAddress property(UInt32 s){return (AudioObjectPropertyAddress){s,kAudioObjectPropertyScopeGlobal,0};}
 int main(int argc,char **argv){
-    unsigned seconds=10;
+    unsigned seconds=10;bool live=false,seconds_given=false;
     for(int i=1;i<argc;++i){
         if(!strcmp(argv[i],"--monitor")){monitor_input=true;continue;}
-        if(!strcmp(argv[i],"--seconds")&&i+1<argc){char *end;unsigned long n=strtoul(argv[++i],&end,10);if(*end||n<1||n>120)return 2;seconds=(unsigned)n;continue;}
-        fprintf(stderr,"Usage:%s [--monitor] [--seconds 1..120]\n",argv[0]);return 2;
+        if(!strcmp(argv[i],"--live")){live=true;continue;}
+        if(!strcmp(argv[i],"--seconds")&&i+1<argc){char *end;unsigned long n=strtoul(argv[++i],&end,10);if(*end||n<1||n>120)return 2;seconds=(unsigned)n;seconds_given=true;continue;}
+        fprintf(stderr,"Usage:%s [--monitor] [--seconds 1..120 | --live]\n",argv[0]);return 2;
     }
+    if(live&&seconds_given){fprintf(stderr,"Choose either --seconds or --live\n");return 2;}
+    signal(SIGINT,handle_signal);signal(SIGTERM,handle_signal);signal(SIGUSR1,handle_signal);
     AudioObjectPropertyAddress a=property(kAudioHardwarePropertyDevices);UInt32 size=0;
     if(AudioObjectGetPropertyDataSize(kAudioObjectSystemObject,&a,0,NULL,&size)||size>65536)return 1;
     AudioObjectID *devices=malloc(size?size:1);if(!devices)return 1;
@@ -50,10 +64,15 @@ int main(int argc,char **argv){
     AudioDeviceIOProcID callback=NULL;OSStatus error=AudioDeviceCreateIOProcID(found,process,NULL,&callback);
     if(!error)error=AudioDeviceStart(found,callback);
     if(error){fprintf(stderr,"CoreAudio start error:%d\n",(int)error);if(callback)AudioDeviceDestroyIOProcID(found,callback);return 1;}
-    printf("Standard CoreAudio client running for %u seconds; output=%s.\n",seconds,monitor_input?"quiet guitar monitor":"silence");fflush(stdout);
-    struct timespec delay={seconds,0};nanosleep(&delay,NULL);
+    if(live)printf("Standard CoreAudio client running until stopped; output=%s; PID=%d.\n",monitor_input?"quiet guitar monitor":"silence",getpid());
+    else printf("Standard CoreAudio client running for %u seconds; output=%s.\n",seconds,monitor_input?"quiet guitar monitor":"silence");
+    fflush(stdout);
+    double deadline=monotonic_now()+seconds;
+    while(!stop_requested&&(live||monotonic_now()<deadline)){
+        if(dump_requested){dump_requested=0;print_stats(false,0);}
+        struct timespec delay={0,100000000};nanosleep(&delay,NULL);
+    }
     OSStatus stopped=AudioDeviceStop(found,callback);AudioDeviceDestroyIOProcID(found,callback);
-    uint64_t count=atomic_load(&samples),calls=atomic_load(&cycles),energy=atomic_load(&energy_scaled);
-    printf("CoreAudio callbacks=%llu input1frames=%llu RMS=%.6f stop=%d\n",(unsigned long long)calls,(unsigned long long)count,count?sqrt((double)energy/(count*1000000000.0)):0,(int)stopped);
-    return stopped||!calls||!count?1:0;
+    print_stats(true,stopped);
+    return stopped||!atomic_load(&cycles)||!atomic_load(&samples)?1:0;
 }

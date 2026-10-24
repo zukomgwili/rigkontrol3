@@ -8,7 +8,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
+#include <unistd.h>
 static atomic_uint counts[128],minimum[128],maximum[128],last[128];
+static volatile sig_atomic_t stopped,dump_requested;
+static void handle_signal(int signal_number){if(signal_number==SIGUSR1)dump_requested=1;else stopped=1;}
+static unsigned print_stats(void){
+    unsigned total=0;
+    for(unsigned i=0;i<128;++i){unsigned count=atomic_load(&counts[i]);if(!count)continue;total+=count;printf("CC%u count=%u min=%u max=%u last=%u\n",i,count,atomic_load(&minimum[i]),atomic_load(&maximum[i]),atomic_load(&last[i]));}
+    printf("Total controller CC messages: %u\n",total);fflush(stdout);return total;
+}
 static void received(const MIDIPacketList *list,void *context,void *source){
     (void)context;(void)source;const MIDIPacket *packet=&list->packet[0];
     for(UInt32 p=0;p<list->numPackets;++p){
@@ -34,19 +43,20 @@ static MIDIEndpointRef source_endpoint(void){
     return 0;
 }
 int main(int argc,char **argv){
-    unsigned duration=30;
+    unsigned duration=30;bool live=argc==2&&!strcmp(argv[1],"--live");
+    signal(SIGINT,handle_signal);signal(SIGTERM,handle_signal);signal(SIGUSR1,handle_signal);
     if(argc==3&&strcmp(argv[1],"--seconds")==0){char *end;unsigned long n=strtoul(argv[2],&end,10);if(*end||n<1||n>180)return 2;duration=(unsigned)n;}
-    else if(argc!=1){fprintf(stderr,"Usage:%s [--seconds 1..180]\n",argv[0]);return 2;}
+    else if(argc!=1&&!live){fprintf(stderr,"Usage:%s [--seconds 1..180 | --live]\n",argv[0]);return 2;}
     for(unsigned i=0;i<128;++i)atomic_init(&minimum[i],127);
     MIDIClientRef client=0;MIDIPortRef port=0;
     if(MIDIClientCreate(CFSTR("RK3 native verification"),NULL,NULL,&client)||MIDIInputPortCreate(client,CFSTR("Controller input"),received,NULL,&port))return 1;
     MIDIEndpointRef source=0;double deadline=now()+10;
     while(now()<deadline&&!source){source=source_endpoint();if(!source){struct timespec t={0,100000000};nanosleep(&t,NULL);}}
     if(!source||MIDIPortConnectSource(port,source,NULL)){fprintf(stderr,"Native Controller source unavailable\n");MIDIPortDispose(port);MIDIClientDispose(client);return 1;}
-    printf("Native Controller monitor recording for %u seconds.\n",duration);fflush(stdout);
-    deadline=now()+duration;while(now()<deadline){struct timespec t={0,100000000};nanosleep(&t,NULL);}
+    if(live)printf("Native Controller monitor connected; recording until stopped. PID=%d\n",getpid());
+    else printf("Native Controller monitor recording for %u seconds.\n",duration);
+    fflush(stdout);
+    deadline=now()+duration;while(!stopped&&(live||now()<deadline)){if(dump_requested){dump_requested=0;(void)print_stats();}struct timespec t={0,100000000};nanosleep(&t,NULL);}
     MIDIPortDisconnectSource(port,source);MIDIPortDispose(port);MIDIClientDispose(client);
-    unsigned total=0;
-    for(unsigned i=0;i<128;++i){unsigned count=atomic_load(&counts[i]);if(!count)continue;total+=count;printf("CC%u count=%u min=%u max=%u last=%u\n",i,count,atomic_load(&minimum[i]),atomic_load(&maximum[i]),atomic_load(&last[i]));}
-    printf("Total controller CC messages: %u\n",total);return total?0:1;
+    return print_stats()?0:1;
 }

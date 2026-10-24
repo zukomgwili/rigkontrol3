@@ -1,6 +1,6 @@
 /* One-time native driver pedal calibration. Reads raw reports and stores the
  * measured range on the native Controller MIDI device; no GUI bridge. */
-#include "../Driver/NativeControl.h"
+#include "../Driver/NativeClient.h"
 #include <CoreAudio/CoreAudio.h>
 #include <CoreMIDI/CoreMIDI.h>
 #include <errno.h>
@@ -38,9 +38,8 @@ static MIDIDeviceRef controller_device(void){
     return 0;
 }
 static bool read_info(AudioObjectID device,RK3NativeInfo *info){
-    UInt32 bytes=sizeof(*info);AudioObjectPropertyAddress a=address(RK3_PROPERTY_INFO);
-    return !AudioObjectGetPropertyData(device,&a,0,NULL,&bytes,info)&&bytes==sizeof(*info)&&
-        info->version==1&&(info->flags&RK3_NATIVE_CONNECTED);
+    return !rk3_native_copy_info(device,info)&&
+        info->version==RK3_CONTROL_VERSION&&(info->flags&RK3_NATIVE_CONNECTED);
 }
 int main(int argc,char **argv){
     unsigned duration=20;
@@ -56,17 +55,15 @@ int main(int argc,char **argv){
     while(now()<deadline){controller=controller_device();if(device&&controller&&read_info(device,&info))break;if(!device)device=audio_device();pause_ms(100);}
     if(!device||!controller||!read_info(device,&info)){fprintf(stderr,"Native audio/controller driver is not connected\n");MIDIClientDispose(client);return 1;}
     uint64_t generation=info.generation;
-    RK3NativeReportQuery query={1,0,0};RK3NativeReports batch;UInt32 size=sizeof(batch);
-    AudioObjectPropertyAddress a=address(RK3_PROPERTY_REPORTS);
-    if(AudioObjectGetPropertyData(device,&a,sizeof(query),&query,&size,&batch)||size!=sizeof(batch)||batch.version!=1){MIDIClientDispose(client);return 1;}
+    RK3NativeReportQuery query={RK3_CONTROL_VERSION,0,0};RK3NativeReports batch;
+    if(rk3_native_copy_reports(device,&query,&batch)||batch.version!=RK3_CONTROL_VERSION){MIDIClientDispose(client);return 1;}
     query.after_sequence=batch.latest_sequence;
     printf("Recording %u seconds: sweep the built-in pedal fully heel-to-toe and back several times.\n",duration);fflush(stdout);
     uint32_t minimum=1023,maximum=0;uint64_t samples=0;bool failed=false;
     deadline=now()+duration;
     while(now()<deadline){
         if(!read_info(device,&info)||info.generation!=generation){fprintf(stderr,"Device disconnected/reconnected; no calibration saved\n");failed=true;break;}
-        size=sizeof(batch);
-        if(AudioObjectGetPropertyData(device,&a,sizeof(query),&query,&size,&batch)||size!=sizeof(batch)||batch.version!=1||batch.count>32||batch.dropped){failed=true;break;}
+        if(rk3_native_copy_reports(device,&query,&batch)||batch.version!=RK3_CONTROL_VERSION||batch.count>RK3_NATIVE_REPORT_LIMIT||batch.dropped){failed=true;break;}
         for(uint32_t i=0;i<batch.count;++i){
             RK3NativeReport *r=&batch.reports[i];
             if(r->length<7||r->length>64||r->bytes[0]!=3)continue;
