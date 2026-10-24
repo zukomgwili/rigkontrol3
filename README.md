@@ -2,7 +2,7 @@
 
 Native macOS Apple Silicon work for bringing Native Instruments Rig Kontrol 3 pedal and switch control data back as MIDI.
 
-The current controller milestone is a personal-use menu-bar app with eight effect switches, wah expression, host-driven LEDs, and USB/sleep recovery. The app now uses an adapted rk3-coreaudio native USB transport. On this Mac, all eight switch MIDI outputs, calibrated expression, one hosted Cry Wah mapping with actual effect-state LED feedback, held-switch USB recovery, Stop/Start and sleep/wake have passed physical checks. Seven additional effect mappings and host patch/concert synchronization remain to be verified. Use a separate audio interface for this setup. Simultaneous RK3 audio and controller use needs further integration.
+The current controller milestone is a personal-use menu-bar app with eight effect switches, wah expression, host-driven LEDs, and USB/sleep recovery. The app uses an adapted rk3-coreaudio native USB transport. On this Mac, all eight actual effect mappings, calibrated expression, host-driven LEDs, ordinary MainStage patch changes, held-switch USB recovery, Stop/Start and sleep/wake have passed physical checks. The [MainStage setup guide](Documentation/Controller-Setup.md) records the eight-switch bank and a remaining Guitar Rig wah-feedback discrepancy after saved-concert reload. Use a separate audio interface for this setup. Simultaneous RK3 audio and controller use needs further integration.
 
 ## Menu-bar effects controller
 
