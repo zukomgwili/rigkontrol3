@@ -20,6 +20,17 @@ public struct ExpressionCalibration: Equatable, Sendable {
         self.outputMaximum = outputMaximum
     }
 
+    /// Keeps a 2% margin at each measured end so minor end-stop noise does not
+    /// prevent reaching 0 or 127 on ordinary sweeps. The center remains linear.
+    public static func forMeasuredTravel(rawMinimum: Int, rawMaximum: Int)
+        -> ExpressionCalibration
+    {
+        precondition(rawMaximum > rawMinimum, "rawMaximum must be greater than rawMinimum")
+        let inset = (rawMaximum - rawMinimum) / 50
+        return ExpressionCalibration(
+            rawMinimum: rawMinimum + inset, rawMaximum: rawMaximum - inset)
+    }
+
     public func normalized(rawValue: Int) -> Int {
         let clamped = max(rawMinimum, min(rawMaximum, rawValue))
         let inputRange = rawMaximum - rawMinimum

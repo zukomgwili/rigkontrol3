@@ -36,7 +36,7 @@ If a release was lost during disconnection, the next deliberate press sends a ne
 
 ## Calibrate the expression pedal
 
-Open **Setup & Test**, click **Calibrate Pedal**, sweep fully heel-to-toe and back through the travel you normally use, then click **Finish Calibration**. Sweep again and confirm the observed MIDI range reaches **0…127**. The app saves the measured raw endpoints for future launches. Calibrating updates expression scaling without reconnecting USB or changing switch states; a disconnected session cancels an unfinished calibration.
+Open **Setup & Test**, click **Calibrate Pedal**, sweep fully heel-to-toe and back through the travel you normally use, then click **Finish Calibration**. Sweep again and confirm the observed MIDI range reaches **0…127**. The app saves the measured raw endpoints for future launches and allows a small margin at each end so sensor noise does not prevent full effect travel. Calibrating updates expression scaling without reconnecting USB or changing switch states; a disconnected session cancels an unfinished calibration.
 
 ## Guitar Rig 6 standalone
 

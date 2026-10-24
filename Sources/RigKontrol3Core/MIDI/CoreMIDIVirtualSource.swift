@@ -1,4 +1,5 @@
 import CoreMIDI
+import Darwin
 import Foundation
 
 public enum CoreMIDIError: Error, Equatable {
@@ -66,7 +67,9 @@ public final class CoreMIDIVirtualSource {
         let packet = MIDIEventListInit(eventList, ._1_0)
         var word = message.umpWord
         _ = withUnsafePointer(to: &word) { wordPointer in
-            MIDIEventListAdd(eventList, byteCount, packet, 0, 1, wordPointer)
+            // MIDIReceivedEventList requires an actual host timestamp; unlike
+            // MIDISendEventList, zero does not mean "now" for a virtual source.
+            MIDIEventListAdd(eventList, byteCount, packet, mach_absolute_time(), 1, wordPointer)
         }
 
         let status = MIDIReceivedEventList(source, UnsafePointer(eventList))

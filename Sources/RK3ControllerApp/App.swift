@@ -205,7 +205,7 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
             let maximum = defaults.object(forKey: "expressionRawMaximum") as? Int,
             minimum >= 0, maximum <= 65535, maximum - minimum >= 100
         else { return ExpressionCalibration() }
-        return ExpressionCalibration(rawMinimum: minimum, rawMaximum: maximum)
+        return ExpressionCalibration.forMeasuredTravel(rawMinimum: minimum, rawMaximum: maximum)
     }
 
     private func recordRawExpression(_ raw: Int) {
@@ -230,7 +230,7 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
                 showError("Sweep the pedal through its full travel", detail: "Move fully heel-to-toe and back, then click Finish Calibration again.")
                 return
             }
-            expressionCalibration = ExpressionCalibration(
+            expressionCalibration = ExpressionCalibration.forMeasuredTravel(
                 rawMinimum: range.lowerBound, rawMaximum: range.upperBound)
             session?.setExpressionCalibration(expressionCalibration)
             UserDefaults.standard.set(range.lowerBound, forKey: "expressionRawMinimum")
@@ -239,7 +239,8 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
             calibrationButton.title = "Calibrate Pedal…"
             expressionRange = nil
             latestExpression = nil
-            log(["type": "calibration", "rawMinimum": range.lowerBound, "rawMaximum": range.upperBound])
+            log(["type": "calibration", "rawMinimum": range.lowerBound, "rawMaximum": range.upperBound,
+                 "effectiveMinimum": expressionCalibration.rawMinimum, "effectiveMaximum": expressionCalibration.rawMaximum])
         }
         refreshSetup()
     }
