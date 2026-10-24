@@ -8,8 +8,8 @@ if [[ ! -x "$app_binary" ]]; then
     exit 2
 fi
 
-# Run with the RK3 attached, its audio idle, and other controller instances quit.
-# This exercises the real native USB/CoreMIDI path, including clean disposal.
+# Run with the combined HAL installed, RK3 attached and controller instances quit.
+# This exercises the shared CoreAudio/CoreMIDI path, including clean disposal.
 event_log="$(mktemp "$repo_root/.build/controller-smoke.XXXXXX")"
 python3 - "$app_binary" "$event_log" <<'PY'
 import json
@@ -32,7 +32,7 @@ with open(path) as event_file:
     records = [json.loads(line) for line in event_file if line.strip()]
 states = [record['status'] for record in records if record['type'] == 'status']
 native_backend = any(
-    record['type'] == 'backend' and record.get('name') == 'rk3-coreaudio IOKit'
+    record['type'] == 'backend' and record.get('name') == 'RigKontrol3 combined audio and controls'
     and record.get('upstreamRevision') == 'd0679238ad06842f382ef89b995823e978caec9b'
     for record in records
 )
@@ -50,13 +50,13 @@ if timed_out:
 elif not records:
     print('FAIL: no test session started. Quit any existing controller app and retry.')
 elif not native_backend:
-    print('FAIL: expected the pinned rk3-coreaudio IOKit backend.')
+    print('FAIL: expected the combined audio/controller backend.')
 elif exit_code or not ready or not clean:
     print('FAIL: expected device readiness and a clean shutdown.')
 elif switch_messages:
     print('FAIL: switch MIDI was emitted during the idle check. Leave switches untouched and retry.')
 else:
-    print('PASS: rk3-coreaudio backend ready, no idle switch commands, clean shutdown.')
+    print('PASS: combined backend ready, no idle switch commands, clean shutdown.')
     sys.exit(0)
 sys.exit(1)
 PY

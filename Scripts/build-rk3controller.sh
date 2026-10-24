@@ -8,6 +8,10 @@ fi
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 bundle_dir="$repo_root/.build/Rig Kontrol 3.app"
+if /usr/bin/pgrep -x rk3controller >/dev/null; then
+    echo 'Quit Rig Kontrol 3 before rebuilding its application bundle.' >&2
+    exit 1
+fi
 
 # Keep compiler and package caches writable in restricted development sessions.
 # Explicit caller-provided compiler cache locations still take precedence.
@@ -53,8 +57,8 @@ cat > "$contents_dir/Info.plist" <<'PLIST'
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>Rig Kontrol 3</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.3.0</string>
-    <key>CFBundleVersion</key><string>3</string>
+    <key>CFBundleShortVersionString</key><string>0.4.0</string>
+    <key>CFBundleVersion</key><string>4</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
@@ -117,6 +121,7 @@ done
 # Include the Swift adapter and shared transport types/pump used by this build.
 for source_file in \
     "$repo_root/Sources/RigKontrol3Core/Hardware/CoreAudioUSBEventReader.swift" \
+    "$repo_root/Sources/RigKontrol3Core/Hardware/SharedAudioEventReader.swift" \
     "$repo_root/Sources/RigKontrol3Core/Hardware/RigKontrolUSBTypes.swift" \
     "$repo_root/Sources/RigKontrol3Core/Hardware/LibUSBBulkInputPump.swift"; do
     if [[ ! -f "$source_file" ]]; then
@@ -127,11 +132,14 @@ for source_file in \
 done
 
 cat > "$native_source_dir/README.md" <<'SOURCE_INFO'
-# Native USB transport source snapshot
+# Controller transport source snapshot
 
-This folder contains the adapted IOKit C transport, public header and the
-Swift adapter, transport types and input pump used by this build. See NOTICE.md for the
+This folder contains the adapted direct-USB C transport, public header, the
+Swift direct/shared adapters, transport types and input pump used by this build. See NOTICE.md for the
 upstream revision and modifications, and LICENSE for GPL-2.0 terms.
+The app defaults to the shared CoreAudio property transport. Direct USB is an
+explicit --controller-only diagnostic option. The shared HAL source and its
+property contract are included separately in SharedHALSource.
 
 Full corresponding app source and build instructions, branch codex/rk3-effects-controller:
 https://github.com/zukomgwili/rigkontrol3/tree/codex/rk3-effects-controller
@@ -142,6 +150,32 @@ are neither a standalone app nor the full corresponding source; use the full
 repository branch above to build the controller application.
 SOURCE_INFO
 
+# Preserve the exact shared-owner driver and property contract alongside the
+# app's adapters. This is a driver source snapshot, not the whole app source.
+shared_snapshot_dir="$resources_dir/SharedHALSource"
+mkdir -p "$shared_snapshot_dir/SharedHAL" "$shared_snapshot_dir/Scripts"
+while IFS= read -r -d '' source_file; do
+    relative_file="${source_file#"$repo_root/SharedHAL/"}"
+    mkdir -p "$shared_snapshot_dir/SharedHAL/$(dirname "$relative_file")"
+    cp -f "$source_file" "$shared_snapshot_dir/SharedHAL/$relative_file"
+done < <(find "$repo_root/SharedHAL" -type f \( -name '*.c' -o -name '*.h' -o -name '*.plist' -o -name '*.md' -o -name LICENSE \) -print0)
+for script_name in build-rk3sharedhal.sh install-rk3sharedhal.sh check-rk3sharedhal.sh; do
+    cp -f "$repo_root/Scripts/$script_name" "$shared_snapshot_dir/Scripts/"
+done
+cp -f "$repo_root/SharedHAL/CONTROL-PROTOCOL.md" "$shared_snapshot_dir/CONTROL-PROTOCOL.md"
+cp -f "$repo_root/SharedHAL/NOTICE.md" "$shared_snapshot_dir/NOTICE.md"
+revision="$(git -C "$repo_root" rev-parse HEAD 2>/dev/null || echo unknown)"
+cat > "$shared_snapshot_dir/BUILD-PROVENANCE.txt" <<PROVENANCE
+RigKontrol3 controller 0.4.0 (build 4), shared-owner HAL source snapshot
+Repository: https://github.com/zukomgwili/rigkontrol3/tree/codex/rk3-effects-controller
+Checkout base revision: $revision
+The bundled snapshot includes local modifications beyond that revision.
+Upstream: https://github.com/mihaimetal/rk3-coreaudio/tree/d0679238ad06842f382ef89b995823e978caec9b
+The shared-HAL snapshot is not the complete corresponding controller-app source.
+See the repository for the full app sources and build instructions.
+PROVENANCE
+(cd "$shared_snapshot_dir" && find SharedHAL Scripts -type f -exec shasum -a 256 {} \;) > "$shared_snapshot_dir/SHA256SUMS.txt"
+
 if [[ -f "$repo_root/Documentation/Controller-Setup.md" ]]; then
     cp -f "$repo_root/Documentation/Controller-Setup.md" "$resources_dir/Controller-Setup.md"
 fi
@@ -151,6 +185,16 @@ lipo -verify_arch arm64 "$macos_dir/rk3controller"
 codesign --force --sign - --timestamp=none "$staged_bundle"
 codesign --verify --deep --strict "$staged_bundle"
 
+# Preserve the previous app independently of the HAL rollback transaction.
+if [[ -d "$bundle_dir" ]]; then
+    app_backup_root="$repo_root/.build/ControllerBackups"
+    mkdir -p "$app_backup_root"
+    app_backup_dir="$(mktemp -d "$app_backup_root/$(date -u +%Y%m%dT%H%M%SZ).XXXXXX")"
+    ditto "$bundle_dir" "$app_backup_dir/Rig Kontrol 3.app"
+    diff -qr "$bundle_dir" "$app_backup_dir/Rig Kontrol 3.app" >/dev/null
+    codesign --verify --deep --strict "$app_backup_dir/Rig Kontrol 3.app"
+    echo "Previous app preserved at $app_backup_dir/Rig Kontrol 3.app"
+fi
 # Only the fixed build-output path is replaced; nothing is installed or launched.
 rm -rf "$bundle_dir"
 mv -f "$staged_bundle" "$bundle_dir"

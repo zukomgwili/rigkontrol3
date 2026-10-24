@@ -18,6 +18,7 @@ let package = Package(
             name: "RigKontrol3Core",
             dependencies: ["CLibusb", "CRK3CoreAudioUSB"],
             linkerSettings: [
+                .linkedFramework("CoreAudio"),
                 .linkedFramework("CoreMIDI"),
                 .linkedFramework("IOKit"),
             ]

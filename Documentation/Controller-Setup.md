@@ -1,6 +1,6 @@
 # Rig Kontrol 3 effects controller
 
-This personal-use Apple Silicon app connects the Rig Kontrol 3 switches and expression pedal to CoreMIDI. The current experimental setup hosts Guitar Rig 6 in MainStage so the host can return effect states for the hardware LEDs. Guitar Rig 6 standalone remains an option for basic MIDI control, but its effect-state feedback is not established. Use another audio interface for the guitar and headphones or speakers.
+This personal-use Apple Silicon app connects the Rig Kontrol 3 switches and expression pedal to CoreMIDI. Version 0.4 uses the combined RK3 audio driver, which owns USB once for audio and controls. The experimental setup hosts Guitar Rig 6 in MainStage so the host can return actual effect states for the hardware LEDs. Guitar Rig 6 standalone remains an option for basic MIDI control, but its effect-state feedback is not established. See the [shared driver guide](../SharedHAL/README.md) for installation, rollback and native validation commands.
 
 ## Build and open
 
@@ -11,15 +11,15 @@ Scripts/build-rk3controller.sh
 open ".build/Rig Kontrol 3.app"
 ```
 
-The script builds a native arm64 app and signs it locally. Version **0.3.0**, build **3**, uses the adapted **rk3-coreaudio IOKit** controller backend. It creates `.build/Rig Kontrol 3.app`; it does not install or launch anything. Keep the app in a stable location before enabling launch at login, and rebuild it at that same location when updating.
+Quit the previous controller before building. The script builds a native arm64 app and signs it locally. Version **0.4.0**, build **4**, defaults to the shared CoreAudio transport. It creates `.build/Rig Kontrol 3.app` and preserves the previous app under `.build/ControllerBackups`; it does not install or launch anything. Build and install the matching shared HAL as described in its guide before opening the new app. Keep the app in a stable location before enabling launch at login, and rebuild it at that same location when updating.
 
-The controller uses native IOKit access and does not create or tear down libusb contexts. Legacy diagnostics remain in the core target, so the app may still link libusb; the script bundles it only when needed. A bundled Homebrew libusb may require a newer macOS version than the Swift package's declared minimum. This is a build for the current Mac; older-Mac compatibility is not established by a successful local build.
+The shared HAL uses native IOKit access; the app exchanges controller reports and acknowledged USB write results through CoreAudio properties. Neither path creates a libusb context. Legacy diagnostics remain in the core target, so the app may still link libusb; the script bundles it only when needed. A bundled Homebrew libusb may require a newer macOS version than the Swift package's declared minimum. This is a build for the current Mac; older-Mac compatibility is not established by a successful local build.
 
-The app includes a GPL-2.0 notice, upstream attribution and a native-backend source snapshot. See [the backend evaluation](../Research/rk3-coreaudio-backend-evaluation.md) for the pinned upstream revision, adaptation and validation limits. The existing experimental RK3 audio driver is unchanged; this controller migration does not adopt the upstream HAL driver or MIDI/UDP helper.
+The app and driver include GPL-2.0 notices, attribution and adapted source snapshots. The shared engine uses the pinned rk3-coreaudio audio/codec implementation with a persistent command reader, separate asynchronous command writes and safe callback draining, guided by the [legacy driver reconstruction](../Research/legacy-rk3-driver-comparison.md). It does not install the upstream MIDI/UDP helper. The shared installer replaces the previous experimental HAL with a verified backup and rollback path; the old source remains separate under `HAL/`.
 
-Use the menu-bar item to check the connection, start or stop the bridge, quit, and optionally enable launch at login. **Setup & Test…** opens assignment instructions, live switch counts, pedal range, and received host LED states. Start manually until the playing setup has been verified. The app requests automatic reconnection after USB reattachment or waking the Mac when enabled. Held-switch USB recovery, menu stop/start and physical sleep/wake have passed on the native backend. USB reconnection alone does not establish fresh host effect states in a changed concert or patch.
+Use the menu-bar item to check the connection, start or stop the bridge, quit, and optionally enable launch at login. **Setup & Test…** opens assignment instructions, live switch counts, pedal range, and received host LED states. Start manually until the playing setup has been verified. The app requests automatic reconnection after USB reattachment or waking the Mac when enabled. Held-switch recovery, menu stop/start and physical sleep/wake passed on version 0.3's direct transport; the combined transport requires its own hardware checks. USB reconnection alone does not establish fresh host effect states in a changed concert or patch.
 
-Run only one RK3 controller bridge at a time. Quit the legacy `rk3bridge` CLI before opening the app. The installed experimental RK3 audio driver claims the same USB interface when its audio starts: select the separate interface in MainStage or Guitar Rig and ensure no other application or system audio is streaming through the RK3. An installed but idle RK3 audio driver does not need removal.
+Run only one RK3 controller app at a time and quit the legacy `rk3bridge` CLI. The shared HAL retains USB while audio is idle so switches remain available. Start/Stop Controller attaches or detaches the app without stopping guitar audio. The explicit `--controller-only` diagnostic option uses direct USB and must not run while the shared HAL owns the device; restore the previous HAL/app pair before returning to that setup. There is no automatic fallback that would create competing USB owners.
 
 ## MIDI controls
 
@@ -55,7 +55,7 @@ The current Mac stores measured raw endpoints **88…633**. The 2% end margin gi
 
 ## Experimental MainStage setup for effect-state LEDs
 
-Start the controller app before MainStage so both MIDI directions exist when the concert opens. Select **Control Mode → MainStage (toggle buttons)** in the controller app and the separate audio interface in MainStage. The current starter concert combines the NI Cry Wah with seven built-in MainStage effects on **Audio 3**.
+Start the controller app before MainStage so both MIDI directions exist when the concert opens. Select **Control Mode → MainStage (toggle buttons)** in the controller app. With the combined driver installed, choose **RigKontrol3 Audio (Shared)** as MainStage's input and output, **48 kHz**, and Audio 3 input 1 for the guitar. Connect headphones or speakers to the RK3. The starter concert combines the NI Cry Wah with seven built-in MainStage effects on **Audio 3**.
 
 **Reload limitation under investigation:** after File Revert, the actual NI wah power parameter was on while MainStage's latest feedback was off, leaving its LED off. The frozen trace contains one CC20 value 127 followed by sixteen values 0; the bridge correctly applied the latest message. Warm patch changes and the physical mappings passed, but saved-concert reload is not yet reliable for this wah indication. This remains **tw5.1.2**; the concert retains only the two playing patches.
 
@@ -82,7 +82,7 @@ The actual Audio 3 signal chain is **ChromaVerb → Tape Delay → Phaser → Ch
 
 The user-approved mute of the original parallel **Brit and Clean** path is applied and saved in both playing patches.
 
-The retained test audio levels are **Master fader −∞ (value 0)** and **Master Mute on (value 1)**; Audio 3 is unmuted. This session validated controller/LED feedback, not audible audio output. Choose the separate interface and set the listening level when ready to play.
+The saved fixture retains **Master fader −∞ (value 0)** and **Master Mute on (value 1)**; Audio 3 is unmuted. Earlier tests validated controller/LED feedback, not audible audio output. After verifying the shared audio route, set a low listening level and unmute for the guitar test.
 
 All eight physical switch/effect/LED mappings and the pedal have passed the guided test. The log recorded exactly one CC127 press for each switch, zero switch releases, a final host mask of **0xAA** after toggling all eight from patch A, and expression values **0…127**.
 

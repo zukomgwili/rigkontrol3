@@ -2,7 +2,10 @@
 
 Open [Rig Kontrol 3 Effects.concert](<Rig Kontrol 3 Effects.concert>) in
 MainStage after starting the **Rig Kontrol 3** controller app. Use
-**Control Mode → MainStage (toggle buttons)** and a separate audio interface.
+**Control Mode → MainStage (toggle buttons)**. With controller 0.4 and the
+matching combined HAL installed, choose **RigKontrol3 Audio (Shared)** for
+MainStage input and output at **48 kHz**. See the [driver guide](../SharedHAL/README.md)
+for installation and rollback.
 The MIDI input and feedback output are both **RigKontrol3 Bridge**, channel 16.
 
 The concert contains two playing patches. The saved selection is **02 Drive &
@@ -33,8 +36,8 @@ Compressor → Overdrive → Guitar Rig → Tremolo**. The original parallel
 
 Retained test levels are **Master fader −∞ (value 0)** and **Master Mute on
 (value 1)**; Audio 3 is unmuted. These tests verified controller/LED feedback,
-not audible audio output. Choose the separate audio interface and set the
-listening level when ready to play.
+not audible audio output. Verify the shared audio route, then unmute and set a
+low listening level when ready to play through the RK3.
 
 ## Known reload limitation
 

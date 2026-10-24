@@ -25,6 +25,8 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
     private let mainStageModeItem = NSMenuItem(title: "MainStage (toggle buttons)", action: nil, keyEquivalent: "")
     private let standardModeItem = NSMenuItem(title: "Guitar Rig standalone / other hosts", action: nil, keyEquivalent: "")
     private var switchOutputMode: RigKontrolSwitchOutputMode = .pressOnly
+    private let transport: RigKontrolControllerTransport = CommandLine.arguments.contains("--controller-only")
+        ? .directUSB : .sharedAudio
     private var session: RigKontrolControllerSession?
     private var status: RigKontrolControllerStatus = .connecting
     private var wantsRunning = true
@@ -59,7 +61,7 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         }
 
         configureEventLog()
-        log(["type": "backend", "name": CoreAudioUSBEventReader.backendName,
+        log(["type": "backend", "name": transport.name,
              "upstreamRevision": CoreAudioUSBEventReader.upstreamRevision])
         switchOutputMode = UserDefaults.standard.string(forKey: "switchOutputMode") == "momentary"
             ? .momentary : .pressOnly
@@ -98,6 +100,7 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
             },
             expressionCalibration: expressionCalibration,
             switchOutputMode: switchOutputMode,
+            transport: transport,
             ledMode: .hostFeedback,
             feedbackChanged: { [weak self] state in
                 Task { @MainActor in self?.recordHostFeedback(state) }
@@ -424,8 +427,7 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
             hostSetup = """
             MAINSTAGE MODE — ONE COMMAND PER PRESS
 
-            1. Choose your separate audio interface in MainStage.
-               Keep RK3 audio unused in other apps too.
+            1. \(transport == .sharedAudio ? "Choose RigKontrol3 Audio (Shared) for input and\n               output in MainStage, at 48 kHz." : "Choose your separate audio interface in MainStage.\n               Keep RK3 audio unused in other apps too.")
             2. Load Guitar Rig 6 FX on an audio channel.
             3. Assign screen buttons to RigKontrol3 Bridge,
                channel 16, CC20–27, Type: Single Value.
@@ -455,7 +457,7 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
         }
         text.string = """
         \(statusText)
-        USB backend: \(CoreAudioUSBEventReader.backendName)
+        Connection: \(transport.name)
 
         \(hostSetup)
 
@@ -536,7 +538,8 @@ private final class ControllerAppDelegate: NSObject, NSApplicationDelegate, NSMe
     }
 
     private func configureEventLog() {
-        guard let path = argument(after: "--event-log") else { return }
+        guard let path = argument(after: "--event-log")
+            ?? UserDefaults.standard.string(forKey: "diagnosticEventLogPath") else { return }
         if !FileManager.default.fileExists(atPath: path) {
             guard FileManager.default.createFile(atPath: path, contents: nil) else { return }
         }

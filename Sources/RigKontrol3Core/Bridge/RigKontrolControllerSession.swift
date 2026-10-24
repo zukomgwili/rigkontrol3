@@ -53,7 +53,7 @@ struct RigKontrolControllerSessionDependencies {
     ) throws -> any RigKontrolControllerFeedbackInput
     let stream: Stream
 
-    static var live: Self {
+    static func live(transport: RigKontrolControllerTransport) -> Self {
         Self(
             makeMIDISource: {
                 try CoreMIDIVirtualSource(name: "RigKontrol3 Bridge", uniqueID: 0x524B3301)
@@ -63,9 +63,16 @@ struct RigKontrolControllerSessionDependencies {
                     name: "RigKontrol3 Bridge", uniqueID: 0x524B3302, received: $0)
             },
             stream: { didOpen, willClose, shouldContinue, packetHandler in
-                try CoreAudioUSBEventReader.streamRigKontrol3BulkInput(
-                    didOpen: didOpen, willClose: willClose,
-                    shouldContinue: shouldContinue, packetHandler: packetHandler)
+                switch transport {
+                case .directUSB:
+                    return try CoreAudioUSBEventReader.streamRigKontrol3BulkInput(
+                        didOpen: didOpen, willClose: willClose,
+                        shouldContinue: shouldContinue, packetHandler: packetHandler)
+                case .sharedAudio:
+                    return try SharedAudioEventReader.streamRigKontrol3BulkInput(
+                        didOpen: didOpen, willClose: willClose,
+                        shouldContinue: shouldContinue, packetHandler: packetHandler)
+                }
             }
         )
     }
@@ -104,12 +111,13 @@ public final class RigKontrolControllerSession: @unchecked Sendable {
         rawExpressionChanged: @escaping @Sendable (Int) -> Void = { _ in },
         expressionCalibration: ExpressionCalibration = ExpressionCalibration(),
         switchOutputMode: RigKontrolSwitchOutputMode = .momentary,
+        transport: RigKontrolControllerTransport = .directUSB,
         ledMode: RigKontrolLEDMode = .press,
         feedbackChanged: @escaping @Sendable (RigKontrolLEDFeedbackState) -> Void = { _ in },
         feedbackMessageReceived: @escaping @Sendable (MIDIMessage) -> Void = { _ in }
     ) {
         self.init(
-            dependencies: .live, retryInterval: 1,
+            dependencies: .live(transport: transport), retryInterval: 1,
             statusChanged: statusChanged, messageSent: messageSent,
             rawExpressionChanged: rawExpressionChanged, expressionCalibration: expressionCalibration,
             switchOutputMode: switchOutputMode, ledMode: ledMode,
