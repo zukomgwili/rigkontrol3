@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "provenance": "Synthetic behavioral specification derived from original NIUSBAudioDriver.x86_64 SHA-256 41574699c507896cb3a51b4756143e8c445eb76994871eb13517a642f7adaf08; not captured hardware traffic.",
+  "audio_parameter_commands": [
+    {"rate": 44100, "bits": 24, "capacity": 128, "command": 9, "payload_hex": "00 02 80 00 01"},
+    {"rate": 48000, "bits": 24, "capacity": 136, "command": 9, "payload_hex": "01 02 88 00 01"},
+    {"rate": 88200, "bits": 24, "capacity": 176, "command": 9, "payload_hex": "04 02 b0 00 01"},
+    {"rate": 96000, "bits": 16, "capacity": 184, "command": 9, "payload_hex": "02 01 b8 00 01"},
+    {"rate": 192000, "bits": 24, "capacity": 280, "command": 9, "payload_hex": "03 02 18 01 01"},
+    {"rate": 255, "bits": 0, "capacity": 128, "command": 9, "payload_hex": "ff ff 80 00 01"}
+  ],
+  "mode3_two_groups_one_frame": {
+    "symbols": ["clipOutputSamples@0x6ab0", "fillErrorCorrectionPatternMode3@0x8890"],
+    "group0_packed24_hex": "10 11 12 13 14 15",
+    "group1_packed24_hex": "20 21 22 23 24 25",
+    "wire_hex": "10 11 12 00 13 14 15 01 20 21 22 02 23 24 25 03"
+  },
+  "mode2_two_groups_output_frame1": {
+    "symbols": ["clipOutputSamples@0x6ab0", "fillErrorCorrectionPatternMode2@0x87f0"],
+    "description": "Frame 1 starts at source byte 4 of each packed stereo ring, preserving the original minus-two-byte phase. Check planes are indices 2 and 6.",
+    "group0_frames0_and1_packed24_hex": "10 11 12 13 14 15 16 17 18 19 1a 1b",
+    "group1_frames0_and1_packed24_hex": "20 21 22 23 24 25 26 27 28 29 2a 2b",
+    "wire_frame1_hex": "14 24 15 25 01 03 16 26 17 27 18 28 00 02 19 29"
+  },
+  "packed24_normalization": [
+    {"big_endian_hex": "80 00 00", "little_endian_hex": "00 00 80", "normalized": -1.0},
+    {"big_endian_hex": "c0 00 00", "little_endian_hex": "00 00 c0", "normalized": -0.5},
+    {"big_endian_hex": "00 00 00", "little_endian_hex": "00 00 00", "normalized": 0.0},
+    {"big_endian_hex": "40 00 00", "little_endian_hex": "00 00 40", "normalized": 0.5},
+    {"big_endian_hex": "7f ff ff", "little_endian_hex": "ff ff 7f", "normalized": 0.9999998807907104}
+  ]
+}

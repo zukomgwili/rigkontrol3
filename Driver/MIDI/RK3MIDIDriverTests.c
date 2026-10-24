@@ -1,0 +1,386 @@
+/* Hardware-free fault injection. Audio transport and MIDI delivery are replaced
+ * before including the exact production implementation. Start is not invoked. */
+#include <CoreAudio/CoreAudio.h>
+#include <CoreMIDI/MIDIDriver.h>
+#include <CoreMIDI/MIDISetup.h>
+#include <CoreMIDI/MIDIServices.h>
+#include <assert.h>
+#include <string.h>
+#include <stdio.h>
+
+static OSStatus mock_get(AudioObjectID,const AudioObjectPropertyAddress *,UInt32,const void *,UInt32 *,void *);
+static OSStatus mock_set(AudioObjectID,const AudioObjectPropertyAddress *,UInt32,const void *,UInt32,const void *);
+static OSStatus mock_received(MIDIEndpointRef,const MIDIPacketList *);
+static OSStatus mock_midi_get_data(MIDIObjectRef,CFStringRef,CFDataRef *);
+static OSStatus mock_midi_set_data(MIDIObjectRef,CFStringRef,CFDataRef);
+#define RK3_MIDI_TESTING 1
+#define AudioObjectGetPropertyData mock_get
+#define AudioObjectSetPropertyData mock_set
+#define MIDIReceived mock_received
+#define MIDIObjectGetDataProperty mock_midi_get_data
+#define MIDIObjectSetDataProperty mock_midi_set_data
+#include "RK3MIDIDriver.c"
+#undef AudioObjectGetPropertyData
+#undef AudioObjectSetPropertyData
+#undef MIDIReceived
+#undef MIDIObjectGetDataProperty
+#undef MIDIObjectSetDataProperty
+
+static bool restart_before_producer;
+static bool toggle_listener_before_delivery;
+void rk3_test_before_producer(void *context) {
+    Driver *driver = context;
+    if (restart_before_producer) {
+        atomic_fetch_add(&driver->lifecycle_epoch,1);
+        atomic_store(&driver->output_read,0);
+        atomic_store(&driver->output_write,0);
+        restart_before_producer = false;
+    }
+}
+
+void rk3_test_before_delivery(void *context) {
+    Driver *driver = context;
+    if (toggle_listener_before_delivery) {
+        toggle_listener_before_delivery = false;
+        assert(enable_source(driver_ref(driver),driver->source,false) == noErr);
+        assert(enable_source(driver_ref(driver),driver->source,true) == noErr);
+    }
+}
+
+static RK3NativeReports input_batch;
+static uint64_t info_generation = 7;
+static uint32_t digital_snapshot=UINT32_C(0x80000000);
+static bool press_release_before_snapshot;
+static CFDataRef calibration_data;
+static MIDIEndpointRef delivered_source;
+static uint64_t expected_after;
+static uint8_t delivered[64];
+static size_t delivered_count, deliveries;
+static uint64_t delivered_time;
+static Driver *working_driver;
+static size_t writes;
+static OSStatus write_result;
+
+static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *property,
+                         UInt32 qualifier_size,const void *qualifier,UInt32 *size,void *data) {
+    assert(object == 42);
+    if (property->mSelector == RK3_PROPERTY_INFO) {
+        if(press_release_before_snapshot) {
+            press_release_before_snapshot=false;
+            input_batch=(RK3NativeReports){.version=1,.count=2,.next_sequence=2,.latest_sequence=2};
+            input_batch.reports[0]=(RK3NativeReport){.sequence=1,.length=3,.bytes={4,1,0}};
+            input_batch.reports[1]=(RK3NativeReport){.sequence=2,.length=3,.bytes={4,0,0}};
+        }
+        assert(*size == sizeof(RK3NativeInfo) && qualifier_size == 0);
+        RK3NativeInfo info = {.version=RK3_CONTROL_VERSION,.flags=RK3_NATIVE_CONNECTED,
+            .generation=info_generation,.midi_inputs=1,.midi_outputs=1,.digital_snapshot=digital_snapshot};
+        strcpy(info.device_uid,RK3_NATIVE_DEVICE_UID);
+        strcpy(info.product_name,"Rig Kontrol 3 Native");
+        memcpy(data,&info,sizeof(info));
+        return noErr;
+    }
+    assert(property->mSelector == RK3_PROPERTY_REPORTS && *size == sizeof(input_batch));
+    assert(qualifier_size == sizeof(RK3NativeReportQuery));
+    const RK3NativeReportQuery *query = qualifier;
+    assert(query->version == RK3_CONTROL_VERSION && (query->after_sequence == expected_after || query->after_sequence == 0));
+    memcpy(data,&input_batch,sizeof(input_batch));
+    return noErr;
+}
+
+static OSStatus mock_set(AudioObjectID object,const AudioObjectPropertyAddress *property,
+                         UInt32 qualifier_size,const void *qualifier,UInt32 size,const void *data) {
+    assert(object == 42 && property->mSelector == RK3_PROPERTY_COMMAND);
+    assert(qualifier_size == sizeof(RK3NativeCommandLease) && size == sizeof(RK3NativeCommand));
+    const RK3NativeCommandLease *lease = qualifier;
+    const RK3NativeCommand *command = data;
+    assert(lease->version == RK3_CONTROL_VERSION && lease->generation == 7);
+    assert(command->version == RK3_CONTROL_VERSION && command->length == 6);
+    assert(command->bytes[0] == 7 && command->bytes[1] == 0 && command->bytes[2] == 3);
+    ++writes;
+    atomic_store(&working_driver->worker_stop,true);
+    return write_result;
+}
+
+static OSStatus mock_received(MIDIEndpointRef source,const MIDIPacketList *list) {
+    assert((source == 123 || source == 124) && list->numPackets == 1);
+    delivered_source=source;
+    assert(list->packet[0].length <= sizeof(delivered));
+    delivered_count = list->packet[0].length;
+    delivered_time = list->packet[0].timeStamp;
+    memcpy(delivered,list->packet[0].data,delivered_count);
+    ++deliveries;
+    return noErr;
+}
+
+static OSStatus mock_midi_get_data(MIDIObjectRef object,CFStringRef key,CFDataRef *data) {
+    (void)object;assert(CFEqual(key,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY)));
+    if(calibration_data==NULL)return kMIDIUnknownProperty;
+    *data=CFRetain(calibration_data);return noErr;
+}
+static OSStatus mock_midi_set_data(MIDIObjectRef object,CFStringRef key,CFDataRef data) {
+    (void)object;assert(CFEqual(key,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY)));
+    if(calibration_data)CFRelease(calibration_data);calibration_data=CFRetain(data);return noErr;
+}
+
+static Driver *make_driver(void) {
+    Driver *driver = RK3MIDIDriverFactory(NULL,kMIDIDriverTypeID);
+    assert(driver != NULL);
+    driver->started = true;
+    driver->source = 123;driver->controller_source=124;driver->controller_destination=125;
+    driver->source_enabled = true;
+    atomic_store(&driver->online,true);
+    atomic_store(&driver->audio_device,42);
+    atomic_store(&driver->generation,7);
+    return driver;
+}
+
+static void free_driver(Driver *driver) {
+    driver->started = false;
+    driver->source = 0;
+    atomic_store(&driver->online,false);
+    assert(release_ref(driver) == 0);
+}
+
+static void test_com(void) {
+    assert(RK3MIDIDriverFactory(NULL,IUnknownUUID) == NULL);
+    MIDIDriverRef driver = RK3MIDIDriverFactory(NULL,kMIDIDriverTypeID);
+    assert(driver != NULL);
+    void *other = (void *)(uintptr_t)1;
+    assert((*driver)->QueryInterface(driver,CFUUIDGetUUIDBytes(kMIDIDriverInterfaceID),&other) == E_NOINTERFACE);
+    assert(other == NULL);
+    assert((*driver)->QueryInterface(driver,CFUUIDGetUUIDBytes(kMIDIDriverInterface2ID),&other) == S_OK);
+    assert(other == driver && (*driver)->AddRef(driver) == 3);
+    assert((*driver)->Release(driver) == 2 && (*driver)->Release(driver) == 1);
+    assert((*driver)->FindDevices(driver,0) == noErr);
+    assert((*driver)->Configure(driver,0) == noErr);
+    assert((*driver)->Flush(driver,0,NULL,NULL) == noErr);
+    assert((*driver)->Stop(driver) == noErr);
+    assert((*driver)->Release(driver) == 0);
+}
+
+static void test_packet_queue(void) {
+    Driver *driver = make_driver();
+    MIDIPacketList list;
+    MIDIPacket *packet = MIDIPacketListInit(&list);
+    const uint8_t first[] = {0xf0,1,2,3,4}, second[] = {5,6,7,8,0xf7};
+    packet = MIDIPacketListAdd(&list,sizeof(list),packet,100,5,first);
+    assert(packet != NULL);
+    assert(MIDIPacketListAdd(&list,sizeof(list),packet,200,5,second) != NULL);
+    assert(send_packets(driver_ref(driver),&list,NULL,driver) == noErr);
+    assert(atomic_load(&driver->output_write) == 2);
+    const uint8_t expected0[] = {7,0,8,0xf0,1,2,3,4,5,6,7};
+    const uint8_t expected1[] = {7,0,2,8,0xf7};
+    assert(driver->output[0].command.length == sizeof(expected0));
+    assert(memcmp(driver->output[0].command.bytes,expected0,sizeof(expected0)) == 0);
+    assert(driver->output[1].command.length == sizeof(expected1));
+    assert(memcmp(driver->output[1].command.bytes,expected1,sizeof(expected1)) == 0);
+    assert(driver->output[0].generation == 7 && driver->output[0].audio_device == 42);
+    atomic_store(&driver->output_write,255);
+    assert(send_packets(driver_ref(driver),&list,NULL,driver) == kMIDIMessageSendErr);
+    assert(atomic_load(&driver->output_write) == 255); /* all-or-nothing backpressure */
+    atomic_store(&driver->output_read,1);
+    assert(send_packets(driver_ref(driver),&list,NULL,driver) == noErr);
+    assert(atomic_load(&driver->output_write) == 257);
+    assert(memcmp(driver->output[255].command.bytes,expected0,sizeof(expected0)) == 0);
+    assert(memcmp(driver->output[0].command.bytes,expected1,sizeof(expected1)) == 0);
+    atomic_flag_test_and_set(&driver->output_producer);
+    assert(send_packets(driver_ref(driver),&list,NULL,driver) == kMIDIMessageSendErr);
+    atomic_flag_clear(&driver->output_producer);
+    assert(send_packets(driver_ref(driver),&list,(void *)(uintptr_t)2,driver) == kMIDIUnknownEndpoint);
+    restart_before_producer = true;
+    assert(send_packets(driver_ref(driver),&list,NULL,driver) == kMIDINoConnection);
+    assert(atomic_load(&driver->output_write) == 0); /* old Send cannot enter a new lifecycle */
+    atomic_store(&driver->online,false);
+    assert(send_packets(driver_ref(driver),&list,NULL,driver) == kMIDINoConnection);
+    free_driver(driver);
+}
+
+static RK3NativeReport midi_report(uint64_t sequence,const uint8_t *bytes,size_t size) {
+    RK3NativeReport report = {.sequence=sequence,.host_time=123456,.length=(uint32_t)(3+size),
+                             .bytes={6,0,(uint8_t)size}};
+    memcpy(report.bytes+3,bytes,size);
+    return report;
+}
+
+static void test_input_history(void) {
+    Driver *driver = make_driver();
+    const uint8_t note[] = {0x90,60,100};
+    input_batch = (RK3NativeReports){.version=RK3_CONTROL_VERSION,.count=2,.next_sequence=2,.latest_sequence=2};
+    input_batch.reports[0] = (RK3NativeReport){.sequence=1,.length=3,.bytes={3,1,2}};
+    input_batch.reports[1] = midi_report(2,note,sizeof(note));
+    expected_after = 0;
+    deliveries = 0;
+    input_tick(NULL,driver);
+    assert(deliveries == 1 && delivered_count == 3 && delivered_time == 123456);
+    assert(memcmp(delivered,note,3) == 0 && driver->cursor == 2);
+    driver->source_enabled = false;
+    assert(enable_source(driver_ref(driver),123,true) == noErr && !driver->baseline_pending);
+    input_batch.next_sequence = 4; input_batch.latest_sequence = 99;
+    input_batch.reports[0].sequence = 3; input_batch.reports[1].sequence = 4;
+    expected_after = 2;
+    input_tick(NULL,driver);
+    assert(deliveries == 2 && driver->cursor == 4 && !driver->baseline_pending);
+    input_batch.count = 1; input_batch.next_sequence = 100; input_batch.latest_sequence = 100;
+    input_batch.reports[0] = midi_report(100,note,sizeof(note));
+    expected_after = 4;
+    input_tick(NULL,driver);
+    assert(deliveries == 3 && driver->cursor == 100);
+    /* An overrun discards orphan running-status data, then resumes at a status. */
+    const uint8_t after_loss[] = {60,0xf8,0x80,60,0};
+    input_batch.dropped = 10; input_batch.next_sequence = 101; input_batch.latest_sequence = 101;
+    input_batch.reports[0] = midi_report(101,after_loss,sizeof(after_loss));
+    expected_after = 100;
+    input_tick(NULL,driver);
+    assert(deliveries == 5 && delivered_count == 3 && delivered[0] == 0x80);
+    info_generation = 8;
+    input_tick(NULL,driver);
+    assert(deliveries == 5); /* do not read a new transport generation with an old cursor */
+    info_generation = 7;
+    input_batch.dropped = 0; input_batch.reports[0].length = 65;
+    expected_after = 101; input_batch.next_sequence = input_batch.latest_sequence = 102;
+    input_batch.reports[0].sequence = 102;
+    input_tick(NULL,driver);
+    assert(!atomic_load(&driver->online) && deliveries == 5);
+    free_driver(driver);
+}
+
+static void test_complete_message_boundaries(void) {
+    Driver *driver = make_driver();
+    const uint8_t a[] = {0x90,60}, b[] = {100,61}, c[] = {110};
+    input_batch = (RK3NativeReports){.version=RK3_CONTROL_VERSION,.count=3,.next_sequence=3,.latest_sequence=3};
+    input_batch.reports[0] = midi_report(1,a,sizeof(a));
+    input_batch.reports[1] = midi_report(2,b,sizeof(b));
+    input_batch.reports[2] = midi_report(3,c,sizeof(c));
+    expected_after = 0; deliveries = 0;
+    input_tick(NULL,driver);
+    const uint8_t expected[] = {0x90,61,110};
+    assert(deliveries == 2 && delivered_count == 3 && memcmp(delivered,expected,3) == 0);
+    free_driver(driver);
+}
+
+static void test_listener_epoch(void) {
+    Driver *driver = make_driver();
+    const uint8_t note[] = {0x90,60,100};
+    input_batch = (RK3NativeReports){.version=RK3_CONTROL_VERSION,.count=1,.next_sequence=1,.latest_sequence=1};
+    input_batch.reports[0] = midi_report(1,note,sizeof(note));
+    expected_after = 0; deliveries = 0;
+    toggle_listener_before_delivery = true;
+    input_tick(NULL,driver);
+    assert(deliveries == 0 && !driver->baseline_pending);
+    assert(atomic_load(&driver->listener_epoch) == 2);
+    expected_after = 1; input_batch.next_sequence = input_batch.latest_sequence = 2;
+    input_batch.reports[0].sequence = 2;
+    input_tick(NULL,driver);
+    assert(deliveries == 1 && !driver->baseline_pending && driver->cursor == 2);
+    expected_after = 2; input_batch.next_sequence = input_batch.latest_sequence = 3;
+    input_batch.reports[0].sequence = 3;
+    input_tick(NULL,driver);
+    assert(deliveries == 2);
+    free_driver(driver);
+}
+
+static void controller_batch(Driver *driver,uint64_t sequence,uint16_t bits) {
+    expected_after=driver->cursor;
+    input_batch=(RK3NativeReports){.version=1,.count=1,.next_sequence=sequence,.latest_sequence=sequence};
+    input_batch.reports[0]=(RK3NativeReport){.sequence=sequence,.host_time=9876,.length=3,
+        .bytes={4,(uint8_t)bits,(uint8_t)(bits>>8)}};
+    input_tick(NULL,driver);
+}
+static void test_controller_and_feedback(void) {
+    Driver *driver=make_driver();atomic_store(&driver->controller_enabled,true);
+    input_batch=(RK3NativeReports){.version=1};expected_after=0;deliveries=0;
+    input_tick(NULL,driver); /* current physical snapshot establishes baseline */
+    atomic_store(&driver->output_read,atomic_load(&driver->output_write));
+    controller_batch(driver,1,1);
+    assert(deliveries==1&&delivered_source==124&&delivered_time==9876);
+    assert(memcmp(delivered,(uint8_t[]){0xb0,76,127},3)==0);
+    uint64_t head=atomic_load(&driver->output_write);
+    assert(driver->output[(head-1)%OUTPUT_SLOTS].command.bytes[0]==5);
+    assert(driver->output[(head-1)%OUTPUT_SLOTS].command.bytes[5]==1);
+    controller_batch(driver,2,0);assert(deliveries==1);
+    assert(enable_source(driver_ref(driver),124,false)==noErr);
+    controller_batch(driver,3,1);assert(deliveries==1&&driver->controller.button_values[0]==0);
+    assert(enable_source(driver_ref(driver),124,true)==noErr); /* samples sequence3 now, not next poll */
+    controller_batch(driver,4,0);controller_batch(driver,5,1);
+    assert(deliveries==2&&delivered[2]==127); /* first new press is preserved */
+    OutputEntry feedback={.audio_device=42,.generation=7,.lifecycle_epoch=0,.kind=1,
+        .command={.version=1,.length=6,.bytes={7,0,3,0xb0,76,0}}};
+    driver->feedback[0]=feedback;atomic_store(&driver->feedback_write,1);
+    input_batch=(RK3NativeReports){.version=1,.next_sequence=5,.latest_sequence=5};expected_after=5;
+    input_tick(NULL,driver);
+    assert(deliveries==2&&driver->controller.button_values[0]==0);
+    head=atomic_load(&driver->output_write);
+    assert(driver->output[(head-1)%OUTPUT_SLOTS].command.bytes[5]==0);
+    driver->controller_device=456;poll_calibration(driver);
+    assert(calibration_data&&CFDataGetLength(calibration_data)==16);
+    uint32_t calibration[]={1,2,103,921};
+    CFRelease(calibration_data);calibration_data=CFDataCreate(NULL,(const UInt8 *)calibration,16);
+    poll_calibration(driver);input_tick(NULL,driver);
+    double low,high;assert(rk3_controller_get_calibration(&driver->controller,2,&low,&high)==RK3_CONTROLLER_OK);
+    assert(low>0.100&&low<0.102&&high>0.900&&high<0.901);
+    uint64_t saved=atomic_load(&driver->calibration);calibration[2]=900;calibration[3]=901;
+    CFRelease(calibration_data);calibration_data=CFDataCreate(NULL,(const UInt8 *)calibration,16);
+    poll_calibration(driver);assert(atomic_load(&driver->calibration)==saved);
+    CFRelease(calibration_data);calibration_data=NULL;driver->controller_device=0;
+    free_driver(driver);
+}
+
+static void test_enable_before_first_controller_poll(void) {
+    Driver *driver=make_driver();
+    input_batch=(RK3NativeReports){.version=1};expected_after=0;digital_snapshot=UINT32_C(0x80000000);deliveries=0;
+    assert(enable_source(driver_ref(driver),124,true)==noErr);
+    digital_snapshot=UINT32_C(0x80000001); /* first press occurs after Enable returns */
+    controller_batch(driver,1,1);
+    assert(deliveries==1&&delivered_source==124&&delivered[1]==76&&delivered[2]==127);
+    /* A lost-history reset uses the current snapshot, not the old enable seed. */
+    expected_after=driver->cursor;
+    input_batch=(RK3NativeReports){.version=1,.count=1,.dropped=90,.next_sequence=100,.latest_sequence=100};
+    input_batch.reports[0]=(RK3NativeReport){.sequence=100,.length=3,.bytes={4,1,0}};
+    input_tick(NULL,driver);
+    assert(deliveries==1&&driver->controller.button_values[0]==127);
+    controller_batch(driver,101,0);controller_batch(driver,102,1);
+    assert(deliveries==2&&delivered[2]==0);
+    digital_snapshot=UINT32_C(0x80000000);free_driver(driver);
+}
+
+static void test_controller_activation_snapshot_barrier(void) {
+    Driver *driver=make_driver();
+    input_batch=(RK3NativeReports){.version=1};expected_after=0;digital_snapshot=UINT32_C(0x80000000);deliveries=0;
+    press_release_before_snapshot=true;
+    assert(enable_source(driver_ref(driver),124,true)==noErr);
+    input_tick(NULL,driver);
+    assert(deliveries==0); /* completed before enable: state catch-up, no replay */
+    assert(driver->controller.raw_buttons==0&&driver->controller.button_values[0]==127);
+    controller_batch(driver,3,1);
+    assert(deliveries==1&&delivered_source==124&&delivered[1]==76&&delivered[2]==0);
+    free_driver(driver);
+}
+
+static void test_worker_generation_and_error(void) {
+    for (unsigned fail = 0; fail < 2; ++fail) {
+        Driver *driver = make_driver();
+        RK3NativeCommand command = {.version=RK3_CONTROL_VERSION,.length=6,.bytes={7,0,3,0x90,60,100}};
+        driver->output[0] = (OutputEntry){42,6,0,command,0}; /* stale, must never reach HAL */
+        driver->output[1] = (OutputEntry){42,7,0,command,1};
+        driver->output[2] = (OutputEntry){42,7,0,command,0};
+        atomic_store(&driver->output_write,3);
+        atomic_store(&driver->worker_stop,false);
+        working_driver = driver; writes = 0;
+        write_result = fail ? kAudioHardwareUnspecifiedError : noErr;
+        add_ref(driver); /* production worker's lifetime reference */
+        output_worker(driver);
+        assert(writes == 1 && atomic_load(&driver->output_read) == 3);
+        assert(atomic_load(&driver->feedback_write) == 1 && driver->feedback[0].kind == 1);
+        assert(atomic_load(&driver->online) == !fail);
+        if (fail) assert(atomic_load(&driver->failed_generation) == 7);
+        free_driver(driver);
+    }
+}
+
+int main(void) {
+    assert(CFPlugInRegisterFactoryFunction(factory_id(),RK3MIDIDriverFactory));
+    test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_worker_generation_and_error();
+    assert(CFPlugInUnregisterFactory(factory_id()));
+    puts("RK3 CoreMIDI: COM, bounded queue, generation lease, history cursor and input routing passed");
+    return 0;
+}

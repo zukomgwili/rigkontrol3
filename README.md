@@ -1,154 +1,106 @@
-# RigKontrol3 MIDI Bridge
+# Rig Kontrol 3 — native ARM driver reconstruction
 
-Native macOS Apple Silicon work for bringing Native Instruments Rig Kontrol 3 pedal and switch control data back as MIDI.
+Fresh Apple Silicon drivers reconstructed from Native Instruments’ original
+Intel **NIUSBAudioDriver 2.8.0** and **NIUSBMIDIDriver 2.8.0**. The earlier
+controller app, MainStage setup and third-party backend are retired on this
+branch; their history remains on `codex/rk3-effects-controller`.
 
-The current milestone combines RK3 audio and eight-switch/wah control through one native USB owner. Controller 0.4 uses the [shared CoreAudio driver](SharedHAL/README.md), retaining the MIDI mappings, measured calibration and host-driven LEDs. The earlier controller-only transport passed all eight physical mappings, pedal travel, ordinary MainStage patch changes and recovery checks; the combined transport has separate native and listening acceptance checks. The [MainStage guide](Documentation/Controller-Setup.md) records the saved bank and the remaining Guitar Rig wah-feedback discrepancy after concert reload.
+The native components use the current macOS AudioServerPlugIn and CoreMIDI
+interfaces. The recovered NI USB protocol, audio packing and scheduling are
+implemented independently in C. No Intel executable runs inside the new code.
 
-## Menu-bar effects controller
+## Evidence and current validation
 
-```bash
-Scripts/build-rk3controller.sh
-open ".build/Rig Kontrol 3.app"
+Both original drivers were actually decompiled using Ghidra12.2, with
+instruction-level cross-checks and SHA-256 provenance. The audio image contains
+241 original implementation functions. The MIDI image contains 59 implementation
+functions plus73 native import trampolines. Proprietary binaries and complete
+C-like exports stay local under ignored `.build/ni/`.
+
+- [Audio reconstruction](ReverseEngineering/AudioDriver.md)
+- [MIDI reconstruction](ReverseEngineering/MIDIDriver.md)
+- [Native USB diagnostic](ReverseEngineering/DeviceProbe.md)
+- [Reversible removal of previous drivers](ReverseEngineering/InstalledBaseline.md)
+- [Fresh hardware observations](ReverseEngineering/HardwareValidation.md)
+
+The portable driver core passes strict ARM64 compilation, address/undefined
+behavior sanitizers, NI-derived wire-format vectors, malformed-packet checks,
+partial-transfer and ring-wrap checks. The native ARM diagnostic has configured
+the cleaned device and validated its real device-info reply: **2 audio inputs,
+2 outputs, wire mode2, 1 MIDI input and 1 MIDI output**.
+
+The ARM64 audio and MIDI system-driver bundles are implemented and signed for
+local installation. Real hardware tests passed five seconds of stereo48kHz
+capture, silent output transfers, clock progression and clean shutdown. The
+actual audio bundle also passed Initialize/StartIO/PCM/ZeroTimeStamp/StopIO
+against the device. Both built plug-in factories pass COM smoke tests.
+
+The MIDI bundle includes a separate Controller source and LED Feedback
+destination, alongside the verified hardware DIN pair. Its profile follows NI's
+original CC assignments and calibration formula. Source/feedback/calibration
+and reconnect rules are documented in [the MIDI component](Driver/MIDI/README.md).
+Physical MIDI/LED checks and installed-host acceptance remain to be performed.
+Task status is tracked in Beads under `rigkontrol3-40h`.
+
+## Build and install
+
+```sh
+sh Tools/build-native.sh test
+sh Tools/build-drivers.sh
+sh Tools/install-native-drivers.sh --check
+sudo /bin/sh Tools/install-native-drivers.sh --install --restart-services
 ```
 
-The app publishes source and feedback-destination ports both named **RigKontrol3 Bridge**, with separate persistent identities. All controls use MIDI channel 16. Switches 1–8 send CC20–27, and expression sends CC11. **Control Mode** defaults to MainStage: one CC127 per press, with no release message. The standalone/other-host mode sends CC127 on press and CC0 on release. Let the host perform effect toggling; use one switch for wah bypass. LEDs use returned CC20–27 values (127 on, 0 off); unknown states stay dark. The menu provides connection status, start/stop, **Setup & Test** with sent MIDI counts and known LED states, saved pedal calibration, and optional launch at login.
+The two bundles are `RigKontrol3Audio.driver` and `RigKontrol3MIDI.plugin`.
+The installer checks their identities, ARM64 code, signatures and content,
+preserves previous versions, and prints a reversible session path. See
+[installation and rollback](ReverseEngineering/NativeDriverInstall.md).
+This personal-use build supports stereo48kHz. It uses no kernel extension,
+menu-bar app, external controller bridge, or MainStage dependency.
 
-The app retains its MIDI endpoints across reconnects and establishes a fresh switch snapshot without replaying toggles. In combined mode the HAL retains USB while audio is idle, and the app never opens the interface independently. Quit legacy direct-USB bridges before using it. See [Controller Setup](Documentation/Controller-Setup.md) for assignments and the [shared driver guide](SharedHAL/README.md) for build, controlled installation and rollback. Build and automated results do not establish audible quality or physical acceptance.
+After installation, the one-time pedal calibration utility measures fresh
+endpoints and saves them on the Controller MIDI device:
 
-The [earlier backend evaluation](Research/rk3-coreaudio-backend-evaluation.md) records the controller-only IOUSBLib migration. The combined engine adapts the same pinned audio/codec sources using the [legacy NI reconstruction](Research/legacy-rk3-driver-comparison.md): one persistent command reader and separately serialized asynchronous writes. The app communicates through CoreAudio properties; no upstream MIDI/UDP helper is installed. See [provenance](SharedHAL/NOTICE.md) and the [GitHub survey](Research/github-arm-survey-2026-10-24.md).
-
-## Verified Starting Point
-
-- Target platform: macOS Apple Silicon.
-- Attached device verified in IORegistry as `RigKontrol3` with Native Instruments VID/PID `0x17cc:0x1940`.
-- The device is vendor-specific at the USB device level (`bDeviceClass`, `bDeviceSubClass`, and `bDeviceProtocol` are all `255`).
-- The current system does not expose the device in quick HID, MIDI, or CoreAudio registry checks.
-- `/Library/Extensions/NIUSBAudioDriver.kext` is installed, matches `0x17cc:0x1940` as `RK3`, and is x86_64-only. It is not loaded on this Apple Silicon system.
-
-See `Research/rig-kontrol-3.md` for the captured evidence and links to the public precedent used to guide the implementation.
-
-## Current Implementation
-
-- `RigKontrol3Core`: Swift library with USB/HID/MIDI probe helpers, raw packet parsing, MIDI message construction, default mappings, and expression-pedal calibration.
-- `rk3controller`: native menu-bar controller with reconnect, sleep/wake handling, stable CoreMIDI identity, and live test feedback.
-- `rk3bridge`: long-running CoreMIDI virtual-source bridge for verified Rig Kontrol 3 controls.
-- `rk3probe`: command-line probe for re-checking device visibility from the native app layer.
-- `rk3probe --read-bulk`: bounded raw packet capture from the vendor-specific bulk IN endpoint, including packet numbers, relative timestamps, lengths, and byte-offset deltas.
-- `rk3probe --analyze-capture`: offline JSONL capture summaries plus decoded switch/expression events from the conservative parser.
-- Unit tests for mapping, calibration, packet parsing, and bulk packet-diff behavior.
-
-## Verified Packet Format
-
-The current parser is intentionally conservative and only emits events for packet fields verified by the controlled capture evidence.
-
-- Switch reports are 8-byte packets beginning with `0x04`; byte offset `1` is a switch bitmask.
-- Verified switch bits: switch 1 `0x10`, switch 2 `0x20`, switch 3 `0x40`, switch 4 `0x80`, switch 5 `0x01`, switch 6 `0x02`, switch 7 `0x04`, switch 8 `0x08`.
-- Switch 9 toe-down produced expression movement but no switch-report mask in the clean all-switch capture, so switch 9 remains unmapped.
-- Expression reports are 33-byte packets beginning with `0x03`; bytes `5...6` form a big-endian raw expression value.
-- The default expression calibration is based on focused expression captures, raw `64...660` to MIDI `0...127`.
-
-The descriptor probe uses `libusb` through SwiftPM's `pkg-config` integration. On a clean machine, install it with Homebrew:
-
-```bash
-brew install libusb
+```sh
+.build/native/test/rk3-calibrate --seconds 20
 ```
 
-## Commands
+Sweep through the full travel throughout the measurement. Insufficient movement
+or reconnection prevents saving. Use the separate Controller MIDI source.
+The original built-in pedal is CC4, switches1–4 CC80–83, and switches5–8 CC76–79,
+channel1. LEDs follow the controller's toggle assignments; the feedback
+destination can receive host CC values. This does not add effect-state output
+to applications that do not send it.
 
-```bash
-swift build
-swift test
-swift run rk3bridge
-swift run rk3bridge --verbose
-swift run rk3bridge --switch-mode momentary
-swift run rk3bridge --led-test 1 --seconds 3
-swift run rk3bridge --led-test off --seconds 1
-swift run rk3bridge --seconds 10 --verbose
-swift run rk3probe
-swift run rk3probe --read-bulk --seconds 10
-swift run rk3probe --guided-capture --step-seconds 4
-swift run rk3probe --guided-capture --step-seconds 4 --capture-log Captures/rk3-guided.jsonl
-swift run rk3probe --all-switches-capture --step-seconds 4 --capture-log Captures/rk3-all-switches-clean.jsonl
-swift run rk3probe --remaining-controls-capture --step-seconds 6 --capture-log Captures/rk3-remaining-controls.jsonl
-swift run rk3probe --switch-2-9-capture --step-seconds 4 --capture-log Captures/rk3-switch-2-9.jsonl
-swift run rk3probe --switch-8-capture --step-seconds 6 --capture-log Captures/rk3-switch-8.jsonl
-swift run rk3probe --expression-capture --step-seconds 6 --capture-log Captures/rk3-expression.jsonl
-swift run rk3probe --analyze-capture Captures/rk3-guided.jsonl
+## Reproduce the core checks
+
+On an Apple Silicon Mac with Xcode command-line tools:
+
+```sh
+sh Tools/build-native.sh test
+sh Tools/build-native.sh sanitize
 ```
 
-Run the live MIDI bridge with:
+The diagnostic defaults to cached descriptors and takes no exclusive access:
 
-```bash
-swift run rk3bridge
+```sh
+.build/native/test/rk3-device-probe --descriptors
 ```
 
-It opens USB interface `0` alt setting `0`, reads bulk endpoint `0x81`, parses verified switch and expression packets, and publishes a CoreMIDI virtual source named `RigKontrol3 Bridge`. Stop it with `Ctrl-C`. Use `--source-name "Custom Name"` to change the CoreMIDI source name, `--verbose` to print decoded events as MIDI is sent, and `--seconds 10` for a bounded smoke test.
+Read its scope and cancellation rules before using `--query-device`. Configure
+an otherwise unconfigured device only with explicit `--configure`.
 
-The default switch mode is `latch`, which is intended for Guitar Rig-style effect bypass toggles: a physical press flips the MIDI output state and the physical release sends no MIDI. Use `--switch-mode momentary` if a host needs traditional press `noteOn` and release `noteOff` behavior, or `--switch-mode trigger` if it should receive `noteOn` only on each press.
+## Reproduce the original-binary decompilation
 
-The physical Rig Kontrol LEDs follow switch output by default. The LED packet format comes from the Linux `snd-usb-caiaq` Rig Kontrol 3 support and is verified on the attached unit: send command `0x05` to bulk OUT endpoint `0x01`. The raw switch LED byte is payload byte `4`; physical switch labels 1...4 map to bits `4...7`, and physical switch labels 5...8 map to bits `0...3`. The pedal LED maps to payload byte `5` bit `0`. Normal bridge shutdown and bounded LED tests send a final all-off switch LED state before releasing USB. Use `--leds off` to disable LED writes, `--led-test 1 --seconds 3` to turn on physical switch LED 1 briefly for protocol checks, and `--led-test off --seconds 1` to clear switch LEDs after an interrupted run.
+Put your own original x86_64 slices in `.build/ni/reference/2.8.0/` as
+`NIUSBAudioDriver.x86_64` and `NIUSBMIDIDriver.x86_64`. Their exact hashes are
+checked by the tool. With Ghidra12.2 and its compatible JDK installed:
 
-## Design Direction
-
-The implementation uses an app-first architecture:
-
-1. Probe and log what macOS exposes for the attached hardware.
-2. Keep hardware access behind a small abstraction so the eventual input reader can use CoreMIDI, HID, or vendor USB without rewriting MIDI mapping.
-3. Emit MIDI through a CoreMIDI virtual source once raw control events are verified.
-4. Treat DriverKit as a fallback only if app-level access cannot read the control data reliably or cannot be shipped with acceptable permissions.
-
-DriverKit is not part of the current implementation path. Apple documents DriverKit USB support through a system extension and USB transport entitlement, and local Xcode includes USBDriverKit in the DriverKit SDK. Because `rk3probe` can already claim the vendor USB interface and read bulk endpoint `0x81`, DriverKit work should only start after a recorded app-level blocker.
-
-## Next Hardware Step
-
-Run a controlled capture while pressing each switch and sweeping the expression pedal:
-
-```bash
-swift run rk3probe --guided-capture --step-seconds 4 --capture-log Captures/rk3-guided.jsonl
+```sh
+sh Tools/decompile-drivers.sh
 ```
 
-To verify only the still-unconfirmed controls, run the focused capture:
-
-For the cleanest all-switch reading, use the release-window capture:
-
-```bash
-swift run rk3probe --all-switches-capture --step-seconds 4 --capture-log Captures/rk3-all-switches-clean.jsonl
-swift run rk3probe --analyze-capture Captures/rk3-all-switches-clean.jsonl
-```
-
-This captures switch 1 through switch 8, then switch 9 as an expression-pedal toe-down closed press. It inserts a release window after every switch so delayed releases do not contaminate the next switch label.
-
-To verify only the still-unconfirmed controls, run the focused capture:
-
-```bash
-swift run rk3probe --remaining-controls-capture --step-seconds 6 --capture-log Captures/rk3-remaining-controls.jsonl
-swift run rk3probe --analyze-capture Captures/rk3-remaining-controls.jsonl
-```
-
-Before live bridge work continues, use the stricter switch 2/9 capture. It repeats the target controls and includes a switch 1 reference because one earlier switch 2 window emitted switch 1's `0x20` mask:
-
-```bash
-swift run rk3probe --switch-2-9-capture --step-seconds 4 --capture-log Captures/rk3-switch-2-9.jsonl
-swift run rk3probe --analyze-capture Captures/rk3-switch-2-9.jsonl
-```
-
-The guided capture runs labeled windows for baseline, footswitches 1 through 9, the pedal toe switch, and an expression sweep. Each capture window starts as soon as its step label appears. Hold each switch until the next step label appears, and sweep the expression pedal slowly for the whole expression window. The optional `--capture-log` path writes one JSON object per captured packet as JSON Lines, including the step label, packet bytes, and changed offsets. The controlled capture is needed to map byte offsets to specific switches and pedal values without guessing.
-
-After capture, summarize the JSONL log with:
-
-```bash
-swift run rk3probe --analyze-capture Captures/rk3-guided.jsonl
-```
-
-The analyzer also reports missing expected guided steps, candidate offsets, switch-report masks, and decoded events. It recognizes the full guided plan, the all-switch release-window plan, the focused remaining-controls plan, and the stricter switch 2/9 plan. If a control does not produce a decoded event, repeat the capture for that control with longer windows and hold the control through the full labeled window.
-
-For expression-pedal calibration, run:
-
-```bash
-swift run rk3probe --expression-capture --step-seconds 6 --capture-log Captures/rk3-expression.jsonl
-swift run rk3probe --analyze-capture Captures/rk3-expression.jsonl
-```
-
-This captures baseline, heel hold, toe hold, heel-to-toe sweep, and toe-to-heel sweep. The analyzer prints expression report counts and raw min/max values for each step.
-
-Bulk capture output uses zero-based byte offsets in its `changes:` lines. During guided capture, the first packet in each labeled window is compared with the last packet from the previous window when one exists, so cross-step changes remain visible. Perform one physical action at a time and note which candidate offsets change between the baseline packet and the next packet burst.
+`GHIDRA_HOME` and `JAVA_HOME` override the local Homebrew paths. This creates a
+fresh private export with per-function C, assembly, an index and manifests.
+Existing output directories are refused to avoid mixing old and new exports.
+No NI binaries or full proprietary decompilations are committed to this repo.
