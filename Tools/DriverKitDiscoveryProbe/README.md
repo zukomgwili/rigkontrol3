@@ -11,7 +11,9 @@ The diagnostic independently locates one service using both
 `RK3DiscoveryProbeIdentifier=org.rigkontrol3.ni-discovery-probe`. A class match
 must return that same registry entry with valid identity metadata. A name-only
 match or another entry is insufficient. A disappearing probe, missing identity,
-ambiguous result or failed query is inconclusive.
+ambiguous result or failed query is inconclusive. A successful null iterator
+is an empty result, as specified by the installed IOKitLib.h; the offline API
+fixture exercises this boundary without registry calls.
 
 ## Build and software checks
 
@@ -78,7 +80,10 @@ has approved activation, run the separately built `discovery-client --check`:
 | 2 | Probe absent, identity changed/unreadable/ambiguous, or a query failed. |
 
 Record the JSON, exact app/profile/source identity and macOS activation result.
-Deactivate this probe after collecting the result.
+Deactivate this probe after collecting the result. If macOS reports that
+deactivation requires a reboot, retain the exact app and verify teardown after
+a normal reboot before another activation. A zero-entry extension list alone
+does not override that callback result.
 
 ## Interpretation boundary
 

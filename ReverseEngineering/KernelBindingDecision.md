@@ -341,7 +341,7 @@ at `1002f7f84` and calls the filter constructor at `1002f7fa9`. That constructor
 stores the supplied class string at filter+0x20 (`1002f7559` through
 `1002f7575`); the factory reads that field and calls `IOServiceMatching` at
 `1002f5b0b`. No property or name-only alternative was found in that factory.
-The inspection covered seven functions and one50-instruction initializer
+The inspection covered seven functions and one 50-instruction initializer
 window; full DeviceClass activation and current Guitar Rig recognition are
 still unproved. Private exports and exact hashes are retained in `.17`/`.2`.
 
@@ -350,3 +350,32 @@ the original agent's declared RK3 filter. It does not establish that every
 DriverKit route or every NI application is impossible. A positive result
 likewise proves no user-client ABI or actual application acceptance. The user
 still requires actual original NI automatic recognition.
+
+## One development activation: inconclusive discovery
+
+The user approved the signed probe through normal macOS settings. The activation
+request completed successfully and `systemextensionsctl` reported the probe as
+activated and enabled while SIP remained enabled. This establishes this Mac's
+normal development activation path, not publication of the probe service or NI
+compatibility.
+
+Exactly one diagnostic attempt returned exit 2, `INCONCLUSIVE / PROBE_QUERY_ERROR`
+(`0xe00002bc`), before the NI class query was reached. The result cannot distinguish
+an IOKit API error from the diagnostic's own null-iterator or invalid-iterator
+handling. Offline inspection found one definite diagnostic bug: the installed
+SDK's IOKitLib.h439 permits a successful null iterator to mean zero matches, but
+the client converted it to an error. A regression compiling the actual adapter
+with fake IOKit calls failed before a one-line correction, then passed strict
+compilation and ASan/UBSan. Independent review passes. This does not retrospectively
+prove that bug caused the observed result. Iterator-validity checks remain,
+consistent with [Apple's IOKit implementation](https://github.com/apple-oss-distributions/IOKitUser/blob/main/IOKitLib.c).
+
+No second live attempt occurred. The probe's deactivation callback reported that
+a reboot is required; the subsequent extension list contained zero entries. Full
+teardown is therefore pending a normal reboot. The exact signed containing app
+is retained at `/Applications/RK3DiscoveryProbeHost.app` for that cleanup boundary.
+Private exports, build/signature manifests, runtime logs and regression evidence
+are preserved in ignored `.build/ni/driverkit-discovery-evidence/20261025-ec89cd6`,
+with a 67-file hash manifest. Beads `.17` records the source/artifact identities,
+review, bounded plans and next gate. No production audio, USB, MIDI, timing or
+recovery code was changed; no original NI functionality has been waived.

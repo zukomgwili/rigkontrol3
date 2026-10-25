@@ -18,6 +18,11 @@ xcrun clang $flags "$root/discovery-client.c" "$root/discovery-result.c" \
     -framework IOKit -framework CoreFoundation -o "$out/discovery-client"
 xcrun clang $flags "$root/discovery-client-tests.c" "$root/discovery-result.c" \
     -o "$out/discovery-client-tests"
+xcrun clang $flags "$root/discovery-iokit-tests.c" "$root/discovery-result.c" \
+    -framework IOKit -framework CoreFoundation -o "$out/discovery-iokit-tests"
 xcrun lipo -verify_arch arm64 "$out/discovery-client"
-if [ "$mode" != build ]; then "$out/discovery-client-tests" --fixture; fi
+if [ "$mode" != build ]; then
+    "$out/discovery-client-tests" --fixture
+    "$out/discovery-iokit-tests" --fixture
+fi
 printf 'Offline client build: %s (no live registry query performed)\n' "$out"

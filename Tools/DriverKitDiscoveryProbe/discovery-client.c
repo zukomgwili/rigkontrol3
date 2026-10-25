@@ -57,7 +57,7 @@ static int32_t live_enumerate(void *context,RK3DiscoveryQuery query,RK3Discovery
     /* IOServiceGetMatchingServices consumes matching, including on failure. */
     kern_return_t result=IOServiceGetMatchingServices(kIOMainPortDefault,matching,&iterator);
     if(result!=KERN_SUCCESS)return result;
-    if(iterator==IO_OBJECT_NULL)return kIOReturnError;
+    if(iterator==IO_OBJECT_NULL)return 0; /* Successful empty result, per IOKitLib.h. */
     io_service_t service;
     while((service=IOIteratorNext(iterator))!=IO_OBJECT_NULL) {
         RK3DiscoveryEntry entry=snapshot(service);visit(visitor,&entry);IOObjectRelease(service);
