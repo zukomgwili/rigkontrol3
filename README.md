@@ -94,13 +94,17 @@ failure-only timing observations are included for the remaining live fault.
 227.593 seconds. The ordering fix does not resolve that observed late request.
 
 **The primary lift-and-shift is incomplete.** Current functional successes
-cover a subset of original behavior. The Stage 1 audit also found missing
-original rates, input gain/direct-monitor controls, a clock-maintenance cadence
-difference, and unresolved client/platform contracts. The kernel-to-user-process
-architecture choice has not yet been established as the minimum required ARM
-change. Beads `rigkontrol3-40h.13` holds the canonical parity inventory, plan and
-branch-admission gates. Further implementation and runtime experiments are
-held behind that audit and a written architecture-necessity decision.
+cover a subset of original behavior. The completed [parity audit](ReverseEngineering/ParityAudit.md)
+in Beads `rigkontrol3-40h.13` inventories all 373 indexed executable entries and
+67 capability/platform/package rows. It identifies missing original rates,
+gain/direct-monitor controls, clock cadence and startup differences, and
+unresolved client contracts. Static inspection found real ARM IOAudioEngine
+implementations: native ABI and legacy USB migration are necessary; replacing
+the entire kernel audio model with the current user HAL is not proved necessary.
+Retaining kernel audio with modern kernel USB is a conditional minimum-change
+candidate, pending current loading policy, signing and deployment constraints.
+Beads `.17` now gates one explicit binding decision before further coding or
+runtime experiments. No new implementation or installation occurred in the audit.
 
 ## Build and install
 

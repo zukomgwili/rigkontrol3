@@ -552,10 +552,15 @@ write-ahead and latency behavior still require validation.
 
 This implementation replaces the original kernel IOAudioEngine/IOUSBPipe
 architecture with user-process AudioServerPlugIn/IOUSBHost bindings. That is a
-structural choice whose global necessity has **not yet been established**;
-Beads `.13` Stage 2 requires a written decision before another implementation
-or timing path. Incompatibility with the chosen user process alone does not
-prove the choice was unavoidable. Within this implementation, pause/resume
+structural choice whose global necessity is **not established**. The completed
+[parity audit](ParityAudit.md) found real ARM IOAudioFamily implementations:
+184 of 186 original audio-family imports have exact defined symbols. The
+unsupported legacy USB family must change; replacing IOAudioEngine is not
+therefore mandatory. Retaining kernel audio with kernel IOUSBHostFamily is a
+conditional minimum-change candidate, pending current loading/signing/security
+constraints. Beads `.17` gates a deployment/binding decision before coding or
+timing work. Incompatibility with the chosen user process alone does not prove
+that process was unavoidable. Within this implementation, pause/resume
 behavior maps to the current AudioServerPlugIn host
 configuration handshake: `RequestDeviceConfigurationChange` causes the host
 to stop I/O before `PerformDeviceConfigurationChange` and restart afterward
@@ -594,10 +599,12 @@ acceptance work. Build 4 failed those checks. Version 0.2.1/build 6 is now
 installed; `HardwareValidation.md` records earlier physical passes and the
 remaining late-request failure. A silent callback/status check alone is not audible acceptance.
 
-### Stage 1 parity audit boundary
+### Completed audit and implementation boundary
 
-Beads `rigkontrol3-40h.13` contains the source-backed capability matrix and
-original symbol ledger. Confirmed gaps include additional rates and original
+Beads `rigkontrol3-40h.13` contains the completed source-backed inventory and
+bounded Architecture Necessity Decision. [The audit report](ParityAudit.md)
+links 67 capability rows and exhaustive 241-audio/132-MIDI classification ledgers.
+The primary port remains incomplete; `.17` gates subsequent implementation. Confirmed gaps include additional rates and original
 44100 Hz default, per-channel input gains, direct-monitor commands (RK3 mode meanings remain
 unverified), startup
 failure/activation policies, clock cadence and priming side-effect order.
