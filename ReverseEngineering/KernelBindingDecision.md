@@ -2,14 +2,17 @@
 
 Research date: **2026-10-25 UTC**. Authority: **rigkontrol3-40h.17** in Beads.
 Scope: one bounded, read-only primary-source pass before coding or security
-changes. This note supplements [the parity audit](ParityAudit.md); it does not
-close `.17` or select deployment preferences for the user.
+changes. This note supplements [the parity audit](ParityAudit.md). The final
+decision below incorporates the user's subsequent firm security constraint.
 
-**The original kernel audio model exists on this ARM Mac, but a usable loading
-path for a newly reconstructed kext is not established under the present
-constraints. Reduced Security alone is insufficient for personal kext development
-without an approved kext-signing identity, and does not itself establish a deprecated-KPI exception. No fallback
-architecture is automatically selected.**
+**Decision: SIP stays enabled. The personal kernel-testing path is excluded.
+Use the existing public AudioServerPlugIn + IOUSBHost + CoreMIDI binding as
+the deployment baseline for this Mac.** It already loads under the observed
+conditions and requires no new kernel-signing, MDM or startup-policy route.
+This selects the least additional deployment change among the examined
+permitted routes; it does not claim the fewest source changes, an ARM mandate,
+full NI compatibility or stable audio. All original applicable NI functionality
+remains required.
 
 ## Availability and admission are separate
 
@@ -147,36 +150,66 @@ The root agent supplied these scoped read-only observations on 2026-10-25:
   No current valid kext-signing identity was found by the scoped check.
 - `profiles status -type enrollment` reported **Enrolled via DEP: No** and
   **MDM enrollment: No**. No current managed exception is demonstrated.
-- Account-level kext-signing eligibility and the user's acceptable security
-  changes are **not established**.
+- Account-level kext-signing eligibility is **not established**. The user has
+  now required **SIP enabled** and rejected the personal kernel-testing path.
 
 These are local observations, not assertions that signing authorization can
 never be acquired. No private key was read/exported, no identity requested,
 and no signing, notarization or load operation was performed.
 
-## Conditional disposition and stop
+## Final constrained binding decision
 
-With **current observed SIP enabled**, no usable kext-signing identity found,
-no MDM enrollment and no security consent, the kernel candidate
-is **not admitted for implementation or installation** by this assessment.
-Its ARM API availability remains valid; its loading route is the blocker.
+The user's answer is authoritative: **“Keep SIP enabled; do not pursue that
+testing path.”** The SIP-disabled/Permissive personal-development route is
+excluded and must not be proposed again unless the user changes that constraint.
+No other security change is authorized.
 
-There are two materially different deployment conditions to evaluate only if
-the user authorizes the relevant path: a suitable signed/approved route with
-a documented deprecation-policy exception, or personal development under the
-stronger security changes identified above. Neither is chosen here. In
-particular, this research does not request permission to disable SIP, create
-an MDM profile, obtain a signing entitlement or install a kernel extension.
+The retained-kernel-audio candidate remains structurally plausible, but is not
+admitted for this current personal-Mac deployment. No locally usable kext-signing
+identity or managed deprecation-policy exception was found. A hypothetical
+properly signed/managed route is not declared impossible; pursuing certificates,
+account approvals, MDM enrollment or startup changes is outside this decision.
 
-The bounded pass stops at the unresolved startup/account/authorization facts.
-The user must state acceptable deployment/security conditions before `.17`
-can admit a binding. If those conditions exclude the available kernel route,
-record that concrete constraint before selecting a larger adapter. Do not
-claim kernel audio is absent, silently resume the existing HAL, or select
-DriverKit solely from deprecation. Any later feasibility, code, installation
-or runtime work needs its own admitted Beads plan and red/green/stop criteria.
+Select the **existing public AudioServerPlugIn / user IOUSBHost / native
+CoreMIDI binding** for the next planned parity work. Actual installed loading
+under the observed SIP-enabled conditions supports this limited selection.
+There is no automatic DriverKit project, kernel build, new backend, editor or
+compatibility-layer effort. Kernel-to-user adaptation is a choice justified by
+the recorded deployment constraint and available route, not proof that ARM
+lacks IOAudioEngine or that this is the only possible SIP-enabled architecture.
 
-This pass changed research/status documentation and the Beads evidence only. Driver source, installed bundles, firmware, toolchains and security
-settings were not changed. Official pages were consulted as of the research
-date; no build/load experiment establishes this specific new driver's
-admission on macOS 27.0.1.
+### Continuing entry criteria in existing Beads cards
+
+`.17` resolves architecture/deployment selection only. It does not certify the
+selected binding's timing, DMA, lifecycle or NI-client equivalence, and does not
+waive any of the parity matrix's missing functions.
+
+- **`.6` owns the selected-API contract disposition.** Before a dependent change
+  touches a ring, publication, clock, queue, callback or power contract, its card
+  must identify the original behavior, public counterpart, supporting evidence,
+  remaining uncertainty and bounded test/stop condition. Distinguish a contract
+  adequate for a specific implementation from final hardware/stability acceptance.
+  Do not create a circular dependency between that disposition and `.11`'s final
+  stability result.
+- **`.2` owns required NI client/control mapping.** Before changing an affected
+  interface, identify the confirmed original consumer/operation/schema, retained
+  functionality, selected public transport and exact lifetime/error behavior.
+  Missing legacy NI service/selector compatibility stays unresolved; generic MIDI
+  success does not waive it. Applicable settings, gains, display, assignment and
+  feedback functionality cannot be discarded as optional GUI work.
+- **Every implementation/runtime card retains its own admission rule.** Use the
+  existing original-parity plan and precise red/green/stop criteria. No guessed
+  queue lead, private interrupt constants, speculative priority tuning or new
+  recovery policy follows from this selection. If a required original contract
+  cannot be supported through the selected public binding, stop its owner card
+  and record the exact blocker. Do not narrow functionality or start another
+  architecture implicitly.
+
+The primary lift-and-shift remains incomplete. The current build's TooOld fault
+and all missing/unverified NI capabilities remain open. Closing this decision
+starts no code, build, signing, loading or runtime action by itself.
+
+This pass changed research/status documentation and Beads only. Driver source,
+installed bundles, firmware, toolchains and security settings were not changed.
+Official-source findings above retain their evidence date and limits; no load
+experiment of a reconstructed kernel driver occurred.

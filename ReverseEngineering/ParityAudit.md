@@ -115,15 +115,18 @@ local KDK is a tooling observation, not an impossibility proof.
 [Apple custom-kext installation](https://developer.apple.com/documentation/apple-silicon/installing-a-custom-kernel-extension),
 [Apple deployment requirements](https://support.apple.com/en-gb/guide/deployment/depa5fb8376f/web)
 
-**Disposition:** the bounded necessity assessment stops here. Beads **`.17`**
-requires one explicit minimum-change deployment/binding decision before coding
-or timing work. It must use the actual constraints above. It cannot silently
-continue the current HAL, start another backend, reduce security or select
-DriverKit merely because the original family is deprecated.
+**Original Stage2 disposition:** the bounded necessity assessment stopped here
+and required an explicit deployment/binding decision in **`.17`** using the
+actual constraints above. It did not admit silently continuing the HAL,
+starting another backend, reducing security or choosing DriverKit solely
+because the original family is deprecated.
 
-The follow-up [.17 eligibility assessment](KernelBindingDecision.md) records
-current loading/signing requirements and local observations. It does not change
-this audit's original-functionality scope or establish a loadable kernel port.
+The subsequent [.17 binding decision](KernelBindingDecision.md) incorporates
+the user's firm SIP-enabled constraint and excludes personal kernel testing.
+It selects the existing public user-space binding for this Mac, with `.6` and
+`.2` retaining the relevant API/client entry criteria. This changes neither the
+audit's original-functionality scope nor its finding that kernel audio exists
+on ARM; it establishes no loadable kernel port or completed driver parity.
 
 ## Change register
 
@@ -194,15 +197,18 @@ elapsed observations; they do not distinguish CPU work, blocking, descheduling
 or publication latency, and do not justify a priority change.
 
 Every remaining child card now has original-row references, a minimum plan,
-red/green evidence and a stop criterion. **`.17` blocks implementation and
-runtime paths after `.13` closes.** Exact commands/access and one falsifiable
-hypothesis must be admitted in the relevant card before any later experiment;
+red/green evidence and a stop criterion. **`.17` has now selected the public
+binding under the user's SIP constraint; it grants no blanket coding or runtime
+admission.** Relevant `.6` API-contract and `.2` client/control dispositions,
+exact commands/access and one falsifiable hypothesis must be recorded in the
+responsible card before any later experiment;
 this report is not blanket execution authorization. The plan retains a bounded
 three600s48k MIDI-active stability threshold, zero unsolicited restart/error/
 generation-change predicate, separate intentional recovery windows, per-rate
 acceptance, and guided physical controls/audio checks. Missing hardware stays
-unvalidated. The next step is the deployment/binding decision, not sampling,
-QoS tuning or a parallel backend effort.
+unvalidated. The next relevant step is the affected card's `.6`/`.2` contract
+disposition and bounded original-parity plan; this record admits no new
+sampling, QoS tuning or parallel backend effort.
 
 Audit work was limited to static originals/current source/SDK/system artifacts,
 primary Apple policy, evidence classification, documentation and Beads. No

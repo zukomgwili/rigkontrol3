@@ -103,14 +103,18 @@ implementations: native ABI and legacy USB migration are necessary; replacing
 the entire kernel audio model with the current user HAL is not proved necessary.
 Retaining kernel audio with modern kernel USB is a conditional minimum-change
 candidate, pending current loading policy, signing and deployment constraints.
-Beads `.17` now gates one explicit binding decision before further coding or
-runtime experiments. No new implementation or installation occurred in the audit.
+Beads `.17` now records the explicit deployment choice: keep SIP enabled and
+use the existing public user-space audio/MIDI binding as this Mac's baseline.
+This is a constrained deployment choice, not proof of parity or an ARM mandate.
+No new implementation or installation occurred in the audit.
 
 The follow-up [.17 kernel-binding check](ReverseEngineering/KernelBindingDecision.md)
-records the public API, signing and loading requirements. Retained kernel audio
-is structurally plausible, but is not admitted under the current observed SIP,
-MDM and signing conditions. The user's security constraint remains unresolved;
-no coding, loading, toolchain or security change occurred in that check.
+records the public API, signing and loading requirements. The user requires
+SIP enabled and excludes the personal kernel-testing route. The existing
+AudioServerPlugIn/IOUSBHost/CoreMIDI baseline remains subject to `.6`'s API-contract
+and `.2`'s NI-client/control entry criteria, plus each card's original-parity tests
+and stop rules. No functionality exception was accepted. No coding, loading,
+toolchain or security change occurred in that decision.
 
 ## Build and install
 

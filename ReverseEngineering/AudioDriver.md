@@ -558,9 +558,11 @@ structural choice whose global necessity is **not established**. The completed
 unsupported legacy USB family must change; replacing IOAudioEngine is not
 therefore mandatory. Retaining kernel audio with kernel IOUSBHostFamily is a
 conditional minimum-change candidate, pending current loading/signing/security
-constraints. Beads `.17` gates a deployment/binding decision before coding or
-timing work. Incompatibility with the chosen user process alone does not prove
-that process was unavoidable. Within this implementation, pause/resume
+constraints. Beads `.17` now selects the existing public user-space binding
+for this Mac under the user's firm SIP-enabled constraint. `.6` and `.2` retain
+the relevant API/client entry criteria before affected changes. This is a
+constrained deployment choice, not proof that the process boundary was globally
+unavoidable or that NI behavior is already equivalent. Within this implementation, pause/resume
 behavior maps to the current AudioServerPlugIn host
 configuration handshake: `RequestDeviceConfigurationChange` causes the host
 to stop I/O before `PerformDeviceConfigurationChange` and restart afterward
@@ -604,7 +606,9 @@ remaining late-request failure. A silent callback/status check alone is not audi
 Beads `rigkontrol3-40h.13` contains the completed source-backed inventory and
 bounded Architecture Necessity Decision. [The audit report](ParityAudit.md)
 links 67 capability rows and exhaustive 241-audio/132-MIDI classification ledgers.
-The primary port remains incomplete; `.17` gates subsequent implementation. Confirmed gaps include additional rates and original
+The primary port remains incomplete. `.17` resolves the deployment choice;
+each affected change still needs its relevant contract disposition and planned
+original-parity checks. Confirmed gaps include additional rates and original
 44100 Hz default, per-channel input gains, direct-monitor commands (RK3 mode meanings remain
 unverified), startup
 failure/activation policies, clock cadence and priming side-effect order.
