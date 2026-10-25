@@ -8,7 +8,7 @@ decision below incorporates the user's subsequent firm security constraint.
 **Reopened decision — original NI automatic recognition is required.** The
 user explicitly confirmed this on2026-10-25. The current AudioServerPlugIn /
 IOUSBHost / CoreMIDI baseline does not publish NI's IOKit service/UserClient ABI
-and cannot satisfy that requirement by itself. `.17` is now testing a bounded DriverKit feasibility probe; the earlier
+and cannot satisfy that requirement by itself. `.17` has completed a bounded DriverKit class probe, with the production binding still unadmitted; the earlier
 public-baseline decision below is historical and superseded for completion.
 SIP remains enabled. No new kernel/DriverKit provider, signing, installation,
 account enrollment or security action is admitted merely by reopening it.
@@ -327,8 +327,8 @@ it does not resolve the separate retained-kernel deployment restrictions.
 The [software-only discovery probe](../Tools/DriverKitDiscoveryProbe/README.md)
 builds unsigned and development-signed. Its fixtures pass strict compilation
 and ASan/UBSan; independent source reviews cover service scope, bundle layout,
-identity matching and inconclusive results. Actual activation and OS class
-matching remain separate runtime evidence. No RK3, audio, MIDI or NI selector
+identity matching and inconclusive results. The qualified live class-match result is recorded below; build and
+signing success alone establish no NI application acceptance. No RK3, audio, MIDI or NI selector
 implementation is present in this probe.
 
 The original MIDI driver is being ported and may require a necessary lookup
@@ -401,3 +401,53 @@ records the exact hashes, failed and corrected eligibility checks, independent
 reviews and installation boundary. The prior original-agent exports and timing
 measurement evidence remain preserved separately. No legacy class-match,
 user-client ABI or actual NI application recognition result is claimed.
+
+## Qualified live result and next admission boundary
+
+With the corrected device-eligible profiles, normal user approval completed and
+the service was actually published. The one diagnostic returned exit 1,
+`FAIL / NAME_ONLY_MATCH`: one valid independently marked registry entry
+(`4294971845`), kernel class `IOUserService`, NI's string as `IOUserClass` and
+registry name, zero entries from the exact NI class query, and the same entry
+from name matching. Both API error codes were zero. The evaluator rechecked the
+unique marked identity before retaining the negative verdict. Independent
+readback confirms the result.
+
+This rejects the tested naming mechanism for the exact legacy query. It does
+not reject all DriverKit implementations or establish actual NI application
+acceptance. The [bounded primary-source comparison](DriverKitClassMatching.md)
+found no documented driver-side matching alias. Its examined server helper
+also supplies no automatic legacy compatibility flag. Published-source version
+limits and untested modern NI application behavior remain explicit. The name
+`IOServiceDEXTMatching`, previously suggested as a possible matching contract,
+was not found in the inspected public headers or IOKitUser source and must not
+be treated as an available API.
+
+The production audio/user-client port remains unadmitted. Original NI automatic
+recognition is still required. The user authorized a bounded feasibility study of an ARM port of NI's
+supporting hardware agent in `rigkontrol3-40h.18`, preserving its protocol and
+keeping Guitar Rig and Controller Editor unchanged. This permits investigating
+a necessary lookup adaptation in the supporting agent; it does not waive
+original functionality or admit implementation. The tested unchanged-agent
+target must not silently become a requirement that every support binary remain
+immutable. No agent port, guessed compatibility layer, new provider code or
+runtime retry was performed.
+
+There is also a version boundary for acceptance: an
+[NI community administrator states that RK3 is not supported in Guitar Rig 6 and
+can be used as a standard MIDI controller](https://community.native-instruments.com/discussion/12972/rig-kontrol-3-midi-issues).
+That first-party support statement does not prove hidden implementation details
+or authorize dropping the user's recognition requirement. Legacy NI recognition
+and Guitar Rig 6 MIDI behavior need distinct, named acceptance targets before
+claiming original-functionality parity.
+
+Probe cleanup initially failed macOS authorization (error 13). The user disabled
+it through normal System Settings authentication; the subsequent extension list
+contained zero entries and SIP remained enabled. The waiting carrier exited
+with a requires-reboot callback, so complete teardown remains pending a normal
+reboot before any future activation. No additional restart is requested merely
+for offline planning. The signed app and verified rollback copies are retained;
+no owned removal carrier remains. All evidence is saved under ignored
+`.build/ni/driverkit-discovery-evidence/20261025-eligible-probe-5a25a43` and detailed
+in Beads `.17`/`.2`. NI audio ring, timing, recovery and installed drivers remain
+unchanged.
