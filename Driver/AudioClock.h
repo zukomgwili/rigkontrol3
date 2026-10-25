@@ -17,6 +17,12 @@ typedef struct {
     bool (*is_fatal)(void *,int32_t);
 } NIAudioClockProvider;
 
+/* Optional temporary diagnostic observer, separate from provider/time reads.
+ * BEGIN has no existing tick; normal END reuses the callback's existing local
+ * uptime. Fatal END has no such sample. Observer must not reenter the clock,
+ * allocate, wait, log, query USB or change its timing/provider state. */
+typedef void (*NIAudioClockObserver)(void *,bool beginning,uint64_t existing_tick,bool has_tick);
+
 /* NI 2.8.0 engine fields bd58/bd70/bd78/bd80/bd88/bd90. AbsoluteTime stays
  * in provider ticks; only the estimator's previous time is nanoseconds. */
 typedef struct {
@@ -25,12 +31,15 @@ typedef struct {
     uint64_t next_callback;
     uint8_t counter;
     bool armed;
+    NIAudioClockObserver observer;
+    void *observer_context;
 } NIAudioClock;
 
 #define NI_AUDIO_CLOCK_INITIAL_INTERVAL UINT64_C(10000000000)
 #define NI_AUDIO_CLOCK_BOUNDARY_TIMEOUT ((int32_t)UINT32_C(0xe00002bc))
 
 bool ni_audio_clock_init(NIAudioClock *,const NIAudioClockProvider *);
+void ni_audio_clock_set_observer(NIAudioClock *,NIAudioClockObserver,void *);
 /* Mach timebase binding: floor(value*numerator/denominator), saturated at
  * UINT64_MAX on overflow (or a zero denominator). No estimator arithmetic. */
 uint64_t ni_audio_clock_scale_time(uint64_t,uint32_t,uint32_t);

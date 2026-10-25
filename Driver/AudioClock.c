@@ -27,6 +27,13 @@ bool ni_audio_clock_init(NIAudioClock *clock,const NIAudioClockProvider *provide
     return true;
 }
 
+void ni_audio_clock_set_observer(NIAudioClock *clock,NIAudioClockObserver observer,void *context) {
+    if(clock){clock->observer=observer;clock->observer_context=context;}
+}
+static void observe(NIAudioClock *clock,bool beginning,uint64_t tick,bool has_tick) {
+    if(clock->observer)clock->observer(clock->observer_context,beginning,tick,has_tick);
+}
+
 static int32_t boundary(NIAudioClock *clock,bool *provider_failure) {
     NIAudioClockProvider *p=&clock->provider;uint64_t ignored=0,first=0,frame=0;
     *provider_failure=false;
@@ -81,10 +88,11 @@ static int32_t update_interval(NIAudioClock *clock) {
 }
 
 static int32_t callback(NIAudioClock *clock) {
+    observe(clock,true,0,false);
     int32_t error=update_interval(clock);
     NIAudioClockProvider *p=&clock->provider;
     if(error&&p->is_fatal&&p->is_fatal(p->context,error)) {
-        clock->armed=false;return error;
+        clock->armed=false;observe(clock,false,0,false);return error;
     }
     /* bbe9->bbf4 advances callback phase independently of update success.
      * A transient public query failure preserves the estimator, not phase. */
@@ -93,7 +101,7 @@ static int32_t callback(NIAudioClock *clock) {
         bool provider_failure=false;int32_t anchor_error=boundary(clock,&provider_failure);
         clock->counter=0; /* Original ignores this boundary's return. */
         if(anchor_error&&p->is_fatal&&p->is_fatal(p->context,anchor_error)) {
-            clock->armed=false;return anchor_error; /* Removal outranks a prior transient. */
+            clock->armed=false;observe(clock,false,0,false);return anchor_error; /* Removal outranks a prior transient. */
         }
         if(!error)error=anchor_error;
     }
@@ -101,7 +109,7 @@ static int32_t callback(NIAudioClock *clock) {
      * This runs on the existing serial owner, never the audio RT path. */
     uint64_t now=clock->provider.uptime(clock->provider.context);
     uint64_t delay=clock->provider.to_absolute(clock->provider.context,128000000);
-    clock->next_callback=now+delay;return error;
+    clock->next_callback=now+delay;observe(clock,false,now,true);return error;
 }
 
 int32_t ni_audio_clock_start(NIAudioClock *clock) {

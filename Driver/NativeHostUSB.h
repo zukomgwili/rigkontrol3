@@ -56,6 +56,11 @@ int32_t rk3_host_abort(RK3HostInterface *interface, uint8_t pipe);
 int32_t rk3_host_clear_stall(RK3HostInterface *interface, uint8_t pipe);
 int32_t rk3_host_bus_frame(RK3HostInterface *interface, uint64_t *frame, uint64_t *host_time);
 size_t rk3_host_pending(const RK3HostInterface *interface);
+/* Temporary first-fault observation only, on the existing worker. A stream
+ * call establishes a fresh interface-owned diagnostic epoch even if a new
+ * engine reuses its own seed. Clock marks surround actual callbacks only. */
+void rk3_host_measurement_begin_stream(RK3HostInterface *,uint64_t stream_epoch);
+void rk3_host_measurement_clock(RK3HostInterface *,bool beginning,uint64_t tick);
 /* Cached atomic only: no Objective-C, I/O or allocation. Caller must pin owner
  * lifetime. False after service termination or successful close; suspend/resume
  * and transient pipe errors do not imply removal. A new open creates a new cache. */

@@ -73,6 +73,8 @@ struct RK3HostInterface {
 RK3HostInterface *rk3_host_open(io_service_t service,CFRunLoopRef loop,int32_t *error) {
     (void)service;(void)loop;*error=kIOReturnNoDevice;return NULL;
 }
+void rk3_host_measurement_begin_stream(RK3HostInterface *interface,uint64_t epoch){(void)interface;(void)epoch;}
+void rk3_host_measurement_clock(RK3HostInterface *interface,bool beginning,uint64_t tick){(void)interface;(void)beginning;(void)tick;}
 bool rk3_host_connected(const RK3HostInterface *interface) {return interface!=NULL&&!interface->disconnected;}
 void rk3_host_retain(RK3HostInterface *interface) {(void)interface;}
 void rk3_host_release(RK3HostInterface *interface) {(void)interface;if(check_host_lifetime){assert(mapped_released&&close_busy==0);++host_release_calls;}}

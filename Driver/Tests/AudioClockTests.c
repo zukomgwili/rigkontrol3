@@ -5,12 +5,21 @@
 #include <string.h>
 
 typedef struct {
+    unsigned begins,ends;bool open,has_end_tick;uint64_t end_tick;
+} Observation;
+static void observe(void *context,bool beginning,uint64_t tick,bool has_tick) {
+    Observation *o=context;
+    if(beginning){assert(!o->open&&!has_tick);o->open=true;++o->begins;}
+    else {assert(o->open);o->open=false;++o->ends;o->has_end_tick=has_tick;o->end_tick=tick;}
+}
+typedef struct {
     uint64_t frames[64];size_t count,index;
     int32_t errors[64];
     uint64_t times[64];size_t time_count,time_index;
     uint64_t now;
     unsigned numer,denom;
     char trace[256];size_t trace_count;
+    Observation observation;
 } Source;
 static void trace(Source *s,char operation) {
     assert(s->trace_count+1<sizeof(s->trace));s->trace[s->trace_count++]=operation;
@@ -40,13 +49,17 @@ static void set_times(Source *s,const uint64_t *times,size_t count) {
 static NIAudioClock new_clock(Source *s) {
     if(!s->numer)s->numer=1;if(!s->denom)s->denom=1;
     const NIAudioClockProvider p={s,frame,uptime,to_ns,to_absolute,NULL};NIAudioClock c;
-    assert(ni_audio_clock_init(&c,&p));return c;
+    assert(ni_audio_clock_init(&c,&p)&&c.observer==NULL&&c.observer_context==NULL);
+    memset(&s->observation,0,sizeof(s->observation));
+    ni_audio_clock_set_observer(&c,observe,&s->observation);return c;
 }
 static void test_cold_and_two_eight_tick_groups(void) {
     Source s={0};NIAudioClock c=new_clock(&s);
     const uint64_t cold[]={1000,1000,1000,1001,1001,1002};set_frames(&s,cold,6);
     assert(ni_audio_clock_start(&c)==0);
     assert(!strcmp(s.trace,"FTFATFTFTNATFTFTTA"));
+    assert(s.observation.begins==1&&s.observation.ends==1&&!s.observation.open&&s.observation.has_end_tick);
+    assert(s.observation.end_tick==1002000000);
     assert(c.counter==0&&c.anchor_frame==1002&&c.anchor_time==1002000000);
     assert(c.previous_frame==1001&&c.previous_ns==1001000000);
     assert(c.interval_scaled==10000000000&&c.next_callback==1130000000);
@@ -57,6 +70,10 @@ static void test_cold_and_two_eight_tick_groups(void) {
         assert(s.index==s.count&&c.counter==tick%8);
         assert(!strcmp(s.trace,tick%8==0?"TFTFNATFTFTTA":"TFTFNTA"));
         assert(c.interval_scaled==10000000000);
+        assert(s.observation.begins==tick+1&&s.observation.ends==tick+1&&s.observation.has_end_tick);
+        assert(s.observation.end_tick+128000000==c.next_callback);
+        unsigned marks=s.observation.begins;size_t reads=s.index;
+        assert(ni_audio_clock_service(&c)==0&&s.index==reads&&s.observation.begins==marks&&s.observation.ends==marks);
     }
 }
 static void test_integer_estimator_and_stable_sandwich(void) {
@@ -200,6 +217,7 @@ static void test_fatal_query_stops_and_overrides_transient(void) {
     const uint64_t first_fatal[]={1128};set_frames(&s,first_fatal,1);s.errors[0]=-99;
     assert(ni_audio_clock_start(&c)==-99&&!c.armed&&c.counter==7&&s.index==1);
     assert(!strcmp(s.trace,"F")); /* No threshold query or timer rearm after removal. */
+    assert(s.observation.begins==1&&s.observation.ends==1&&!s.observation.open&&!s.observation.has_end_tick);
     assert(c.anchor_frame==1000&&c.previous_frame==1000&&c.interval_scaled==10000000000);
     size_t queries=s.index;assert(ni_audio_clock_service(&c)==0&&s.index==queries);
 
@@ -209,6 +227,7 @@ static void test_fatal_query_stops_and_overrides_transient(void) {
     memset(s.errors,0,sizeof(s.errors));s.errors[0]=-77;s.errors[1]=-99;
     assert(ni_audio_clock_start(&c)==-99&&!c.armed&&c.counter==0&&s.index==2);
     assert(!strcmp(s.trace,"FATF")); /* The later removal outranks initial-77. */
+    assert(s.observation.begins==1&&s.observation.ends==1&&!s.observation.open&&!s.observation.has_end_tick);
     assert(c.anchor_frame==1000&&c.previous_frame==1000&&c.interval_scaled==10000000000);
 
     c=new_clock(&s);c.provider.is_fatal=source_error_fatal;c.counter=7;s.now=2000000000;
@@ -217,12 +236,27 @@ static void test_fatal_query_stops_and_overrides_transient(void) {
     memset(s.errors,0,sizeof(s.errors));s.errors[0]=-77;s.errors[2]=-100;
     assert(ni_audio_clock_start(&c)==-100&&!c.armed&&c.counter==0&&s.index==3);
     assert(!strcmp(s.trace,"FATFTF"));
+    assert(s.observation.begins==1&&s.observation.ends==1&&!s.observation.open&&!s.observation.has_end_tick);
     assert(c.anchor_frame==1000&&c.previous_frame==1000&&c.interval_scaled==10000000000);
+}
+static void test_observer_default_detach_noop_and_restart(void) {
+    Source s={0};NIAudioClock c=new_clock(&s);
+    const uint64_t cold[]={1000,1000,1000,1001,1001,1002};set_frames(&s,cold,6);
+    assert(ni_audio_clock_start(&c)==0&&s.observation.begins==1&&s.observation.ends==1);
+    unsigned marks=s.observation.begins;ni_audio_clock_stop(&c);
+    assert(ni_audio_clock_service(&c)==0&&s.observation.begins==marks&&s.observation.ends==marks);
+    c.counter=3;const uint64_t same[]={1002,1002};set_frames(&s,same,2);
+    assert(ni_audio_clock_start(&c)==0&&c.counter==4&&s.observation.begins==marks+1&&s.observation.ends==marks+1);
+    assert(!strcmp(s.trace,"FTFNTA"));
+    ni_audio_clock_set_observer(&c,NULL,NULL);marks=s.observation.begins;set_frames(&s,same,2);
+    assert(ni_audio_clock_start(&c)==0&&s.observation.begins==marks&&s.observation.ends==marks);
+    assert(!strcmp(s.trace,"FTFNTA"));
 }
 int main(int argc,char **argv) {
     if(argc==2&&!strcmp(argv[1],"--transient-threshold")) {
         test_transient_error_still_reaches_boundary();return 0;
     }
+    test_observer_default_detach_noop_and_restart();
     test_transient_error_preserves_callback_phase();test_transient_error_still_reaches_boundary();
     test_fatal_query_stops_and_overrides_transient();
     test_exact_mach_timebase_scaling();

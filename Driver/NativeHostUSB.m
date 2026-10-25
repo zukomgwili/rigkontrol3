@@ -18,10 +18,88 @@
 
 #define RK3_HOST_PIPE_LIMIT 30
 typedef struct IsoJob IsoJob;
+/* Temporary .11 observation. Process-lifetime storage never owns USB objects.
+ * The lifecycle word includes the cookie, so an old final releaser cannot
+ * reclaim a slot already reserved for another job. One reservation attempt. */
+enum {MEASURE_SLOTS=512,MR_RAW=1,MR_WORKER=2,MR_LAST=4,MR_FAULT=8};
+enum {MM_READY=1,MM_R=2,MM_P0=4,MM_P1=8,MM_K=16,MM_W=32,MM_D=64,MM_ALL=127};
+typedef struct {
+    _Atomic uint64_t life;
+    atomic_uint marks;
+    uint8_t pipe;
+    uint64_t interface_cookie,epoch,first,count,start;
+    _Atomic uint64_t r,p0,p1,k,w,d;
+} RK3MeasureRecord;
+typedef struct {RK3MeasureRecord *record;uint64_t cookie;} RK3MeasureRef;
+typedef struct {
+    uint64_t cookie,interface_cookie,epoch,first,count,start,r,p0,p1,k,w,d;
+    uint8_t pipe;unsigned marks;bool coherent;
+} RK3MeasureSnapshot;
+typedef struct {uint64_t begin,end,epoch;uint32_t depth;bool active,valid,nested;} RK3MeasureClock;
+typedef struct {
+    RK3MeasureSnapshot job;RK3MeasureClock clock;
+    bool matched,complete,ordered,post_wait,overlap_valid;
+    uint64_t pre,post,hold,overlap,uncovered;
+} RK3MeasureFault;
+static RK3MeasureRecord measure_bank[MEASURE_SLOTS];
+static _Atomic uint64_t measure_next=1;
+_Static_assert(sizeof(measure_bank)+sizeof(measure_next)<=65536,"bounded measurement bank");
+_Static_assert(ATOMIC_LLONG_LOCK_FREE==2&&ATOMIC_INT_LOCK_FREE==2,"nonblocking measurement atomics");
+static uint64_t measure_cookie(void) {
+    uint64_t value=atomic_load(&measure_next);
+    if(!value||value>=UINT64_MAX/16)return 0;
+    return atomic_compare_exchange_strong(&measure_next,&value,value+1)?value:0;
+}
+static RK3MeasureRef measure_reserve(uint64_t interface_cookie,uint64_t epoch,uint8_t pipe,
+    size_t first,size_t count,uint64_t start) {
+    RK3MeasureRef ref={0};if(!interface_cookie||!epoch||epoch==UINT64_MAX)return ref;
+    uint64_t cookie=measure_cookie();if(!cookie)return ref;
+    RK3MeasureRecord *record=&measure_bank[cookie%MEASURE_SLOTS];uint64_t empty=0;
+    if(!atomic_compare_exchange_strong(&record->life,&empty,(cookie<<4)|MR_RAW|MR_WORKER))return ref;
+    record->interface_cookie=interface_cookie;record->epoch=epoch;record->pipe=pipe;
+    record->first=first;record->count=count;record->start=start;
+    atomic_store(&record->r,0);atomic_store(&record->p0,0);atomic_store(&record->p1,0);
+    atomic_store(&record->k,0);atomic_store(&record->w,0);atomic_store(&record->d,0);
+    atomic_store_explicit(&record->marks,MM_READY,memory_order_release);
+    return (RK3MeasureRef){record,cookie};
+}
+static void measure_pin(RK3MeasureRef ref,unsigned pin) {
+    if(ref.record)atomic_fetch_or(&ref.record->life,pin); /* caller already owns an interest */
+}
+static void measure_drop(RK3MeasureRef ref,unsigned interest) {
+    if(!ref.record)return;
+    atomic_fetch_and(&ref.record->life,~(uint64_t)interest);
+    uint64_t empty=ref.cookie<<4;
+    (void)atomic_compare_exchange_strong(&ref.record->life,&empty,0);
+}
+static void measure_mark(RK3MeasureRef ref,unsigned mark,uint64_t tick) {
+    if(!ref.record)return;
+    _Atomic uint64_t *field=NULL;
+    switch(mark){case MM_R:field=&ref.record->r;break;case MM_P0:field=&ref.record->p0;break;
+        case MM_P1:field=&ref.record->p1;break;case MM_K:field=&ref.record->k;break;
+        case MM_W:field=&ref.record->w;break;case MM_D:field=&ref.record->d;break;default:return;}
+    atomic_store_explicit(field,tick,memory_order_relaxed);
+    atomic_fetch_or_explicit(&ref.record->marks,mark,memory_order_release);
+}
+static RK3MeasureSnapshot measure_snapshot(RK3MeasureRef ref) {
+    RK3MeasureSnapshot s={0};if(!ref.record)return s;
+    RK3MeasureRecord *r=ref.record;uint64_t life=atomic_load_explicit(&r->life,memory_order_acquire);
+    if(life>>4!=ref.cookie)return s;
+    unsigned marks=atomic_load_explicit(&r->marks,memory_order_acquire);if(!(marks&MM_READY))return s;
+    s=(RK3MeasureSnapshot){.cookie=ref.cookie,.interface_cookie=r->interface_cookie,.epoch=r->epoch,
+        .first=r->first,.count=r->count,.start=r->start,.pipe=r->pipe,.marks=marks};
+    if(marks&MM_R)s.r=atomic_load(&r->r);if(marks&MM_P0)s.p0=atomic_load(&r->p0);
+    if(marks&MM_P1)s.p1=atomic_load(&r->p1);if(marks&MM_K)s.k=atomic_load(&r->k);
+    if(marks&MM_W)s.w=atomic_load(&r->w);if(marks&MM_D)s.d=atomic_load(&r->d);
+    s.coherent=(atomic_load_explicit(&r->life,memory_order_acquire)>>4)==ref.cookie&&
+        marks==atomic_load_explicit(&r->marks,memory_order_acquire);
+    return s;
+}
 /* [DEBUG-rk3-timing] temporary observation only; no scheduling policy. */
 typedef struct {
     uint8_t pipe_address;
     uint64_t start_frame,last_timestamp,raw_tick,worker_tick,delivery_tick;
+    uint64_t cookie,interface_cookie,stream_epoch;
 } RK3DebugIsoTiming;
 struct RK3HostInterface { atomic_uint references; CFRunLoopRef worker; CFRunLoopSourceRef keepalive; void *state; atomic_bool *connected; };
 struct RK3HostBuffer {
@@ -55,21 +133,48 @@ struct RK3HostIsoList {
     bool iso_delivering[RK3_HOST_PIPE_LIMIT];
     RK3DebugIsoTiming debug_last_iso; /* worker-only; temporary [DEBUG-rk3-timing] */
     bool debug_too_old_logged;
+    uint64_t debug_interface_cookie,debug_stream_epoch,debug_engine_seed;
+    RK3MeasureRef debug_last_record,debug_fault_record;
+    RK3MeasureClock debug_clock;
+    RK3MeasureFault debug_fault;
 }
 @end
 @implementation RK3HostState
-- (void)dealloc { if(interest_worker) CFRelease(interest_worker); }
+- (void)dealloc {
+    measure_drop(debug_last_record,MR_LAST);measure_drop(debug_fault_record,MR_FAULT);
+    if(interest_worker) CFRelease(interest_worker);
+}
 @end
 
 #ifdef RK3_HOST_USB_TESTING
 static id (*rk3_host_test_factory)(io_service_t, dispatch_queue_t, NSError **, IOUSBHostInterestHandler);
 static void (*rk3_host_test_after_publication)(void);
+static void (*rk3_host_test_after_postmark)(void);
 #endif
 static RK3HostState *state_of(const RK3HostInterface *owner) {
     return owner ? (__bridge RK3HostState *)owner->state : nil;
 }
 static bool worker_thread(const RK3HostInterface *owner) {
     return owner && owner->worker == CFRunLoopGetCurrent();
+}
+void rk3_host_measurement_begin_stream(RK3HostInterface *owner,uint64_t epoch) {
+    if(!worker_thread(owner))return;RK3HostState *state=state_of(owner);if(!state||state->closed)return;
+    measure_drop(state->debug_last_record,MR_LAST);state->debug_last_record=(RK3MeasureRef){0};
+    state->debug_last_iso=(RK3DebugIsoTiming){0};state->debug_clock=(RK3MeasureClock){0};
+    if(state->debug_stream_epoch!=UINT64_MAX)++state->debug_stream_epoch;
+    state->debug_engine_seed=epoch; /* Engine seeds may repeat; the local epoch does not. */
+}
+void rk3_host_measurement_clock(RK3HostInterface *owner,bool beginning,uint64_t tick) {
+    if(!worker_thread(owner))return;RK3HostState *state=state_of(owner);if(!state||state->closed)return;
+    RK3MeasureClock *c=&state->debug_clock;
+    if(beginning) {
+        if(c->depth){if(c->depth!=UINT32_MAX)++c->depth;c->nested=true;c->valid=false;return;}
+        *c=(RK3MeasureClock){.begin=tick,.epoch=state->debug_stream_epoch,.depth=1,.active=true};
+    } else {
+        if(c->depth)--c->depth;
+        c->valid=c->active&&!c->depth&&!c->nested&&tick>=c->begin&&c->begin&&c->epoch==state->debug_stream_epoch;
+        c->end=tick;c->active=c->depth!=0;
+    }
 }
 static int32_t error_code(NSError *error) {
     return error ? (int32_t)(uint32_t)error.code : (int32_t)kIOReturnError;
@@ -142,6 +247,7 @@ RK3HostInterface *rk3_host_open(io_service_t service, CFRunLoopRef worker, int32
             if(owner->keepalive) CFRelease(owner->keepalive);
             CFRelease(owner->worker);free(owner);set_error(error,kIOReturnNoMemory);return NULL;
         }
+        state->debug_interface_cookie=measure_cookie();
         CFRunLoopAddSource(worker,owner->keepalive,kCFRunLoopDefaultMode);
         atomic_init(&state->connected,true);
         owner->connected=&state->connected;
@@ -400,6 +506,7 @@ struct IsoJob {
     bool completed;
     int32_t result;
     uint64_t start_frame,debug_raw_tick,debug_worker_tick;
+    RK3MeasureRef measurement;
 };
 static void retire_iso_job(IsoJob *job) {
     for(size_t index=job->first;index<job->first+job->count;++index) job->list->busy[index]=0;
@@ -407,6 +514,7 @@ static void retire_iso_job(IsoJob *job) {
 }
 static void release_iso_job(IsoJob *job) {
     RK3HostInterface *owner=job->owner;
+    measure_drop(job->measurement,MR_WORKER);
     rk3_host_buffer_release(job->data);rk3_host_iso_list_release(job->list);free(job);rk3_host_release(owner);
 }
 static void append_iso_job(IsoJob *job) {
@@ -436,13 +544,43 @@ static void deliver_iso_prefix(RK3HostInterface *owner,uint8_t pipe_index) {
         retire_iso_job(job);
         /* [DEBUG-rk3-timing] cheap scalar observation before list reuse. All
          * state stays worker-only; raw framework arrival was captured by value. */
-        state->debug_last_iso=(RK3DebugIsoTiming){state->addresses[pipe],job->start_frame,
-            job->list->entries[job->first+job->count-1].timeStamp,job->debug_raw_tick,
-            job->debug_worker_tick,mach_absolute_time()};
+        state->debug_last_iso=(RK3DebugIsoTiming){.pipe_address=state->addresses[pipe],.start_frame=job->start_frame,
+            .last_timestamp=job->list->entries[job->first+job->count-1].timeStamp,.raw_tick=job->debug_raw_tick,
+            .worker_tick=job->debug_worker_tick,.delivery_tick=mach_absolute_time()};
+        measure_mark(job->measurement,MM_D,state->debug_last_iso.delivery_tick);
+        measure_pin(job->measurement,MR_LAST); /* worker interest still prevents reuse */
+        measure_drop(state->debug_last_record,MR_LAST);state->debug_last_record=job->measurement;
+        if(job->measurement.record) {
+            state->debug_last_iso.cookie=job->measurement.cookie;
+            state->debug_last_iso.interface_cookie=job->measurement.record->interface_cookie;
+            state->debug_last_iso.stream_epoch=job->measurement.record->epoch;
+        }
         job->completion(job->context,job->result,job->list,job->first,job->count);
         release_iso_job(job);
     }
     state->iso_delivering[pipe]=false;rk3_host_release(owner);
+}
+/* No cause labels: publication can overlap worker execution. A completed
+ * sampled clock span can undercount its callback tail/rearm/preemption. */
+static RK3MeasureFault measure_assess(RK3MeasureSnapshot s,RK3MeasureClock clock,uint64_t interface_cookie,
+    uint64_t epoch,uint8_t pipe,size_t first,size_t count,uint64_t requested) {
+    RK3MeasureFault f={.job=s,.clock=clock};
+    f.matched=s.coherent&&s.interface_cookie==interface_cookie&&s.epoch==epoch&&(s.pipe&0x80)&&s.pipe==pipe&&
+        s.first==first&&s.count==count&&requested>=64&&s.start==requested-64;
+    f.complete=f.matched&&(s.marks&MM_ALL)==MM_ALL;
+    f.ordered=f.complete&&s.r<=s.p0&&s.p0<=s.p1&&s.p1<=s.k&&s.p0<=s.w&&s.w<=s.d;
+    f.clock.valid=clock.valid&&!clock.active&&!clock.nested&&clock.epoch==epoch&&clock.end>=clock.begin;
+    if(f.ordered) {
+        f.pre=s.p0-s.r;f.hold=s.d-s.w;
+        if(s.w>=s.k) {
+            f.post_wait=true;f.post=s.w-s.k;
+            if(f.clock.valid) {
+                uint64_t low=s.k>clock.begin?s.k:clock.begin,high=s.w<clock.end?s.w:clock.end;
+                f.overlap=high>low?high-low:0;f.uncovered=f.post-f.overlap;f.overlap_valid=true;
+            }
+        }
+    }
+    return f;
 }
 /* [DEBUG-rk3-timing] first actual TooOld enqueue rejection per interface.
  * Bus query and log occur only after rejection, never on the steady path. */
@@ -454,11 +592,25 @@ static void note_iso_rejection(RK3HostInterface *owner,uint8_t pipe,size_t first
     uint64_t current=0,host_time=0;
     int32_t query=rk3_host_bus_frame(owner,&current,&host_time);
     RK3DebugIsoTiming last=state->debug_last_iso;
-    os_log_error(OS_LOG_DEFAULT,"[DEBUG-rk3-timing] TooOld pipe=%{public}u first=%{public}zu count=%{public}zu requested=%{public}llu current=%{public}llu busStatus=%{public}d enqueueBefore=%{public}llu enqueueAfter=%{public}llu lastPipe=%{public}u lastStart=%{public}llu lastTransaction=%{public}llu rawArrival=%{public}llu workerEntry=%{public}llu orderedDelivery=%{public}llu",
+    RK3MeasureSnapshot snapshot=measure_snapshot(state->debug_last_record);
+    RK3MeasureFault fault=measure_assess(snapshot,state->debug_clock,state->debug_interface_cookie,
+        state->debug_stream_epoch,state->addresses[pipe-1],first,count,requested);
+    if(fault.matched){measure_pin(state->debug_last_record,MR_FAULT);state->debug_fault_record=state->debug_last_record;}
+    state->debug_fault=fault;
+    unsigned validity=(fault.matched?1u:0u)|(fault.complete?2u:0u)|(fault.ordered?4u:0u)|
+        (fault.post_wait?8u:0u)|(fault.clock.valid?16u:0u)|(fault.overlap_valid?32u:0u);
+    os_log_error(OS_LOG_DEFAULT,"[DEBUG-rk3-timing] TooOld pipe=%{public}u first=%{public}zu count=%{public}zu requested=%{public}llu current=%{public}llu busStatus=%{public}d enqueueBefore=%{public}llu enqueueAfter=%{public}llu lastPipe=%{public}u lastStart=%{public}llu lastTransaction=%{public}llu rawArrival=%{public}llu workerEntry=%{public}llu orderedDelivery=%{public}llu"
+        " measureCookie=%{public}llu interfaceEpoch=%{public}llu streamEpoch=%{public}llu engineSeed=%{public}llu measureMarks=%{public}u measureValidity=%{public}u postBefore=%{public}llu postAfter=%{public}llu wakeDone=%{public}llu prePostTicks=%{public}llu postWakeTicks=%{public}llu orderedHoldTicks=%{public}llu clockBegin=%{public}llu clockEndSample=%{public}llu clockOverlapTicks=%{public}llu uncoveredTicks=%{public}llu",
         (unsigned)state->addresses[pipe-1],first,count,(unsigned long long)requested,
         (unsigned long long)current,(int)query,(unsigned long long)before,(unsigned long long)after,
         (unsigned)last.pipe_address,(unsigned long long)last.start_frame,(unsigned long long)last.last_timestamp,
-        (unsigned long long)last.raw_tick,(unsigned long long)last.worker_tick,(unsigned long long)last.delivery_tick);
+        (unsigned long long)last.raw_tick,(unsigned long long)last.worker_tick,(unsigned long long)last.delivery_tick,
+        (unsigned long long)snapshot.cookie,(unsigned long long)snapshot.interface_cookie,(unsigned long long)snapshot.epoch,
+        (unsigned long long)state->debug_engine_seed,snapshot.marks,validity,
+        (unsigned long long)snapshot.p0,(unsigned long long)snapshot.p1,(unsigned long long)snapshot.k,
+        (unsigned long long)fault.pre,(unsigned long long)fault.post,(unsigned long long)fault.hold,
+        (unsigned long long)fault.clock.begin,(unsigned long long)fault.clock.end,
+        (unsigned long long)fault.overlap,(unsigned long long)fault.uncovered);
 }
 int32_t rk3_host_iso_enqueue(RK3HostInterface *owner,uint8_t pipe,RK3HostBuffer *data,RK3HostIsoList *list,
     size_t first,size_t count,uint64_t start_frame,RK3HostIsoCompletion completion,void *context) { @autoreleasepool {
@@ -479,6 +631,8 @@ int32_t rk3_host_iso_enqueue(RK3HostInterface *owner,uint8_t pipe,RK3HostBuffer 
     IsoJob *job=calloc(1,sizeof(*job));if(!job) return kIOReturnNoMemory;
     *job=(IsoJob){.owner=owner,.data=data,.list=list,.first=first,.count=count,
         .completion=completion,.context=context,.pipe=pipe,.start_frame=start_frame};
+    job->measurement=measure_reserve(state->debug_interface_cookie,state->debug_stream_epoch,
+        state->addresses[pipe-1],first,count,start_frame);
     buffer_retain(data);list_retain(list);rk3_host_retain(owner);++state->pending;
     for(size_t index=first;index<first+count;++index) list->busy[index]=1;
     append_iso_job(job); /* rejection unlinks; successful submission owns its position */
@@ -488,25 +642,38 @@ int32_t rk3_host_iso_enqueue(RK3HostInterface *owner,uint8_t pipe,RK3HostBuffer 
         firstFrameNumber:start_frame options:IOUSBHostIsochronousTransferOptionsNone error:&failure
         completionHandler:^(IOReturn status,IOUSBHostIsochronousTransaction *transactions){
             uint64_t raw_tick=mach_absolute_time(); /* [DEBUG-rk3-timing] captured scalar */
+            RK3MeasureRef measurement=job->measurement;
+            measure_mark(measurement,MM_R,raw_tick);
             int32_t result=(int32_t)status;
             if(transactions!=job->list->entries+job->first) result=(int32_t)kIOReturnBadArgument;
             /* Same independent-loop pin as complete_bulk: retirement may free
              * every job/owner/mapping reference before publication returns. */
             CFRunLoopRef worker=(CFRunLoopRef)CFRetain(owner->worker);
+            measure_mark(measurement,MM_P0,mach_absolute_time());
             CFRunLoopPerformBlock(worker,kCFRunLoopDefaultMode,^{ @autoreleasepool {
                 job->debug_worker_tick=mach_absolute_time();job->debug_raw_tick=raw_tick;
+                measure_mark(measurement,MM_W,job->debug_worker_tick);
                 job->result=result;job->completed=true;
                 deliver_iso_prefix(owner,job->pipe);
             }});
 #ifdef RK3_HOST_USB_TESTING
             if(rk3_host_test_after_publication)rk3_host_test_after_publication();
 #endif
-            CFRunLoopWakeUp(worker);CFRelease(worker);
+            /* Only process-lifetime telemetry and the cached loop are used
+             * here: the worker may already have freed job/owner/list. */
+            measure_mark(measurement,MM_P1,mach_absolute_time());
+#ifdef RK3_HOST_USB_TESTING
+            if(rk3_host_test_after_postmark)rk3_host_test_after_postmark();
+#endif
+            CFRunLoopWakeUp(worker);
+            measure_mark(measurement,MM_K,mach_absolute_time());
+            measure_drop(measurement,MR_RAW);CFRelease(worker);
         }];
     uint64_t enqueue_after=mach_absolute_time(); /* temporary [DEBUG-rk3-timing] */
     if(!accepted) {
         int32_t rejected=error_code(failure);
         note_iso_rejection(owner,pipe,first,count,start_frame,enqueue_before,enqueue_after,rejected);
+        measure_drop(job->measurement,MR_RAW); /* rejected submissions never callback */
         unlink_iso_job(job);retire_iso_job(job);release_iso_job(job);return rejected;
     }
     return 0;

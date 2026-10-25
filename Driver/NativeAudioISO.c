@@ -101,6 +101,12 @@ static void request_panic(rk3_native_audio_iso *e,uint32_t delay,int32_t error) 
         atomic_store_explicit(&e->panic_pending,true,memory_order_release);
     }
 }
+/* Diagnostic marks use their own Mach reads. Normal END can reuse the NI
+ * callback's existing uptime; never add/move a provider observation. */
+static void observe_clock(void *context,bool beginning,uint64_t tick,bool has_tick) {
+    rk3_native_audio_iso *e=context;
+    rk3_host_measurement_clock(e->interface,beginning,has_tick?tick:mach_absolute_time());
+}
 static uint64_t default_to_ns(void *context,uint64_t ticks) {
     const rk3_native_audio_iso *e=context;
     return ni_audio_clock_scale_time(ticks,e->timebase.numer,e->timebase.denom);
@@ -401,6 +407,7 @@ rk3_native_audio_iso *rk3_native_audio_iso_create_with_clock(RK3HostInterface *i
     e->clock_provider=provider?*provider:(NIAudioClockProvider){e,default_frame,default_uptime,default_to_ns,default_to_ticks,clock_source_fatal};
     e->clock_provider.is_fatal=clock_source_fatal; /* Existing ISO removal policy. */
     (void)ni_audio_clock_init(&e->ni_clock,&e->clock_provider);
+    ni_audio_clock_set_observer(&e->ni_clock,observe_clock,e);
     atomic_flag_clear(&e->processing);atomic_flag_clear(&e->render_busy);
     atomic_init(&e->running,false);atomic_init(&e->pcm_ready,false);atomic_init(&e->panic_pending,false);
     atomic_init(&e->output_active,true);atomic_init(&e->output_written,false);
@@ -450,6 +457,9 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
     atomic_store(&e->fatal_error,0);atomic_store(&e->panic_error,0);atomic_store(&e->last_output_error,0);
     atomic_store(&e->panic_delay,0);atomic_store(&e->panic_pending,false);atomic_store(&e->pcm_ready,false);
     atomic_store(&e->clock_frame,0);atomic_store(&e->clock_host,0);atomic_store(&e->zero_frame,0);atomic_store(&e->zero_host,0);atomic_fetch_add(&e->clock_seed,1);
+    /* clock_seed is informative; Host owns the unique diagnostic stream
+     * incarnation even if a replacement engine's seed starts at one again. */
+    rk3_host_measurement_begin_stream(e->interface,atomic_load(&e->clock_seed));
     atomic_store(&e->running,true);
     for(unsigned i=0;i<INPUT_SLOTS;++i) {
         if(!atomic_load(&e->running))return atomic_load(&e->fatal_error)?atomic_load(&e->fatal_error):kIOReturnAborted;

@@ -365,6 +365,7 @@ static void test_zero_count_request_is_ordered_with_payload(void) {
 }
 static void test_first_too_old_observation_preserves_order_and_is_bounded(void) {
     RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);int32_t error=0;
+    rk3_host_measurement_begin_stream(owner,1);
     RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
     RK3HostIsoList *list=rk3_host_iso_list_create(owner,1,&error);assert(data&&list);
     assert(rk3_host_iso_list_set(list,0,4,0,false)==0);
@@ -373,6 +374,7 @@ static void test_first_too_old_observation_preserves_order_and_is_bounded(void) 
     FakeHostPipe *pipe=last_interface->pipes[@6];pipe->requests[0]->transactions[0].timeStamp=12345;
     finish(pipe,0,0,false);pump();
     RK3HostState *state=state_of(owner);RK3DebugIsoTiming last=state->debug_last_iso;
+    assert(last.cookie&&last.interface_cookie&&last.stream_epoch);
     assert(last.pipe_address==6&&last.start_frame==1100&&last.last_timestamp==12345);
     assert(last.raw_tick&&last.raw_tick<=last.worker_tick&&last.worker_tick<=last.delivery_tick);
     assert(!state->debug_too_old_logged&&ordered_calls==1&&rk3_host_pending(owner)==0);
@@ -427,18 +429,22 @@ static void early_iso_done(void *context,int32_t status,RK3HostIsoList *list,siz
     ++iso_calls;
 }
 static void test_retirement_before_completion_wake(void) {
-    for(unsigned iso=0;iso<2;++iso) {
+    for(unsigned kind=0;kind<3;++kind) {
+        bool iso=kind!=0,after_post=kind==2;
         RK3HostInterface *owner=open_owner();FakeHostInterface *fake=last_interface;
+        RK3MeasureRef measurement={0};
         __weak RK3HostState *released_state;
         unsigned previous=iso?iso_calls:bulk_calls;
         @autoreleasepool {
             released_state=state_of(owner);
             if(iso) {
                 assert(rk3_host_set_alt(owner,1)==0);int32_t error=0;
+                rk3_host_measurement_begin_stream(owner,1);
                 RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
                 RK3HostIsoList *list=rk3_host_iso_list_create(owner,4,&error);assert(data&&list);
                 assert(rk3_host_iso_list_set(list,1,4,0,false)==0&&rk3_host_iso_list_set(list,2,4,4,false)==0);
                 assert(rk3_host_iso_enqueue(owner,4,data,list,1,2,1100,early_iso_done,(void *)0x5678)==0);
+                measurement=state_of(owner)->iso_tail[3]->measurement;assert(measurement.record);
                 rk3_host_buffer_release(data);rk3_host_iso_list_release(list);
             } else {
                 const uint8_t sample=42;
@@ -450,7 +456,8 @@ static void test_retirement_before_completion_wake(void) {
         FakeHostRequest *request=pipe->requests[0];[pipe->requests removeObjectAtIndex:0];
         publication_reached=dispatch_semaphore_create(0);retirement_finished=dispatch_semaphore_create(0);
         dispatch_semaphore_t callback_returned=dispatch_semaphore_create(0);
-        rk3_host_test_after_publication=pause_before_wake;
+        rk3_host_test_after_publication=after_post?NULL:pause_before_wake;
+        rk3_host_test_after_postmark=after_post?pause_before_wake:NULL;
         dispatch_async(pipe->queue,^{
             if(iso)request->iso(0,request->transactions);else request->bulk(0,1);
             dispatch_semaphore_signal(callback_returned);
@@ -458,9 +465,17 @@ static void test_retirement_before_completion_wake(void) {
         assert(dispatch_semaphore_wait(publication_reached,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC))==0);
         pump(); /* worker retires/frees owner while completion is paused before WakeUp */
         assert((iso?iso_calls:bulk_calls)==previous+1&&fake->destroys>=1&&!released_state);
+        if(iso) {
+            RK3MeasureSnapshot pending=measure_snapshot(measurement);
+            assert(pending.coherent&&(pending.marks&(MM_W|MM_D))==(MM_W|MM_D));
+            assert(!(pending.marks&MM_K)&&!!(pending.marks&MM_P1)==after_post);
+            assert((atomic_load(&measurement.record->life)&15)==MR_RAW);
+        }
         dispatch_semaphore_signal(retirement_finished);
         assert(dispatch_semaphore_wait(callback_returned,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC))==0);
         rk3_host_test_after_publication=NULL;
+        rk3_host_test_after_postmark=NULL;
+        if(iso)assert(atomic_load(&measurement.record->life)==0);
     }
 }
 static void send_interest(IOUSBHostInterestHandler interest,dispatch_queue_t queue,uint32_t message) {
@@ -504,9 +519,137 @@ static void test_removal_interest_and_late_delivery(void) {
     send_interest(late_interest,late_queue,kIOMessageServiceIsTerminated);
     send_interest(late_interest,late_queue,kIOMessageServiceIsResumed);
 }
+static void test_measurement_interpretation(void) {
+    RK3MeasureSnapshot s={.cookie=1,.interface_cookie=2,.epoch=3,.pipe=0x82,.first=8,.count=8,.start=1000,
+        .r=100,.p0=200,.p1=300,.k=400,.w=1000,.d=1010,.marks=MM_ALL,.coherent=true};
+    RK3MeasureClock c={.begin=500,.end=800,.epoch=3,.valid=true};
+    RK3MeasureFault f=measure_assess(s,c,2,3,0x82,8,8,1064);
+    assert(f.matched&&f.complete&&f.ordered&&f.post_wait&&f.overlap_valid);
+    assert(f.pre==100&&f.post==600&&f.hold==10&&f.overlap==300&&f.uncovered==300);
+    s.w=250;s.d=260;f=measure_assess(s,c,2,3,0x82,8,8,1064);
+    assert(f.ordered&&!f.post_wait&&!f.overlap_valid&&f.post==0); /* W before P+ is legal overlap. */
+    s.marks&=~MM_P1;f=measure_assess(s,c,2,3,0x82,8,8,1064);
+    assert(f.matched&&!f.complete&&!f.ordered); /* Old R/W/D-only evidence is inconclusive. */
+    s.marks=MM_READY|MM_R|MM_W|MM_D;f=measure_assess(s,c,2,3,0x82,8,8,1064);assert(!f.complete);
+    s.marks=MM_ALL;s.coherent=false;f=measure_assess(s,c,2,3,0x82,8,8,1064);assert(!f.matched);
+    s.coherent=true;s.p1=150;f=measure_assess(s,c,2,3,0x82,8,8,1064);assert(!f.ordered);
+    s.p1=300;s.w=1000;s.d=1010;c.active=true;c.valid=false;
+    f=measure_assess(s,c,2,3,0x82,8,8,1064);assert(f.post_wait&&!f.overlap_valid);
+    c.active=false;c.valid=true;c.begin=1100;c.end=1200;
+    f=measure_assess(s,c,2,3,0x82,8,8,1064);assert(f.overlap_valid&&!f.overlap&&f.uncovered==600);
+    assert(!measure_assess(s,c,2,4,0x82,8,8,1064).matched);
+    assert(!measure_assess(s,c,9,3,0x82,8,8,1064).matched);
+    assert(!measure_assess(s,c,2,3,0x82,16,8,1064).matched);
+    assert(!measure_assess(s,c,2,3,0x82,8,8,1065).matched);
+    assert(!measure_assess(s,c,2,3,6,8,8,1064).matched);
+}
+static void test_measurement_bank_lifetimes_and_budget(void) {
+    assert(sizeof(measure_bank)<=65536);
+    for(unsigned raw_first=0;raw_first<2;++raw_first) {
+        RK3MeasureRef ref=measure_reserve(17,1,0x82,0,8,1100);assert(ref.record);
+        measure_pin(ref,MR_LAST);measure_pin(ref,MR_FAULT);
+        measure_drop(ref,raw_first?MR_RAW:MR_WORKER);
+        measure_drop(ref,raw_first?MR_WORKER:MR_RAW);
+        assert((atomic_load(&ref.record->life)&15)==(MR_LAST|MR_FAULT));
+        measure_drop(ref,MR_LAST);assert((atomic_load(&ref.record->life)&15)==MR_FAULT);
+        measure_drop(ref,MR_FAULT);assert(atomic_load(&ref.record->life)==0);
+        assert(!measure_snapshot(ref).coherent);
+    }
+    RK3MeasureRef refs[MEASURE_SLOTS];
+    for(unsigned i=0;i<MEASURE_SLOTS;++i){refs[i]=measure_reserve(17,2,0x82,0,8,1100+i);assert(refs[i].record);}
+    assert(!measure_reserve(17,2,0x82,0,8,9999).record); /* one attempt, no wait/scan */
+    /* Telemetry exhaustion cannot reject an otherwise accepted real-adapter
+     * submission, retain USB resources longer, or suppress its completion. */
+    RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);rk3_host_measurement_begin_stream(owner,1);
+    int32_t error=0;RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
+    RK3HostIsoList *list=rk3_host_iso_list_create(owner,1,&error);assert(data&&list);
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0);OrderedContext context={1,0,0,1};ordered_calls=0;
+    assert(rk3_host_iso_enqueue(owner,3,data,list,0,1,1100,ordered_done,&context)==0);
+    finish(last_interface->pipes[@0x82],0,0,false);pump();
+    assert(ordered_calls==1&&!state_of(owner)->debug_last_iso.cookie&&rk3_host_pending(owner)==0);
+    rk3_host_iso_list_release(list);rk3_host_buffer_release(data);assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+    for(unsigned i=0;i<MEASURE_SLOTS;++i){measure_drop(refs[i],MR_RAW);measure_drop(refs[i],MR_WORKER);}
+    RK3MeasureRef reused=measure_reserve(17,3,0x82,0,8,10000);assert(reused.record);
+    for(unsigned i=0;i<MEASURE_SLOTS;++i)assert(!measure_snapshot(refs[i]).coherent);
+    measure_drop(reused,MR_WORKER);measure_drop(reused,MR_RAW);
+    for(unsigned i=0;i<MEASURE_SLOTS;++i){refs[i]=measure_reserve(17,4,0x82,0,8,12000+i);assert(refs[i].record);}
+    RK3MeasureRef *shared=refs;dispatch_group_t releases=dispatch_group_create();
+    dispatch_group_async(releases,dispatch_get_global_queue(QOS_CLASS_DEFAULT,0),^{
+        for(unsigned i=0;i<MEASURE_SLOTS;++i)measure_drop(shared[i],MR_RAW);
+    });
+    dispatch_group_async(releases,dispatch_get_global_queue(QOS_CLASS_DEFAULT,0),^{
+        for(unsigned i=0;i<MEASURE_SLOTS;++i)measure_drop(shared[i],MR_WORKER);
+    });
+    assert(dispatch_group_wait(releases,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC))==0);
+    for(unsigned i=0;i<MEASURE_SLOTS;++i)assert(!atomic_load(&refs[i].record->life));
+}
+static void test_measurement_stream_clock_and_fault(void) {
+    RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);RK3HostState *state=state_of(owner);
+    rk3_host_measurement_begin_stream(owner,1);uint64_t first_epoch=state->debug_stream_epoch;
+    rk3_host_measurement_clock(owner,true,10);rk3_host_measurement_clock(owner,true,11);
+    rk3_host_measurement_clock(owner,false,12);rk3_host_measurement_clock(owner,true,13);
+    rk3_host_measurement_clock(owner,false,14);assert(state->debug_clock.active&&!state->debug_clock.valid);
+    rk3_host_measurement_clock(owner,false,15);assert(!state->debug_clock.active&&!state->debug_clock.valid);
+    rk3_host_measurement_clock(owner,true,20);rk3_host_measurement_clock(owner,false,30);assert(state->debug_clock.valid);
+    rk3_host_measurement_begin_stream(owner,1);assert(state->debug_stream_epoch==first_epoch+1&&!state->debug_clock.valid);
+    int32_t error=0;RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
+    RK3HostIsoList *list=rk3_host_iso_list_create(owner,1,&error);assert(data&&list);
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0);OrderedContext context={1,0,0,1};ordered_calls=0;
+    assert(rk3_host_iso_enqueue(owner,3,data,list,0,1,1100,ordered_done,&context)==0);
+    FakeHostPipe *pipe=last_interface->pipes[@0x82];finish(pipe,0,0,false);pump();
+    RK3MeasureSnapshot s=measure_snapshot(state->debug_last_record);assert(s.coherent&&(s.marks&MM_ALL)==MM_ALL);
+    rk3_host_measurement_clock(owner,true,s.k);rk3_host_measurement_clock(owner,false,s.w);
+    pipe->fail_enqueue=true;pipe->enqueue_error=kIOReturnIsoTooOld;
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0);
+    assert(rk3_host_iso_enqueue(owner,3,data,list,0,1,1164,ordered_done,&context)==kIOReturnIsoTooOld);
+    assert(state->debug_fault.matched&&state->debug_fault.complete&&state->debug_fault.ordered);
+    assert(state->debug_fault_record.cookie==s.cookie&&(atomic_load(&state->debug_fault_record.record->life)&MR_FAULT));
+    RK3MeasureFault frozen=state->debug_fault;
+    assert(rk3_host_iso_enqueue(owner,3,data,list,0,1,1165,ordered_done,&context)==kIOReturnIsoTooOld);
+    assert(!memcmp(&frozen,&state->debug_fault,sizeof(frozen)));
+    rk3_host_iso_list_release(list);rk3_host_buffer_release(data);assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+}
+static void test_measurement_cookie_exhaustion(void) {
+    atomic_store(&measure_next,UINT64_MAX/16);
+    assert(!measure_cookie()&&!measure_reserve(17,1,0x82,0,8,1100).record);
+    RK3HostInterface *owner=open_owner();assert(!state_of(owner)->debug_interface_cookie);
+    assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+}
+static RK3HostBuffer *pending_fault_data;
+static void reject_during_pending_publication(void *context,int32_t status,RK3HostIsoList *list,size_t first,size_t count) {
+    RK3HostInterface *owner=context;assert(!status&&first==0&&count==1);
+    FakeHostPipe *pipe=last_interface->pipes[@0x82];pipe->fail_enqueue=true;pipe->enqueue_error=kIOReturnIsoTooOld;
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0);
+    assert(rk3_host_iso_enqueue(owner,3,pending_fault_data,list,0,1,1164,reject_during_pending_publication,owner)==kIOReturnIsoTooOld);
+}
+static void test_measurement_pending_fault_freezes_without_waiting(void) {
+    RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);rk3_host_measurement_begin_stream(owner,1);
+    int32_t error=0;pending_fault_data=rk3_host_buffer_create(owner,16,&error);
+    RK3HostIsoList *list=rk3_host_iso_list_create(owner,1,&error);assert(pending_fault_data&&list);
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0);
+    assert(rk3_host_iso_enqueue(owner,3,pending_fault_data,list,0,1,1100,reject_during_pending_publication,owner)==0);
+    FakeHostPipe *pipe=last_interface->pipes[@0x82];FakeHostRequest *request=pipe->requests[0];[pipe->requests removeObjectAtIndex:0];
+    publication_reached=dispatch_semaphore_create(0);retirement_finished=dispatch_semaphore_create(0);
+    dispatch_semaphore_t returned=dispatch_semaphore_create(0);rk3_host_test_after_publication=pause_before_wake;
+    dispatch_async(pipe->queue,^{request->iso(0,request->transactions);dispatch_semaphore_signal(returned);});
+    assert(dispatch_semaphore_wait(publication_reached,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC))==0);
+    pump();RK3HostState *state=state_of(owner);RK3MeasureFault frozen=state->debug_fault;
+    assert(frozen.matched&&!frozen.complete&&!frozen.ordered&&!(frozen.job.marks&(MM_P1|MM_K)));
+    assert(rk3_host_pending(owner)==0); /* original logical job already retired */
+    dispatch_semaphore_signal(retirement_finished);
+    assert(dispatch_semaphore_wait(returned,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC))==0);
+    rk3_host_test_after_publication=NULL;
+    assert(!memcmp(&frozen,&state->debug_fault,sizeof(frozen)));
+    assert((measure_snapshot(state->debug_fault_record).marks&MM_ALL)==MM_ALL);
+    rk3_host_iso_list_release(list);rk3_host_buffer_release(pending_fault_data);pending_fault_data=NULL;
+    assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+}
 int main(void) {@autoreleasepool {
     owner_loop=CFRunLoopGetCurrent();rk3_host_test_factory=factory;
     test_open_and_properties();test_bulk_and_abort();test_shared_iso_and_lifetime();test_owner_retained_through_delivery();test_rejected_iso_and_allocation();test_removal_interest_and_late_delivery();test_retirement_before_completion_wake();test_zero_count_iso_transactions();test_iso_callbacks_follow_acceptance_per_pipe();test_rejected_iso_has_no_ordered_position();test_reentrant_iso_enqueue_and_nested_delivery();test_reverse_abort_retains_until_ordered_drain();test_zero_count_request_is_ordered_with_payload();test_first_too_old_observation_preserves_order_and_is_bounded();
+    test_measurement_interpretation();test_measurement_bank_lifetimes_and_budget();test_measurement_stream_clock_and_fault();
+    test_measurement_pending_fault_freezes_without_waiting();
+    test_measurement_cookie_exhaustion();
     last_interface=nil;
     puts("NativeHostUSB: mapped backing, offsets/wrap, worker callbacks, pending ranges, abort/drain, removal interest and lifetime mocks passed.");
     return 0;
