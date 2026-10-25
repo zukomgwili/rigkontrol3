@@ -448,7 +448,7 @@ AddressSanitizer and UndefinedBehaviorSanitizer without USB or legacy execution.
   is documented but not implemented in this core. No original binary was
   executed or installed.
 
-## Faithful native ring and timing port (0.2.0, build 5)
+## Native ring and clock implementation (parity incomplete)
 
 `Driver/AudioRing.h/.c` implements NI's sample-position-addressed mode-2/G1
 output ring. `prepareMemory` (`0x59d0`, especially `0x5a5b..0x5a6b`) stores
@@ -506,10 +506,10 @@ bindings, not new audio queue policies.
 | `clipOutputSamples`: write host `firstSampleFrame` into ring | `mOutputTime` addressed `AudioRing` write, same queued backing | Exact mode-2 lane/carry/wrap/priming vectors and deferred-pointer tests. |
 | `convertInputSamples` / `readFrameList`: primary polling then positioned conversion | `mInputTime` ring reads, complete-IRP primary gate, bounded decoder ownership and atomic stereo views | Shared storage and transaction-completion updates documented; exact primary timing unproved; delayed-callback and partial-batch tests. |
 | `writeHandler` / `getCurrentSampleFrame`: completed OUT start position | Saved start position plus USB-frame time | Position and integer timestamp vectors; no completion-receipt clock fallback. |
-| `takeSimpleTimeStamp` / timestamp timer | Exact input boundary fraction; USB/host anchors refreshed at 128 ms | Initial and variable-length ring-wrap vectors; hardware drift pending. |
+| `takeSimpleTimeStamp` / timestamp timer | Exact input boundary fractions; current anchor probe every128ms | Formula vectors match; NI anchor cadence is every8 estimator ticks; .14 tracks mismatch. |
 | IOAudioEngine pause/resume panic | AudioServerPlugIn configuration handshake, preserving EP1/USB generation | SDK stop/Perform/restart ordering; host stop/restart observed in logs; sustained reliability remains open (.11). |
 | Last-output-client inactive clear | Output `StreamIsActive`; original literal wire clear | Clear bytes tested; host last-client transition equivalence pending. |
-| Kernel controller-only `ClearPipeStall(false)` | Public IOUSBHost both-end clear with interrupted-read retirement gate | Unavoidable API difference; no failed-command replay; error matrix tested. |
+| Kernel controller-only `ClearPipeStall(false)` | Public IOUSBHost both-end clear with interrupted-read retirement gate | Chosen API exposes both-end clearing only; no failed-command replay; error matrix tested. |
 | Sleep/wake wire clear and clock reset | Host audio lifecycle expected to stop/restart engine | Physical verification required, especially if host keeps I/O active; no invented EP1 wake retry. |
 
 ### Exact positions and zero timestamps
@@ -531,8 +531,13 @@ prefix before the event. A variable-size example with counts
 USB frame 1506 gives zero time **1507 ms + 125/352 ms**, sample frame 16384.
 Using nominal 16384/48000 to infer that time is incorrect.
 
-The worker refreshes actual USB-frame/host-time anchors every 128 ms with NI's
-bounded 1.1 ms boundary probe and `(new + old*1023 + 512) >> 10` smoothing.
+The current worker performs a boundary anchor probe on each 128 ms refresh.
+The Stage 1 audit found that this is **not NI's exact cadence**: original
+`timestampTimerCallback` (`0xbbb0`) updates the interval estimator every 128 ms
+but calls the boundary anchor routine only at its eight-tick condition, about
+1.024 seconds. The fractional formula and smoothing vectors do not establish
+full clock parity. Beads `.14` requires recovering and restoring the original
+start/wake/periodic counter behavior before claiming matched clocks.
 RT capture records exact boundary coordinates without USB/time-anchor work.
 Backwards timestamps are rejected. The public clock becomes valid only after
 both real output progress and an input zero event. Original format metadata
@@ -543,10 +548,15 @@ clock boundary, not an audio batch size. The current HAL maps NI's sampleOffset
 That is a host metadata binding, not the old IOAudioEngine ABI; actual host
 write-ahead and latency behavior still require validation.
 
-### Recovery and unavoidable platform substitutions
+### Recovery and current platform substitutions
 
-The original kernel IOAudioEngine/IOUSBPipe ABI cannot run inside an ARM user
-process. Its pause/resume behavior maps to the current AudioServerPlugIn host
+This implementation replaces the original kernel IOAudioEngine/IOUSBPipe
+architecture with user-process AudioServerPlugIn/IOUSBHost bindings. That is a
+structural choice whose global necessity has **not yet been established**;
+Beads `.13` Stage 2 requires a written decision before another implementation
+or timing path. Incompatibility with the chosen user process alone does not
+prove the choice was unavoidable. Within this implementation, pause/resume
+behavior maps to the current AudioServerPlugIn host
 configuration handshake: `RequestDeviceConfigurationChange` causes the host
 to stop I/O before `PerformDeviceConfigurationChange` and restart afterward
 (the SDK documents this ordering). The notification is dispatched off the USB
@@ -572,7 +582,7 @@ worker; they retain a cached run loop across publication so early retirement
 cannot cause a use-after-free. Pending storage is not freed just because a
 caller timed out. The public IOUSBHost clear-stall operation resets both ends,
 whereas NI recovery sometimes used controller-only clearing; see
-`NativeUSB.md` for that explicit necessary substitution.
+`NativeUSB.md` for the explicit difference within the chosen binding.
 
 Tests cover the production ISO/Host/HAL seams with advancing USB time, deferred
 callbacks, future sample writes into queued memory, wrap, full-IRP primary
@@ -580,6 +590,20 @@ publication, exact zero-event fractions, empty requests, original retries and
 panic delays, teardown and early completion retirement under ASan/UBSan.
 These establish software invariants. Actual controller DMA visibility, clean
 sustained guitar audio, latency and recovery are still installation/hardware
-acceptance work. Build 4 failed those checks. Version 0.2.0/build 5 is now
-installed; `HardwareValidation.md` records its limited silent run and subsequent
-physical results. A silent callback/status check alone is not audible acceptance.
+acceptance work. Build 4 failed those checks. Version 0.2.1/build 6 is now
+installed; `HardwareValidation.md` records earlier physical passes and the
+remaining late-request failure. A silent callback/status check alone is not audible acceptance.
+
+### Stage 1 parity audit boundary
+
+Beads `rigkontrol3-40h.13` contains the source-backed capability matrix and
+original symbol ledger. Confirmed gaps include additional rates and original
+44100 Hz default, per-channel input gains, direct-monitor commands (RK3 mode meanings remain
+unverified), startup
+failure/activation policies, clock cadence and priming side-effect order.
+Ordinary CoreAudio/CoreMIDI operation does not prove original NI private-client
+compatibility. Conditional firmware download is unimplemented but would be
+skipped for the verified attached release 000d. These are classified separately
+from unrelated NI models and optional Controller Editor GUI/profile work.
+No new implementation or runtime path is admitted without the recorded parity
+justification, minimum change, evidence, test threshold and stop condition.

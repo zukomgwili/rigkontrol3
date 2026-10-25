@@ -35,20 +35,20 @@ silent check reproduced repeated `kIOReturnIsoTooOld` errors and USB reconnectio
 despite successful audio callbacks. That build used a FIFO snapshot and an
 invented 4 ms output calendar; neither preserves NI's original shared ring.
 
-The now installed **0.2.0 (build 5)** restores the original data flow. Host output
+The **0.2.0 (build 5)** implementation restored the shared-ring data flow. Host output
 writes by sample position into the same mapped wire ring referenced by queued
 USB requests. Capture polls mapped completion state and reads the requested
 ring positions without consuming a FIFO. The original 64-input/128-output
 calendar, exact mode-2 byte placement, USB-anchor timestamp arithmetic and
 audio-engine recovery triggers are retained. The 64 ms USB queue horizon is
-not a measurement of guitar signal latency. The necessary current macOS
-bindings and their limits are recorded in
+not a measurement of guitar signal latency. The current macOS
+bindings and their unresolved limits are recorded in
 [the audio reconstruction](ReverseEngineering/AudioDriver.md) and
 [USB transport](ReverseEngineering/NativeUSB.md).
 
 This source requires **macOS 26.4 or later** for explicitly kernel/user-shared
-transaction lists; the test Mac runs macOS 27.0.1. All 12 installed
-build-5 files match the frozen manifest, and both bundle signatures verify.
+transaction lists; the test Mac runs macOS 27.0.1. At the build-5 checkpoint,
+all 12 installed files matched its frozen manifest and both signatures verified.
 A 20-second standard CoreAudio run with silent output and a verified 128-frame
 buffer completed 7526 callbacks and 963328 input frames, then stopped cleanly.
 A parallel 25-second, 10 Hz status watch reported generation 1 and error 0 at
@@ -88,9 +88,19 @@ traversal. Raw callbacks may arrive out of order; the binding retains their
 storage until ordered delivery. A production-engine regression demonstrates
 the previous stall and sustained progress with the ordered contract. This
 changes neither the NI queue calendar nor sample placement. Temporary,
-failure-only timing observations will distinguish the remaining live
-`IsoTooOld` cause; **build 6 is not installed or physically validated yet**.
-The ordering fix is not claimed to resolve that live error without testing.
+failure-only timing observations are included for the remaining live fault.
+**Build 6 is now installed**, with all 12 files and signatures verified. A
+120-second silent run passed, but a longer MIDI-active run failed after
+227.593 seconds. The ordering fix does not resolve that observed late request.
+
+**The primary lift-and-shift is incomplete.** Current functional successes
+cover a subset of original behavior. The Stage 1 audit also found missing
+original rates, input gain/direct-monitor controls, a clock-maintenance cadence
+difference, and unresolved client/platform contracts. The kernel-to-user-process
+architecture choice has not yet been established as the minimum required ARM
+change. Beads `rigkontrol3-40h.13` holds the canonical parity inventory, plan and
+branch-admission gates. Further implementation and runtime experiments are
+held behind that audit and a written architecture-necessity decision.
 
 ## Build and install
 

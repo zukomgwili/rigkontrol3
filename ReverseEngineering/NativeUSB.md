@@ -29,9 +29,13 @@ first audio backend supports 48 kHz stereo Float32 host data only, through
 After device-info validation and before creating the audio engine, the
 worker sends the exact RK3-specific NI initialization
 `05 00 40 40 00 00 00` (`setupTimerCallback`, `0x365d`..`0x3691`). Its purpose
-remains unknown. Actual write completion is required; the original has no
-command5 acknowledgement branch, so none is invented.
-The original controller setup then supplies the exact 33-byte
+remains unknown. Current startup requires write completion, although original
+setup does not test that send result. No command5 acknowledgement is invented.
+This stronger failure gate is a current policy awaiting parity review, not a
+proven ARM requirement.
+Current startup also merges the separate NIHardwareAgent controller lifecycle
+into connection readiness. That unconditional activation is not part of the
+original audio-only setup and awaits parity review. It supplies the exact 33-byte
 `0f 02 <31 zero bytes>` configuration, subscribes with `0b 01 02 05`, and
 queries current digital inputs with command04. Connection generation is
 published only after a bounded report4 of at least three bytes arrives.
@@ -68,7 +72,7 @@ turning every pipe error into a whole-device reconnection:
 
 NI recovery uses `ClearPipeStall(false)`, a controller-only operation. The
 public current IOUSBHost `clearStall` resets controller **and endpoint** and
-aborts affected pending I/O. This is a necessary API substitution: the binding
+aborts affected pending I/O. Within the chosen binding, the retirement logic
 tracks an interrupted read, preserves any successful report already delivered,
 and permits exactly one replacement read after retirement. It does not reset
 the device or replay failed MIDI/LED data. Startup still clears both ends, as
@@ -174,7 +178,7 @@ and valid-clock startup gating versus timeout/cancellation/engine errors.
 It also verifies pinned retirement and successful/timed-out close waiting.
 
 These checks establish software invariants. Earlier versions demonstrated capture and controller input, but build 4 failed
-audio continuity. Version 0.2.0/build 5 is now installed and has completed a
-limited silent run with stable sampled status. Current physical results are
+audio continuity. Version 0.2.1/build 6 is now installed; a longer silent run
+still fails with a late request. Current physical results are
 recorded in `HardwareValidation.md`; that run alone does not establish clean
 audible signal flow, DMA timing, DIN MIDI or recovery.

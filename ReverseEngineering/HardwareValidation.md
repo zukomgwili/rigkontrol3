@@ -387,5 +387,55 @@ frames, submission timing, kernel transaction timestamp, framework/worker/
 ordered-delivery times, and engine cursor/queue state. These observations do
 not alter NI ring placement, queue depth, calendar or recovery policy. They
 are temporary and must be removed after the causal correction is verified.
-Build 6 is not installed; build 5 remains the active system version. Beads
-`.11` tracks the live fault and `.12` the proven ordering bug.
+Build 6 was subsequently installed as recorded below. Beads `.11` tracks
+the live fault and `.12` the corrected ordering bug.
+
+## Installed 0.2.1/build 6 and planning gate
+
+The user installed build 6 in session:
+
+`/Library/Application Support/RigKontrol3/NativeDriverBackups/20261025T013609Z-bde94829`
+
+Independent checks confirmed the exact 12-file installed inventory, expected
+identities, ARM64 slices, version 0.2.1/build 6 and valid signatures. The frozen
+manifest SHA-256 is
+`e2ee623f97af89c24d94e38d7061b460c3e1bd51dd13052d57b9937ecaa400e6`.
+The root-only session journal itself remained unreadable. CoreAudio restarted;
+the RK3 remote driver process was PID 98416 and audio device 237, generation 1.
+
+The first 128-frame silent run passed 120.012 observed seconds: 44881 callbacks,
+5744768 input frames, RMS 0.009566, peak 0.108374, stop 0. A longer silent run
+with MIDI active failed after 227.593 observed seconds at status tick 2154,
+with `IsoTooOld` and loss of AUDIO_RUNNING while USB generation stayed 1.
+It stopped cleanly with 85222 callbacks, 10908416 frames, RMS 0.007900,
+peak 0.136124 and stop 0. Short green intervals do not establish stability.
+
+The tagged trace at **01:44:26.829676 UTC** identifies IN endpoint 0x82,
+slot 44, requeue target 3342140 and post-rejection current frame 3342160.
+The target equals source request 3342076 plus NI's original 64-frame horizon.
+With independently read Mach timebase 125/3, the intervals are:
+
+| Observation | Elapsed |
+| --- | ---: |
+| Observed transaction timestamp to framework callback | 11.395792 ms |
+| Framework callback entry to worker block entry | 54.539625 ms |
+| Worker entry to ordered delivery | 0.000083 ms |
+| Ordered delivery to enqueue entry | 0.003208 ms |
+| Enqueue entry to return | 17.702292 ms |
+
+The request was 20 frames late at the post-rejection query. The ready FIFO was
+empty and the decoder guard available; consumed epochs showed the input had
+been processed. This event does not exhibit the corrected FIFO dependency
+cycle. The transaction timestamp is an observed completion timestamp, not
+proof of exact wire time. The 54.54 ms interval includes raw-handler execution,
+publication and worker servicing; it does not distinguish blocking, CPU work
+or descheduling. The 17.70 ms API interval is wall time, not measured CPU time.
+A nonprivileged stack-sampling attempt was denied; no administrator sampling,
+QoS change, queue tuning or new driver change followed.
+
+After the user's instruction to prioritize the lift-and-shift plan, diagnostic
+MIDI client 99411 and timing-log stream 98726 were identified and stopped.
+No audible helper is running. The installed driver remains in place.
+Beads `rigkontrol3-40h.13` now gates further implementation and runtime paths
+with an original-to-ARM inventory and written platform-necessity decision.
+Full parity and stability remain incomplete.
