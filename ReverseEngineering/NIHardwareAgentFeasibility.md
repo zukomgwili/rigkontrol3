@@ -10,6 +10,12 @@ They do not yet establish the complete CFMessagePort envelope, connection
 lifecycle or a buildable native agent. No implementation, application launch,
 hardware operation or security change was made by this research.
 
+Follow-on research in **rigkontrol3-40h.19** now records the original
+[IPC framing and OS-port lifecycle](NIIPCTransport.md), including exact
+CFData bytes, message ID, timeouts, ownership and observed local teardown.
+The transport gaps below describe the earlier feasibility checkpoint; full
+frontend handshake, identity, native build and acceptance remain open.
+
 The requirement remains NI's original frontend protocol and RK3 functionality,
 including automatic recognition. A native adaptation inside the agent may
 change the necessary driver-discovery boundary; it may not replace NI's
