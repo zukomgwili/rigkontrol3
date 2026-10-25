@@ -1,0 +1,13 @@
+# Retained kernel declaration probe — compile-only checkpoint
+
+Result: **FAIL at installed-header compilation; stopped**. This is not a driver implementation, package, load experiment or proof of ARM impossibility.
+
+The own declaration-only C++ translation unit retains IOAudioDevice/Engine subclass shapes and original-style IOUserClient sync/async selector hooks, with override checks. Typed member-pointer static assertions select the installed modern kernel ISO transaction-list and asynchronous bulk io overloads, clearStall(bool), selectAlternateSetting and retained copyPipe. It defines no function bodies, IOService matching personalities, method implementations or replacement ABI.
+
+Actual selected SDK: macOS27.0 under Xcode.app. Compiler: Apple clang21.0.0 (clang-2100.3.34.2). Target arm64e-apple-macos27.0; -DKERNEL=1 -mkernel -fapple-kext, no RTTI/exceptions. Full exact invocation and all selected header hashes are in evidence.json; stdout/stderr preserved verbatim in syntax.log. No diagnostic suppression, fabricated types, private macro, alternate target, added SDK/KDK or disabled checks were used.
+
+The syntax invocation exits1 with12 errors: IOPMDriverAssertionID, IOPMDriverAssertionType and IOPMDriverAssertionLevel are unknown at RootDomain.h267–321 and IOUSBHostDevice.h506. RootDomain includes the installed Kernel.framework IOPMAssertionTypes.h, but that35-line header contains only license/guards/stdint/mach imports and none of those typedefs. This is an actual selected-header completeness gap, not an NI vtable/ARM instruction error. No probe-class override/member-pointer diagnostics are reported, but the entire translation unit failed, so no partial green or complete typed compile is claimed.
+
+104 warnings are retained, including explicit IOAudioEngine/Device and kernel IOUSBHost deprecation notices and missing-override warnings from SDK headers. They were not turned off. No object was produced because the only compiler action was -fsyntax-only; no linking, bundle, signing, install/load, execution, USB/client/system service, account, policy or security change occurred. Repository/worktree files and Beads were not changed by this probe.
+
+Stop condition: report the exact SDK gap. Further isolated-header probes, a matching KDK/toolchain acquisition or source adaptation would need their own bounded disposition; do not fabricate missing declarations to portray this as successful compilation. Even a future successful declaration/object compile would establish only particular header/compiler acceptance, not NI automatic discovery, selector parity, PAC/vtable runtime compatibility, timing, signing or SIP-enabled loading eligibility.

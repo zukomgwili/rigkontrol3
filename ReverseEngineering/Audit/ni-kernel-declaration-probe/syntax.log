@@ -1,0 +1,891 @@
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:30:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:142:4: warning: IOAudioEngine is deprecated use <CoreAudio/AudioServerPlugIn.h> instead. [-W#warnings]
+  142 |                 #warning IOAudioEngine is deprecated use <CoreAudio/AudioServerPlugIn.h> instead.
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:496:18: warning: 'init' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  496 |     virtual bool init(OSDictionary *properties ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:702:15: note: overridden virtual function is here
+  702 |         virtual bool init( OSDictionary * dictionary = NULL ) APPLE_KEXT_OVERRIDE;
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:30:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:504:18: warning: 'free' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  504 |     virtual void free( ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:712:15: note: overridden virtual function is here
+  712 |         virtual void free( void ) APPLE_KEXT_OVERRIDE;
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:30:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:510:25: warning: 'getWorkLoop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  510 |     virtual IOWorkLoop *getWorkLoop() const;
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1156:23: note: overridden virtual function is here
+ 1156 |         virtual IOWorkLoop * getWorkLoop() const;
+      |                              ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:30:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:527:18: warning: 'start' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  527 |     virtual bool start(IOService *provider ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:616:15: note: overridden virtual function is here
+  616 |         virtual bool start( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:30:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:562:18: warning: 'stop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  562 |     virtual void stop(IOService *provider ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:622:15: note: overridden virtual function is here
+  622 |         virtual void stop( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:30:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:571:18: warning: 'registerService' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  571 |     virtual void registerService(IOOptionBits options = 0 ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:599:15: note: overridden virtual function is here
+  599 |         virtual void registerService( IOOptionBits options = 0 );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:30:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:595:22: warning: 'newUserClient' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  595 |     virtual IOReturn newUserClient(task_t task, void *securityID, UInt32 type, IOUserClient **handler ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1460:19: note: overridden virtual function is here
+ 1460 |         virtual IOReturn newUserClient( task_t owningTask, void * securityID,
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:30:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioEngine.h:596:22: warning: 'newUserClient' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  596 |     virtual IOReturn newUserClient(task_t task, void *securityID, UInt32 type, OSDictionary *properties, IOUserClient **handler ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1456:19: note: overridden virtual function is here
+ 1456 |         virtual IOReturn newUserClient( task_t owningTask, void * securityID,
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:118:5: warning: 'AudioIOFunction' is deprecated: first deprecated in macOS 10.10 [-Wdeprecated-declarations]
+  118 |     AudioIOFunction                             *audioIOFunctions;
+      |     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:74:24: note: 'AudioIOFunction' has been explicitly marked deprecated here
+   74 |     typedef IOReturn (*AudioIOFunction)(const void *mixBuf, void *sampleBuf, UInt32 firstSampleFrame, UInt32 numSampleFrames, const IOAudioStreamFormat *streamFormat, IOAudioStream *audioStream) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:236:18: warning: 'free' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  236 |     virtual void free() AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:712:15: note: overridden virtual function is here
+  712 |         virtual void free( void ) APPLE_KEXT_OVERRIDE;
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:238:18: warning: 'stop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  238 |     virtual void stop(IOService *provider) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:622:15: note: overridden virtual function is here
+  622 |         virtual void stop( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:240:25: warning: 'getWorkLoop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  240 |     virtual IOWorkLoop *getWorkLoop() const;
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1156:23: note: overridden virtual function is here
+ 1156 |         virtual IOWorkLoop * getWorkLoop() const;
+      |                              ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:35:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioStream.h:242:22: warning: 'setProperties' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  242 |     virtual IOReturn setProperties(OSObject *properties) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:651:19: note: overridden virtual function is here
+  651 |         virtual IOReturn setProperties( OSObject * properties );
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:132:4: warning: IOAudioDevice is deprecated use <CoreAudio/AudioServerPlugIn.h> instead. [-W#warnings]
+  132 |                 #warning IOAudioDevice is deprecated use <CoreAudio/AudioServerPlugIn.h> instead.
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:200:19: warning: 'setAggressiveness' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  200 |         virtual IOReturn setAggressiveness(unsigned long type, unsigned long newLevel ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                          ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1788:19: note: overridden virtual function is here
+ 1788 |         virtual IOReturn setAggressiveness(
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:300:18: warning: 'init' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  300 |     virtual bool init(OSDictionary *properties ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:702:15: note: overridden virtual function is here
+  702 |         virtual bool init( OSDictionary * dictionary = NULL ) APPLE_KEXT_OVERRIDE;
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:314:18: warning: 'free' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  314 |     virtual void free( ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:712:15: note: overridden virtual function is here
+  712 |         virtual void free( void ) APPLE_KEXT_OVERRIDE;
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:329:18: warning: 'start' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  329 |     virtual bool start(IOService *provider ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:616:15: note: overridden virtual function is here
+  616 |         virtual bool start( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:344:18: warning: 'stop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  344 |     virtual void stop(IOService *provider ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:622:15: note: overridden virtual function is here
+  622 |         virtual void stop( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:345:18: warning: 'willTerminate' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  345 |     virtual bool willTerminate(IOService *provider, IOOptionBits options ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:431:15: note: overridden virtual function is here
+  431 |         virtual bool willTerminate( IOService * provider, IOOptionBits options );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:398:25: warning: 'getWorkLoop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  398 |     virtual IOWorkLoop *getWorkLoop() const AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1156:23: note: overridden virtual function is here
+ 1156 |         virtual IOWorkLoop * getWorkLoop() const;
+      |                              ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:2:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/audio/IOAudioDevice.h:487:22: warning: 'setPowerState' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  487 |     virtual IOReturn setPowerState(unsigned long powerStateOrdinal, IOService *device ) AVAILABLE_MAC_OS_X_VERSION_10_4_AND_LATER_BUT_DEPRECATED_IN_MAC_OS_X_VERSION_10_10;
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1914:19: note: overridden virtual function is here
+ 1914 |         virtual IOReturn setPowerState(
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:125:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:230:18: warning: 'free' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  230 |     virtual void free();
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/libkern/c++/OSObject.h:287:15: note: overridden virtual function is here
+  287 |         virtual void free();
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:126:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostStream.h:65:18: warning: 'free' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   65 |     virtual void free();
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:230:18: note: overridden virtual function is here
+  230 |     virtual void free();
+      |                  ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:126:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostStream.h:71:22: warning: 'abort' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   71 |     virtual IOReturn abort(IOOptionBits options = kAbortAsynchronous, IOReturn withError = kIOReturnAborted, IOService* forClient = NULL);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:299:22: note: overridden virtual function is here
+  299 |     virtual IOReturn abort(IOOptionBits options = kAbortAsynchronous, IOReturn withError = kIOReturnAborted, IOService* forClient = NULL);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:126:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostStream.h:89:22: warning: 'io' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   89 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, IOUSBHostCompletion* completion, uint32_t completionTimeoutMs = 0);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:379:22: note: overridden virtual function is here
+  379 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, IOUSBHostCompletion* completion, uint32_t completionTimeoutMs = 0);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:126:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostStream.h:95:22: warning: 'io' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+   95 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, uint32_t& bytesTransferred, uint32_t completionTimeoutMs = 0);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:390:22: note: overridden virtual function is here
+  390 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, uint32_t& bytesTransferred, uint32_t completionTimeoutMs = 0);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:126:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostStream.h:112:22: warning: 'closeGated' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  112 |     virtual IOReturn closeGated();
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:350:22: note: overridden virtual function is here
+  350 |     virtual IOReturn closeGated();
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:126:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostStream.h:113:22: warning: 'destroyGated' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  113 |     virtual IOReturn destroyGated();
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:244:22: note: overridden virtual function is here
+  244 |     virtual IOReturn destroyGated();
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:126:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostStream.h:115:22: warning: 'abortGated' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  115 |     virtual IOReturn abortGated(IOOptionBits options, IOReturn withError, IOService* forClient);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:352:22: note: overridden virtual function is here
+  352 |     virtual IOReturn abortGated(IOOptionBits options, IOReturn withError, IOService* forClient);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:202:18: warning: 'free' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  202 |     virtual void free();
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:230:18: note: overridden virtual function is here
+  230 |     virtual void free();
+      |                  ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:212:22: warning: 'abort' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  212 |     virtual IOReturn abort(IOOptionBits options = kAbortAsynchronous, IOReturn withError = kIOReturnAborted, IOService* forClient = NULL);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:299:22: note: overridden virtual function is here
+  299 |     virtual IOReturn abort(IOOptionBits options = kAbortAsynchronous, IOReturn withError = kIOReturnAborted, IOService* forClient = NULL);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:215:22: warning: 'openGated' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  215 |     virtual IOReturn openGated();
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:238:22: note: overridden virtual function is here
+  238 |     virtual IOReturn openGated();
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:216:22: warning: 'closeGated' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  216 |     virtual IOReturn closeGated();
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:350:22: note: overridden virtual function is here
+  350 |     virtual IOReturn closeGated();
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:217:22: warning: 'destroyGated' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  217 |     virtual IOReturn destroyGated();
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:244:22: note: overridden virtual function is here
+  244 |     virtual IOReturn destroyGated();
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:218:22: warning: 'abortGated' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  218 |     virtual IOReturn abortGated(IOOptionBits options, IOReturn withError, IOService* forClient);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:352:22: note: overridden virtual function is here
+  352 |     virtual IOReturn abortGated(IOOptionBits options, IOReturn withError, IOService* forClient);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:219:20: warning: 'getOutstandingIO' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  219 |     virtual UInt32 getOutstandingIO(IOService* forClient);
+      |                    ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:322:20: note: overridden virtual function is here
+  322 |     virtual UInt32 getOutstandingIO(IOService* forClient);
+      |                    ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:220:20: warning: 'adjustOutstandingIO' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  220 |     virtual UInt32 adjustOutstandingIO(IOService* forClient, SInt32 increment);
+      |                    ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:325:20: note: overridden virtual function is here
+  325 |     virtual UInt32 adjustOutstandingIO(IOService* forClient, SInt32 increment);
+      |                    ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:450:22: warning: 'io' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  450 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, IOUSBHostCompletion* completion, uint32_t completionTimeoutMs = 0);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:379:22: note: overridden virtual function is here
+  379 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, IOUSBHostCompletion* completion, uint32_t completionTimeoutMs = 0);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:457:22: warning: 'io' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  457 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, uint32_t& bytesTransferred, uint32_t completionTimeoutMs = 0);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:390:22: note: overridden virtual function is here
+  390 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, uint32_t& bytesTransferred, uint32_t completionTimeoutMs = 0);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:219:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:471:22: warning: 'io' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  471 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, IOUSBHostBundledCompletion* completion, uint32_t completionTimeoutMs = 0);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostIOSource.h:409:22: note: overridden virtual function is here
+  409 |     virtual IOReturn io(IOMemoryDescriptor* dataBuffer, uint32_t dataBufferLength, IOUSBHostBundledCompletion* completion, uint32_t completionTimeoutMs = 0);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+In file included from /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:230:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:267:2: error: unknown type name 'IOPMDriverAssertionID'
+  267 |         IOPMDriverAssertionID createPMAssertion(
+      |         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:268:3: error: unknown type name 'IOPMDriverAssertionType'
+  268 |                 IOPMDriverAssertionType whichAssertionsBits,
+      |                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:269:3: error: unknown type name 'IOPMDriverAssertionLevel'
+  269 |                 IOPMDriverAssertionLevel assertionLevel,
+      |                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:283:2: error: unknown type name 'IOPMDriverAssertionID'
+  283 |         IOPMDriverAssertionID createPMAssertionWithOptions(
+      |         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:284:3: error: unknown type name 'IOPMDriverAssertionType'
+  284 |                 IOPMDriverAssertionType whichAssertionsBits,
+      |                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:285:3: error: unknown type name 'IOPMDriverAssertionLevel'
+  285 |                 IOPMDriverAssertionLevel assertionLevel,
+      |                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:300:31: error: unknown type name 'IOPMDriverAssertionID'
+  300 |         IOReturn setPMAssertionLevel(IOPMDriverAssertionID assertionID, IOPMDriverAssertionLevel assertionLevel);
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:300:66: error: unknown type name 'IOPMDriverAssertionLevel'
+  300 |         IOReturn setPMAssertionLevel(IOPMDriverAssertionID assertionID, IOPMDriverAssertionLevel assertionLevel);
+      |                                                                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:315:2: error: unknown type name 'IOPMDriverAssertionLevel'
+  315 |         IOPMDriverAssertionLevel getPMAssertionLevel(IOPMDriverAssertionType whichAssertionBits);
+      |         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:315:47: error: unknown type name 'IOPMDriverAssertionType'
+  315 |         IOPMDriverAssertionLevel getPMAssertionLevel(IOPMDriverAssertionType whichAssertionBits);
+      |                                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/pwr_mgt/RootDomain.h:321:30: error: unknown type name 'IOPMDriverAssertionID'
+  321 |         IOReturn releasePMAssertion(IOPMDriverAssertionID releaseAssertion);
+      |                                     ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:254:18: warning: 'start' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  254 |     virtual bool start(IOService* provider);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:616:15: note: overridden virtual function is here
+  616 |         virtual bool start( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:256:18: warning: 'stop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  256 |     virtual void stop(IOService* provider);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:622:15: note: overridden virtual function is here
+  622 |         virtual void stop( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:258:22: warning: 'messageClients' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  258 |     virtual IOReturn messageClients(UInt32 type, void* argument = 0, vm_size_t argSize = 0);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1414:19: note: overridden virtual function is here
+ 1414 |         virtual IOReturn messageClients( UInt32 type,
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:506:5: error: unknown type name 'IOPMDriverAssertionID'
+  506 |     IOPMDriverAssertionID   _externalDevicePowerAssertion;
+      |     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:341:18: warning: 'attach' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  341 |     virtual bool attach(IOService* provider);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1135:15: note: overridden virtual function is here
+ 1135 |         virtual bool attach( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:342:18: warning: 'start' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  342 |     virtual bool start(IOService* provider);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:254:18: note: overridden virtual function is here
+  254 |     virtual bool start(IOService* provider);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:343:18: warning: 'registerService' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  343 |     virtual void registerService(IOOptionBits options = 0);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:599:15: note: overridden virtual function is here
+  599 |         virtual void registerService( IOOptionBits options = 0 );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:344:18: warning: 'terminate' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  344 |     virtual bool terminate(IOOptionBits options = 0);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:690:15: note: overridden virtual function is here
+  690 |         virtual bool terminate( IOOptionBits options = 0 );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:345:18: warning: 'stop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  345 |     virtual void stop(IOService* provider);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:256:18: note: overridden virtual function is here
+  256 |     virtual void stop(IOService* provider);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:346:18: warning: 'free' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  346 |     virtual void free(void);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:712:15: note: overridden virtual function is here
+  712 |         virtual void free( void ) APPLE_KEXT_OVERRIDE;
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:348:18: warning: 'compareProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  348 |     virtual bool compareProperty(OSDictionary* matching, const char* key);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1105:15: note: overridden virtual function is here
+ 1105 |         virtual bool compareProperty(   OSDictionary   * matching,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:349:18: warning: 'compareProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  349 |     virtual bool compareProperty(OSDictionary* matching, const OSString* key);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1114:15: note: overridden virtual function is here
+ 1114 |         virtual bool compareProperty(   OSDictionary   * matching,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:350:18: warning: 'matchPropertyTable' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  350 |     virtual bool matchPropertyTable(OSDictionary* table, SInt32* score);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:776:15: note: overridden virtual function is here
+  776 |         virtual bool matchPropertyTable( OSDictionary * table,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:351:18: warning: 'matchPropertyTable' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  351 |     virtual bool matchPropertyTable(OSDictionary* table);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:779:15: note: overridden virtual function is here
+  779 |         virtual bool matchPropertyTable( OSDictionary * table );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:353:22: warning: 'setProperties' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  353 |     virtual IOReturn setProperties(OSObject* properties);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:651:19: note: overridden virtual function is here
+  651 |         virtual IOReturn setProperties( OSObject * properties );
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:363:18: warning: 'open' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  363 |     virtual bool open(IOService* forClient, IOOptionBits options = 0, void* arg = 0);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:634:15: note: overridden virtual function is here
+  634 |         virtual bool open(   IOService *       forClient,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:364:18: warning: 'handleOpen' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  364 |     virtual bool handleOpen(IOService* forClient, IOOptionBits options, void* arg);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:662:15: note: overridden virtual function is here
+  662 |         virtual bool handleOpen(    IOService *   forClient,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:365:18: warning: 'handleIsOpen' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  365 |     virtual bool handleIsOpen(const IOService* forClient) const;
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:681:15: note: overridden virtual function is here
+  681 |         virtual bool handleIsOpen(  const IOService * forClient ) const;
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:373:18: warning: 'close' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  373 |     virtual void close(IOService* forClient, IOOptionBits options = 0);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:644:15: note: overridden virtual function is here
+  644 |         virtual void close(  IOService *       forClient,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:374:18: warning: 'handleClose' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  374 |     virtual void handleClose(IOService* forClient, IOOptionBits options);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:672:15: note: overridden virtual function is here
+  672 |         virtual void handleClose(   IOService *       forClient,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:376:22: warning: 'newUserClient' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  376 |     virtual IOReturn newUserClient(task_t owningTask, void* securityID, UInt32 type, IOUserClient** handler);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1460:19: note: overridden virtual function is here
+ 1460 |         virtual IOReturn newUserClient( task_t owningTask, void * securityID,
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:378:22: warning: 'message' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  378 |     virtual IOReturn message(UInt32 type, IOService* provider,  void* argument = 0);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1391:19: note: overridden virtual function is here
+ 1391 |         virtual IOReturn message( UInt32 type, IOService * provider,
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:380:25: warning: 'stringFromReturn' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  380 |     virtual const char* stringFromReturn(IOReturn code);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1480:23: note: overridden virtual function is here
+ 1480 |         virtual const char * stringFromReturn( IOReturn rtn );
+      |                              ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:382:18: warning: 'setProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  382 |     virtual bool setProperty(const OSSymbol* aKey, OSObject*   anObject);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:298:15: note: overridden virtual function is here
+  298 |         virtual bool setProperty(const OSSymbol * aKey,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:383:18: warning: 'setProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  383 |     virtual bool setProperty(const OSString* aKey, OSObject*   anObject);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:309:15: note: overridden virtual function is here
+  309 |         virtual bool setProperty(const OSString * aKey, OSObject * anObject);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:384:18: warning: 'setProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  384 |     virtual bool setProperty(const char*     aKey, OSObject*   anObject);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:318:15: note: overridden virtual function is here
+  318 |         virtual bool setProperty(const char * aKey, OSObject * anObject);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:385:18: warning: 'setProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  385 |     virtual bool setProperty(const char*     aKey, const char* aString);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:327:15: note: overridden virtual function is here
+  327 |         virtual bool setProperty(const char * aKey, const char * aString);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:386:18: warning: 'setProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  386 |     virtual bool setProperty(const char*     aKey, bool        aBoolean);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:336:15: note: overridden virtual function is here
+  336 |         virtual bool setProperty(const char * aKey, bool aBoolean);
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:388:18: warning: 'setProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  388 |     virtual bool setProperty(const char* aKey, unsigned long long aValue, unsigned int aNumberOfBits);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:346:15: note: overridden virtual function is here
+  346 |         virtual bool setProperty( const char *       aKey,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:389:18: warning: 'setProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  389 |     virtual bool setProperty(const char* aKey, void*                  bytes,  unsigned int length);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IORegistryEntry.h:358:15: note: overridden virtual function is here
+  358 |         virtual bool setProperty( const char *       aKey,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:425:27: warning: 'addPowerChild' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  425 |     virtual IOReturn      addPowerChild(IOService* theChild);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1839:19: note: overridden virtual function is here
+ 1839 |         virtual IOReturn addPowerChild( IOService * theChild );
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:426:27: warning: 'removePowerChild' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  426 |     virtual IOReturn      removePowerChild(IOPowerConnection* theChild);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1845:19: note: overridden virtual function is here
+ 1845 |         virtual IOReturn removePowerChild( IOPowerConnection * theChild );
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:427:27: warning: 'powerStateWillChangeTo' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  427 |     virtual IOReturn      powerStateWillChangeTo(IOPMPowerFlags capabilities, unsigned long stateNumber, IOService* whatDevice);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1960:19: note: overridden virtual function is here
+ 1960 |         virtual IOReturn powerStateWillChangeTo(
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:428:27: warning: 'setPowerState' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  428 |     virtual IOReturn      setPowerState(unsigned long stateNumber, IOService* whatDevice);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1914:19: note: overridden virtual function is here
+ 1914 |         virtual IOReturn setPowerState(
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:429:27: warning: 'powerStateDidChangeTo' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  429 |     virtual IOReturn      powerStateDidChangeTo(IOPMPowerFlags capabilities, unsigned long stateNumber, IOService* whatDevice);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1974:19: note: overridden virtual function is here
+ 1974 |         virtual IOReturn powerStateDidChangeTo(
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:430:27: warning: 'initialPowerStateForDomainState' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  430 |     virtual unsigned long initialPowerStateForDomainState(IOPMPowerFlags domainState);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1941:24: note: overridden virtual function is here
+ 1941 |         virtual unsigned long initialPowerStateForDomainState( IOPMPowerFlags domainState );
+      |                               ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:431:27: warning: 'PMstop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  431 |     virtual void          PMstop(void);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1646:15: note: overridden virtual function is here
+ 1646 |         virtual void PMstop( void );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:5:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostDevice.h:472:22: warning: 'powerChangeDone' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  472 |     virtual void     powerChangeDone(unsigned long stateNumber);
+      |                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:2034:15: note: overridden virtual function is here
+ 2034 |         virtual void powerChangeDone( unsigned long stateNumber );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:220:25: warning: 'attach' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  220 |     virtual bool        attach(IOService* provider);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1135:15: note: overridden virtual function is here
+ 1135 |         virtual bool attach( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:221:25: warning: 'start' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  221 |     virtual bool        start(IOService* provider);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:616:15: note: overridden virtual function is here
+  616 |         virtual bool start( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:222:25: warning: 'terminate' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  222 |     virtual bool        terminate(IOOptionBits options = 0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:690:15: note: overridden virtual function is here
+  690 |         virtual bool terminate( IOOptionBits options = 0 );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:223:25: warning: 'stop' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  223 |     virtual void        stop(IOService* provider);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:622:15: note: overridden virtual function is here
+  622 |         virtual void stop( IOService * provider );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:224:25: warning: 'free' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  224 |     virtual void        free();
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:712:15: note: overridden virtual function is here
+  712 |         virtual void free( void ) APPLE_KEXT_OVERRIDE;
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:226:18: warning: 'compareProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  226 |     virtual bool compareProperty(OSDictionary* matching, const char* key);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1105:15: note: overridden virtual function is here
+ 1105 |         virtual bool compareProperty(   OSDictionary   * matching,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:227:18: warning: 'compareProperty' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  227 |     virtual bool compareProperty(OSDictionary* matching, const OSString* key);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1114:15: note: overridden virtual function is here
+ 1114 |         virtual bool compareProperty(   OSDictionary   * matching,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:228:18: warning: 'matchPropertyTable' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  228 |     virtual bool matchPropertyTable(OSDictionary* table, SInt32* score);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:776:15: note: overridden virtual function is here
+  776 |         virtual bool matchPropertyTable( OSDictionary * table,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:229:18: warning: 'matchPropertyTable' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  229 |     virtual bool matchPropertyTable(OSDictionary* table);
+      |                  ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:779:15: note: overridden virtual function is here
+  779 |         virtual bool matchPropertyTable( OSDictionary * table );
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:247:25: warning: 'open' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  247 |     virtual bool        open(IOService* forClient, IOOptionBits options = 0, void* arg = 0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:634:15: note: overridden virtual function is here
+  634 |         virtual bool open(   IOService *       forClient,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:255:25: warning: 'close' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  255 |     virtual void        close(IOService* forClient, IOOptionBits options = 0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:644:15: note: overridden virtual function is here
+  644 |         virtual void close(  IOService *       forClient,
+      |                      ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:257:25: warning: 'newUserClient' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  257 |     virtual IOReturn    newUserClient(task_t owningTask, void* securityID, UInt32 type, IOUserClient** handler);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1460:19: note: overridden virtual function is here
+ 1460 |         virtual IOReturn newUserClient( task_t owningTask, void * securityID,
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:259:25: warning: 'message' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  259 |     virtual IOReturn    message(UInt32 type, IOService* provider,  void* argument = 0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1391:19: note: overridden virtual function is here
+ 1391 |         virtual IOReturn message( UInt32 type, IOService * provider,
+      |                          ^
+In file included from /private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:6:
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:261:25: warning: 'stringFromReturn' overrides a member function but is not marked 'override' [-Winconsistent-missing-override]
+  261 |     virtual const char* stringFromReturn(IOReturn code);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/IOService.h:1480:23: note: overridden virtual function is here
+ 1480 |         virtual const char * stringFromReturn( IOReturn rtn );
+      |                              ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:36:42: warning: 'IOUSBHostPipe' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   36 | using KernelIso = IOReturn (IOUSBHostPipe::*)(IOMemoryDescriptor *, IOUSBHostIsochronousTransaction *, uint32_t, uint64_t, IOOptionBits, IOUSBHostIsochronousTransactionCompletion *);
+      |                                          ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:144:7: note: 'IOUSBHostPipe' has been explicitly marked deprecated here
+  144 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostPipe : public IOUSBHostIOSource
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:37:43: warning: 'IOUSBHostPipe' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   37 | using KernelBulk = IOReturn (IOUSBHostPipe::*)(IOMemoryDescriptor *, uint32_t, IOUSBHostCompletion *, uint32_t);
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:144:7: note: 'IOUSBHostPipe' has been explicitly marked deprecated here
+  144 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostPipe : public IOUSBHostIOSource
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:38:44: warning: 'IOUSBHostPipe' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   38 | using KernelClear = IOReturn (IOUSBHostPipe::*)(bool);
+      |                                            ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:144:7: note: 'IOUSBHostPipe' has been explicitly marked deprecated here
+  144 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostPipe : public IOUSBHostIOSource
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:39:47: warning: 'IOUSBHostInterface' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   39 | using KernelAlt = IOReturn (IOUSBHostInterface::*)(uint8_t);
+      |                                               ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:184:7: note: 'IOUSBHostInterface' has been explicitly marked deprecated here
+  184 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostInterface : public IOUSBInterface
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:40:24: warning: 'IOUSBHostPipe' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   40 | using KernelCopyPipe = IOUSBHostPipe *(IOUSBHostInterface::*)(uint8_t);
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:144:7: note: 'IOUSBHostPipe' has been explicitly marked deprecated here
+  144 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostPipe : public IOUSBHostIOSource
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:40:58: warning: 'IOUSBHostInterface' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   40 | using KernelCopyPipe = IOUSBHostPipe *(IOUSBHostInterface::*)(uint8_t);
+      |                                                          ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:184:7: note: 'IOUSBHostInterface' has been explicitly marked deprecated here
+  184 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostInterface : public IOUSBInterface
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:41:71: warning: 'IOUSBHostPipe' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   41 | static_assert(__is_same(decltype(static_cast<KernelIso>(&IOUSBHostPipe::io)), KernelIso), "typed modern ISO overload");
+      |                                                                       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:144:7: note: 'IOUSBHostPipe' has been explicitly marked deprecated here
+  144 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostPipe : public IOUSBHostIOSource
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:42:72: warning: 'IOUSBHostPipe' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   42 | static_assert(__is_same(decltype(static_cast<KernelBulk>(&IOUSBHostPipe::io)), KernelBulk), "typed modern bulk overload");
+      |                                                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:144:7: note: 'IOUSBHostPipe' has been explicitly marked deprecated here
+  144 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostPipe : public IOUSBHostIOSource
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:43:48: warning: 'IOUSBHostPipe' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   43 | static_assert(__is_same(decltype(&IOUSBHostPipe::clearStall), KernelClear), "typed controller-only choice");
+      |                                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostPipe.h:144:7: note: 'IOUSBHostPipe' has been explicitly marked deprecated here
+  144 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostPipe : public IOUSBHostIOSource
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:44:53: warning: 'IOUSBHostInterface' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   44 | static_assert(__is_same(decltype(&IOUSBHostInterface::selectAlternateSetting), KernelAlt), "typed alternate setting");
+      |                                                     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:184:7: note: 'IOUSBHostInterface' has been explicitly marked deprecated here
+  184 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostInterface : public IOUSBInterface
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/rk3-kernel-declaration-a_rj2n_i/declarations.cpp:45:53: warning: 'IOUSBHostInterface' is deprecated: Use USBDriverKit [-Wdeprecated-declarations]
+   45 | static_assert(__is_same(decltype(&IOUSBHostInterface::copyPipe), KernelCopyPipe), "typed retained pipe lookup");
+      |                                                     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostInterface.h:184:7: note: 'IOUSBHostInterface' has been explicitly marked deprecated here
+  184 | class __IOUSBHOSTFAMILY_DEPRECATED IOUSBHostInterface : public IOUSBInterface
+      |       ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/IOKit/usb/IOUSBHostFamily.h:108:38: note: expanded from macro '__IOUSBHOSTFAMILY_DEPRECATED'
+  108 | #define __IOUSBHOSTFAMILY_DEPRECATED __kpi_deprecated("Use USBDriverKit")
+      |                                      ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:238:32: note: expanded from macro '__kpi_deprecated'
+  238 | #define __kpi_deprecated(_msg) __deprecated_msg(_msg)
+      |                                ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/Kernel.framework/Headers/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+104 warnings and 12 errors generated.

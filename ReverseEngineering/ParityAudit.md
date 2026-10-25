@@ -1,5 +1,10 @@
 # NI Rig Kontrol 3 → ARM parity audit
 
+**2026-10-25 requirement update:** the user requires original NI automatic
+recognition. `.17` is reopened; the current public HAL/CoreMIDI baseline does
+not provide the NI IOKit discovery/UserClient contract. The historical selection
+below is not the completion decision. See [current binding status](KernelBindingDecision.md).
+
 Audit date: **2026-10-25 UTC**. Source checkpoint: **f540463**. Authoritative
 record: **rigkontrol3-40h.13** in Beads; this report and the JSON ledgers are
 reviewable evidence exports. They are not a second task tracker.

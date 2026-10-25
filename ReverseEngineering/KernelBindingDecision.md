@@ -5,14 +5,20 @@ Scope: one bounded, read-only primary-source pass before coding or security
 changes. This note supplements [the parity audit](ParityAudit.md). The final
 decision below incorporates the user's subsequent firm security constraint.
 
-**Decision: SIP stays enabled. The personal kernel-testing path is excluded.
-Use the existing public AudioServerPlugIn + IOUSBHost + CoreMIDI binding as
-the deployment baseline for this Mac.** It already loads under the observed
-conditions and requires no new kernel-signing, MDM or startup-policy route.
-This selects the least additional deployment change among the examined
-permitted routes; it does not claim the fewest source changes, an ARM mandate,
-full NI compatibility or stable audio. All original applicable NI functionality
-remains required.
+**Reopened decision — original NI automatic recognition is required.** The
+user explicitly confirmed this on2026-10-25. The current AudioServerPlugIn /
+IOUSBHost / CoreMIDI baseline does not publish NI's IOKit service/UserClient ABI
+and cannot satisfy that requirement by itself. `.17` is blocked on the required compatibility/deployment gates; the earlier
+public-baseline decision below is historical and superseded for completion.
+SIP remains enabled. No new kernel/DriverKit provider, signing, installation,
+account enrollment or security action is admitted merely by reopening it.
+
+The most direct structural candidate is the retained NI kernel device/engine
+and actual named service/UserClient with modern kernel USB. Its SIP-enabled
+build/deployment prerequisites are not currently satisfied. DriverKit has
+useful RPC mechanisms, but a supported unchanged NI class-discovery path is
+not established. Neither a user-class name nor generic MIDI success settles
+that requirement. See the current assessment at the end of this report.
 
 ## Availability and admission are separate
 
@@ -157,7 +163,7 @@ These are local observations, not assertions that signing authorization can
 never be acquired. No private key was read/exported, no identity requested,
 and no signing, notarization or load operation was performed.
 
-## Final constrained binding decision
+## Historical constrained public-baseline decision (superseded)
 
 The user's answer is authoritative: **“Keep SIP enabled; do not pursue that
 testing path.”** The SIP-disabled/Permissive personal-development route is
@@ -213,3 +219,97 @@ This pass changed research/status documentation and Beads only. Driver source,
 installed bundles, firmware, toolchains and security settings were not changed.
 Official-source findings above retain their evidence date and limits; no load
 experiment of a reconstructed kernel driver occurred.
+
+## Current recognition requirement and eligibility assessment
+
+The confirmed target includes automatic recognition by original NI software,
+not only manually mapped CoreMIDI controls. Original MIDI `Start@0x2490` passes
+`de_caiaq_driver_NIUSBAudioDevice` to `listenToService@0x2380`, which uses
+`IOServiceMatching` and first-match/termination notifications. `deviceAdded`
+opens the returned service with type0 and asks selector3 for110-byte device
+information; its async MIDI subscription uses selector0. These C/ASM exports
+remain local and are pinned by the [MIDI ledger](Audit/midi280-function-coverage.json).
+The agent's selected `OSImpl::connect` exports establish type0 open, selectors3
+and18 (110-byte info/14-byte spec), configuration, raw-event subscriptions and
+LED output. They do not separately establish that agent's discovery class, or
+modern Guitar Rig's complete automatic-recognition chain. Those need actual
+unmodified-client acceptance; the report does not infer them from old MIDI code.
+
+DriverKit can implement `IOServiceOpen`/`NewUserClient`, external methods,
+retained async actions and client-memory descriptors. The problem is therefore
+not blanket absence of IOKit RPC. Its documented kernel `IOClass` and user
+implementation `IOUserClass` are distinct; `SetName` changes a registry name.
+The public XNU reference uses `metaCast` for ordinary class matching. No
+supported alias from the old NI kernel class to an identically named user
+implementation was established. This is a concrete unresolved compatibility
+contract, not proof that DriverKit can never provide one.
+[Apple IOClass](https://developer.apple.com/documentation/bundleresources/information-property-list/ioclass),
+[Apple IOUserClass](https://developer.apple.com/documentation/bundleresources/information-property-list/iouserclass),
+[Apple XNU class matching](https://github.com/apple-oss-distributions/xnu/blob/main/iokit/Kernel/IOService.cpp#L7346-L7352).
+
+Unchanged NI clients also cannot acquire a new entitlement merely because we
+create a dext. DriverKit's broad user-client-access entitlement has distinct
+development and distribution paths; valid profiles/capabilities and client
+checks matter. Ordinary Apple Development signing alone proves none of those
+capabilities. This does not reopen an unapproved compatibility-provider project.
+[Apple DriverKit entitlement process](https://developer.apple.com/documentation/driverkit/requesting-entitlements-for-driverkit-development),
+[Apple DTS user-client access clarification](https://developer.apple.com/forums/thread/774297).
+
+Current local preflight: macOS27.0.1/build26A434, arm64, SIP enabled; one valid
+Apple Development identity, no Developer ID identity found by the normal-user
+unsandboxed query; DEP and MDM enrollment both No. Five existing provisioning profiles decoded
+successfully using normal macOS trust services; none grants base DriverKit,
+USB DriverKit or AudioDriverKit capabilities. A sandbox-only decode failure
+was discarded and is not evidence about profile contents. The user explicitly
+confirmed that neither a kext-enabled signing identity nor access to an
+MDM-managed test deployment is available. No KDK directory is installed.
+The current SDK does contain IOAudio and kernel IOUSBHost headers; their
+presence is not a successful build or loading approval. No key was exported
+and no profile/security setting changed.
+
+For the retained-kernel candidate, Apple's published rules distinguish
+kext-enabled signing, startup authorization/AuxKC/restart and deprecated-KPI
+admission. With SIP retained, the published deprecation-policy exception is
+MDM approval. Reduced Security alone supplies neither the certificate nor that
+exception. Future account eligibility is not declared impossible, but the user confirmed
+that the signing and managed-test capabilities are currently unavailable.
+[Apple deprecated-KPI policy](https://developer.apple.com/support/kernel-extensions),
+[Apple signed-kext startup requirements](https://support.apple.com/en-gb/guide/security/sec8e454101b/web),
+[Apple kext certificate requirement](https://developer.apple.com/forums/thread/52353).
+
+### Compile-only preflight result
+
+The [declaration probe](Audit/ni-kernel-declaration-probe/declarations.cpp)
+defines no function bodies or driver personality. It tests retained class
+shapes and typed modern kernel USB calls using arm64e, the installed27.0 SDK,
+`KERNEL`, `-mkernel`, `-fapple-kext` and `-fsyntax-only`. The invocation failed:
+12 missing `IOPMDriverAssertionID/Type/Level` declarations in the selected
+headers, with104 warnings retained. No object, link, package, signature or load
+result exists. No substitute types, private macro, downloaded header or
+suppressed checks were used. The installed35-line assertion-types header does
+not declare those types, although RootDomain/IOUSBHostDevice require them.
+[Exact invocation and header identities](Audit/ni-kernel-declaration-probe/evidence.json).
+
+This result establishes a particular installed-header completeness failure.
+It does not retract the actual ARM IOAudio symbol inventory, establish global
+ARM impossibility, prove a matching KDK could not resolve it, or certify any
+partial class/runtime/PAC equivalence. Further source/build preparation needs
+a coherent kernel development header set and a separately recorded disposition.
+
+### Current work status
+
+The interrupted native direct-monitor extension is preserved on
+`codex/rk3-native-monitor-checkpoint-20261025` at
+`711d76cdf6228186cf44a359950c834d5a758965`. It is explicitly unaccepted: strict
+focused compilation and the HAL fixture passed, but the expanded fake-USB
+fixture hung and was terminated. It is not installed, independently accepted,
+or the NI private interface. Its seven files were restored exactly to the
+reviewed main baseline; the original wire/selector evidence remains in Beads.
+Further HAL power/display extension implementation stopped before source edits.
+
+No remaining card is closed on these audits. `.17` and the parent are blocked:
+the actual NI service/user-client route, coherent build environment,
+signing/loading access and unmodified NI target-client acceptance remain
+unsatisfied. Native functionality is not an accepted substitute for those
+gates, and unavailable credentials or security changes are not inferred as consent. All audio, control, settings, display, rate,
+power, physical DIN/pedal and stable-operation requirements remain in scope.

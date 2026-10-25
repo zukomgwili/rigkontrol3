@@ -82,9 +82,12 @@ turning every pipe error into a whole-device reconnection:
 | Other read error | Record error and rearm. |
 | Write PipeStalled / USBTransactionTimeout (`0xe0004051`) | Clear IN then OUT, return failure once; do not replay the command. |
 
-NI recovery uses `ClearPipeStall(false)`, a controller-only operation. The
-public current IOUSBHost `clearStall` resets controller **and endpoint** and
-aborts affected pending I/O. Within the chosen binding, the retirement logic
+NI recovery uses `ClearPipeStall(false)`: it also completes outstanding I/O
+and clears the controller halt/toggle, while suppressing the device endpoint
+ClearFeature request. The current public IOUSBHost `clearStall` aborts affected
+pending I/O and resets endpoint halt/toggle; it exposes no Boolean to suppress
+that device request. The missing choice is not whether to retain/drain pending
+buffers. Modern kernel `clearStall(bool)` retains that original choice. Within the chosen binding, the retirement logic
 tracks an interrupted read, preserves any successful report already delivered,
 and permits exactly one replacement read after retirement. It does not reset
 the device or replay failed MIDI/LED data. Startup still clears both ends, as

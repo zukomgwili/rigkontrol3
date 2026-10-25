@@ -1,5 +1,10 @@
 # Rig Kontrol 3 — native ARM driver reconstruction
 
+**Current requirement:** original NI automatic recognition remains incomplete.
+The current HAL/CoreMIDI driver does not publish NI's original IOKit interface.
+The [binding decision](ReverseEngineering/KernelBindingDecision.md) is reopened;
+source/build/deployment gates remain unresolved, with SIP kept enabled.
+
 Fresh Apple Silicon drivers reconstructed from Native Instruments’ original
 Intel **NIUSBAudioDriver 2.8.0** and **NIUSBMIDIDriver 2.8.0**. The earlier
 controller app, MainStage setup and third-party backend are retired on this
