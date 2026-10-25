@@ -29,10 +29,22 @@ first audio backend supports 48 kHz stereo Float32 host data only, through
 After device-info validation and before creating the audio engine, the
 worker sends the exact RK3-specific NI initialization
 `05 00 40 40 00 00 00` (`setupTimerCallback`, `0x365d`..`0x3691`). Its purpose
-remains unknown. Current startup requires write completion, although original
-setup does not test that send result. No command5 acknowledgement is invented.
-This stronger failure gate is a current policy awaiting parity review, not a
-proven ARM requirement.
+remains unknown. The `.16` source correction attempts it once and ignores a
+nonfatal write failure, matching NI's unchecked send at `0x3691`. No command5
+acknowledgement is invented. Actual removal/cancellation still stops use of
+the interface; a pending timed-out write keeps its storage and prevents a later
+command from overwriting it. These are ownership guards, not new NI retries.
+
+The same source correction restores the unchecked startup-clear/read policy:
+`initUSB` attempts IN then OUT clears at `0x0d84/0x0d99` without testing their
+returns, and `initHardware` attempts the initial Read64 at `0x1038` before its
+one INFO command at `0x123f`. Recoverable clear rejection no longer skips the
+other clear; recoverable read-admission rejection no longer suppresses INFO.
+A rejected read owns no pending buffer and remains suspended. The current
+bounded information-reply wait still cannot manufacture a reply or readiness.
+That wait and fixed topology admission remain unresolved A7 differences; they
+are not claimed ARM requirements. These corrections pass actual-module offline
+regressions and sanitizers; installed build8 is unchanged.
 Current startup also merges the separate NIHardwareAgent controller lifecycle
 into connection readiness. That unconditional activation is not part of the
 original audio-only setup and awaits parity review. It supplies the exact 33-byte

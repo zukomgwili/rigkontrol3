@@ -612,9 +612,9 @@ publication, exact zero-event fractions, empty requests, original retries and
 panic delays, teardown and early completion retirement under ASan/UBSan.
 These establish software invariants. Actual controller DMA visibility, clean
 sustained guitar audio, latency and recovery are still installation/hardware
-acceptance work. Build 4 failed those checks. Version 0.2.1/build 6 is now
-installed; `HardwareValidation.md` records earlier physical passes and the
-remaining late-request failure. A silent callback/status check alone is not audible acceptance.
+acceptance work. Build 4 failed those checks. The installed baseline is now0.2.3/build8;
+`rigkontrol3-40h.11` records its bounded measurement and remaining late-request
+failure. The `.16` source corrections below have not been installed. A silent callback/status check alone is not audible acceptance.
 
 ### Completed audit and implementation boundary
 
@@ -623,14 +623,45 @@ bounded Architecture Necessity Decision. [The audit report](ParityAudit.md)
 links 67 capability rows and exhaustive 241-audio/132-MIDI classification ledgers.
 The primary port remains incomplete. `.17` resolves the deployment choice;
 [the selected-binding contract report](SelectedBindingContracts.md) records
-`.6`/`.2` entry dispositions. Candidate0.2.2 restores clock maintenance and
-callable software input gain, with installed acceptance still pending.
+`.6`/`.2` entry dispositions. Clock maintenance and callable software input
+gain are implemented; the `.11` transport fault remains unresolved.
 Additional rates/original44100Hz default, direct-monitor commands (RK3 mode
-meanings unverified), startup/activation policies and priming side-effect order
-remain separate missing/different functions.
+meanings unverified), information-readiness and controller-activation policies
+remain missing/different functions. `.16`'s priming/startup source correction
+below is offline-validated, not installed acceptance.
 Ordinary CoreAudio/CoreMIDI operation does not prove original NI private-client
 compatibility. Conditional firmware download is unimplemented but would be
 skipped for the verified attached release 000d. These are classified separately
 from unrelated NI models and optional Controller Editor GUI/profile work.
 No new implementation or runtime path is admitted without the recorded parity
 justification, minimum change, evidence, test threshold and stop condition.
+
+### Priming order correction (`rigkontrol3-40h.16`)
+
+NI `readHandler@0x7a80` scans, reserves an OUT slot, attempts IN at `0x7e35`
+and OUT at `0x7e40`, then unlocks. Only afterward does callback index63 end
+priming: reset OUT search/input/micro cursors, clear priming at `0x7e92`, then
+scan again at `0x7ea8`. Neither submission result gates this phase. Aborted
+callbacks and OUT-slot exhaustion exit before it. The pinned C/ASM references
+are in the existing [audio ledger](Audit/audio280-function-coverage.json).
+
+The corrected schedule emits an intent while keeping priming enabled. After
+both submission attempts the ISO owner applies the original reset/clear/scan
+phase. It discards initial input epochs while preserving fresh requeued data.
+A recoverable rejection, including newly requested TooOld panic, still reaches
+the phase. Actual removed ownership and invalid/busy list preparation retain
+safe pre-submit stops rather than using unavailable storage.
+
+The chosen host/worker binding also has RT capture: it can read the schedule
+priming flag under the decoder guard. Therefore the worker attempts that guard
+once after submission; if busy, one private pending flag retains the due phase
+before any later ready input. It never spins or holds the guard across USB.
+Stop/new-stream setup clears that intent. This synchronization is required by
+this selected thread binding, not evidence that all ARM ports need this design.
+
+Actual-module regressions first failed on premature priming at enqueue, then
+passed for normal and rejected IN/OUT attempts, fresh input, deferred guard
+ownership, new panic, stop/restart, abort/exhaustion/malformed/list-busy stops,
+and existing reversed raw-completion tests. They establish software order and
+ownership, not a cause or resolution of `.11`, physical timing parity or full
+`.16` completion. A7 readiness and A9 merged activation remain open.

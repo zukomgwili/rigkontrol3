@@ -45,7 +45,7 @@ struct rk3_native_audio_iso {
     uint64_t output_sample[OUTPUT_SLOTS],output_usb_frame[OUTPUT_SLOTS];
     uint32_t output_bytes[OUTPUT_SLOTS];
     size_t pending_count;
-    bool usb_released,servicing,submit_diagnostic_logged;
+    bool usb_released,servicing,submit_diagnostic_logged,priming_pending;
     NIAudioClock ni_clock;
     mach_timebase_info_data_t timebase;
     NIAudioClockProvider clock_provider;
@@ -292,6 +292,25 @@ static bool submit_output(rk3_native_audio_iso *e,const NIAudioOutputPlan *p) {
     }
     return true;
 }
+/* NI7e51..7ea8: after IN then OUT attempts, reset search/cursors, clear
+ * priming and scan again. RT ownership can defer this due phase, never drop
+ * it or let another ready callback overtake it. No USB call under this guard. */
+static bool finish_priming(rk3_native_audio_iso *e) {
+    if(!e->priming_pending)return true;
+    if(!atomic_load(&e->running)){e->priming_pending=false;return true;}
+    if(atomic_flag_test_and_set_explicit(&e->processing,memory_order_acquire))return false;
+    /* Discard only the initial epoch; already-published requeues stay live. */
+    for(unsigned i=0;i<INPUT_SLOTS;++i)if(e->input_epoch[i]==1)e->consumed_epoch[i]=1;
+    (void)ni_audio_schedule_finish_priming(&e->schedule);
+    e->read_slot=0;e->read_microframe=0;
+    (void)ni_audio_decoder_set_priming(&e->decoder,false);
+    (void)ni_audio_ring_set_priming(&e->output_ring,false);
+    e->priming_pending=false;
+    atomic_store_explicit(&e->pcm_ready,true,memory_order_release);
+    consume_input_locked(e);
+    atomic_flag_clear_explicit(&e->processing,memory_order_release);
+    return true;
+}
 void rk3_native_audio_iso_service(rk3_native_audio_iso *e) {
     if(!e||e->servicing||!atomic_load(&e->running)) return;
     e->servicing=true;
@@ -299,6 +318,8 @@ void rk3_native_audio_iso_service(rk3_native_audio_iso *e) {
     if(!atomic_load(&e->running)){e->servicing=false;return;}
     clear_inactive_output(e);
     publish_zero_events(e);
+    /* A previously due phase also completes when IN set recoverable panic. */
+    if(!finish_priming(e)){e->servicing=false;return;}
     while(e->ready_count&&!atomic_load(&e->panic_pending)&&atomic_load(&e->running)) {
         if(atomic_flag_test_and_set_explicit(&e->processing,memory_order_acquire)) break;
         unsigned slot=e->ready_inputs[e->ready_head];
@@ -323,21 +344,13 @@ void rk3_native_audio_iso_service(rk3_native_audio_iso *e) {
             atomic_flag_clear_explicit(&e->processing,memory_order_release);break;
         }
         e->ready_head=(e->ready_head+1)%INPUT_SLOTS;--e->ready_count;
-        if(plan.priming_ended) {
-            /* Initial priming traffic is discarded even if its callback was
-             * delivered late. Do not decode an old epoch twice after a wrap. */
-            for(unsigned i=0;i<INPUT_SLOTS;++i)if(e->input_epoch[i]==1)e->consumed_epoch[i]=1;
-            e->read_slot=0;e->read_microframe=0;
-            (void)ni_audio_decoder_set_priming(&e->decoder,false);
-            (void)ni_audio_ring_set_priming(&e->output_ring,false);
-            atomic_store_explicit(&e->pcm_ready,true,memory_order_release);
-            consume_input_locked(e);
-        }
         bool prepared=prepare_input_locked(e,slot);
         atomic_flag_clear_explicit(&e->processing,memory_order_release);
         if(!prepared) break;
         (void)submit_input(e,slot,plan.requeued_input_frame);
         if(atomic_load(&e->running)) (void)submit_output(e,&plan); /* original queueIn then queueOut */
+        if(plan.ends_priming)e->priming_pending=true;
+        if(!finish_priming(e))break;
     }
     publish_zero_events(e);
     e->servicing=false;
@@ -451,7 +464,7 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
        ni_audio_decoder_init(&e->decoder,NI_AUDIO_MODE_2,1,NI_AUDIO_RING_PACKED_BYTES,true)!=NI_AUDIO_OK)return kIOReturnBadArgument;
     memset(e->input_data,0,INPUT_SLOTS*TRANSFER_BYTES);memset(e->input_pcm,0,sizeof(e->input_pcm));
     memset(e->input_epoch,0,sizeof(e->input_epoch));memset(e->consumed_epoch,0,sizeof(e->consumed_epoch));
-    e->submit_diagnostic_logged=false;
+    e->submit_diagnostic_logged=false;e->priming_pending=false;
     e->ready_head=0;e->ready_count=0;e->zero_head=0;e->zero_count=0;e->initial_timestamp_queued=false;e->read_slot=0;e->read_microframe=0;e->published_frames=0;e->wire_bytes=0;
     for(unsigned i=0;i<NI_AUDIO_RING_FRAME_COUNT;++i)atomic_store(&e->capture_samples[i],0);
     atomic_store(&e->fatal_error,0);atomic_store(&e->panic_error,0);atomic_store(&e->last_output_error,0);
@@ -497,7 +510,7 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
     return kIOReturnIOError;
 }
 void rk3_native_audio_iso_stop(rk3_native_audio_iso *e) {
-    if(!e)return;atomic_store(&e->running,false);atomic_store(&e->pcm_ready,false);
+    if(!e)return;e->priming_pending=false;atomic_store(&e->running,false);atomic_store(&e->pcm_ready,false);
     ni_audio_clock_stop(&e->ni_clock);
     if(!e->usb_released){(void)rk3_host_abort(e->interface,e->input_pipe);(void)rk3_host_abort(e->interface,e->output_pipe);}
 }

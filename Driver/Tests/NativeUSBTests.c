@@ -117,8 +117,10 @@ static CFRunLoopSourceRef deferred_source;
 static rk3_usb_session *controller_test_session;
 static uint8_t controller_commands[4][64];
 static size_t controller_lengths[4], controller_count, controller_reply_length;
-static unsigned int controller_fail_at;
+static unsigned int controller_fail_at, controller_stop_kind;
+static IOReturn controller_failure_result = kIOReturnIOError;
 static unsigned int command_io_trace[16], command_io_trace_length, reset_failure;
+static IOReturn reset_result, command_read_result;
 enum { COMMAND_RESET_IN = 1, COMMAND_RESET_OUT, COMMAND_SOURCE, COMMAND_READ, COMMAND_WRITE };
 static void trace_command(unsigned int event) {
     assert(command_io_trace_length < 16);
@@ -129,7 +131,7 @@ static int32_t fake_read(void *self, uint8_t pipe, void *buffer, size_t size,
     (void)self; (void)pipe; (void)buffer; (void)callback; (void)context; (void)timeout;
     assert(size == 64); ++read_arms;
     if (command_io_session != NULL) trace_command(COMMAND_READ);
-    return kIOReturnSuccess;
+    return command_read_result;
 }
 static int32_t fake_write(void *self, uint8_t pipe, const void *buffer, size_t size,
                           uint32_t no_data, RK3HostBulkCompletion callback, void *context) {
@@ -140,13 +142,18 @@ static int32_t fake_write(void *self, uint8_t pipe, const void *buffer, size_t s
     if (command_io_session != NULL) {
         trace_command(COMMAND_WRITE);
         assert(size == 1 && ((const uint8_t *)buffer)[0] == RK3_COMMAND_INFO);
-        command_io_session->info_received = true;
+        if (command_io_session->pending) command_io_session->info_received = true;
     }
     if (controller_test_session != NULL) {
         assert(controller_count < 4);
         controller_lengths[controller_count] = size;
         memcpy(controller_commands[controller_count++], buffer, size);
-        if (controller_fail_at == controller_count) return kIOReturnIOError;
+        if (controller_fail_at == controller_count) return controller_failure_result;
+        if (controller_count == 1) {
+            if (controller_stop_kind == 1) controller_test_session->active_request->cancelled = true;
+            if (controller_stop_kind == 2) atomic_store(&controller_test_session->closing,true);
+            if (controller_stop_kind == 3) controller_test_session->stopping_io = true;
+        }
         if (((const uint8_t *)buffer)[0] == RK3_COMMAND_DIGITAL) {
             controller_test_session->read_buffer[0] = RK3_COMMAND_DIGITAL;
             controller_test_session->read_buffer[1] = 0xa5;
@@ -445,31 +452,94 @@ static IOReturn fake_reset_pipe(void *self, UInt8 pipe) {
     (void)self;
     unsigned int event = pipe == 4 ? COMMAND_RESET_IN : COMMAND_RESET_OUT;
     assert(pipe == 4 || pipe == 7); trace_command(event);
-    return reset_failure == event ? kIOReturnIOError : kIOReturnSuccess;
+    return reset_failure == event ? reset_result : kIOReturnSuccess;
 }
 static void command_pipe_reset_test(void) {
+    /* NI initUSB ignores both clear results: a recoverable IN failure must
+     * still attempt OUT, one reader and one INFO command, without replay. */
     for (unsigned int failure = 0; failure <= 2; ++failure) {
         rk3_usb_session session; initialize(&session);
         RK3HostInterface functions = {0};
         functions.clear_stall = fake_reset_pipe;
         functions.bulk_read = fake_read; functions.bulk_write = fake_write;
-        RK3HostInterface *interface = &functions;
-        session.interface = interface; session.opened = true;
+        session.interface = &functions; session.opened = true;
         session.command_in = 4; session.command_out = 7; session.run_loop = CFRunLoopGetCurrent();
-        command_io_session = &session; command_io_trace_length = 0; reset_failure = failure;
+        command_io_session = &session; command_io_trace_length = 0; reset_failure = failure; reset_result = kIOReturnIOError;
         unsigned int before_reads = read_arms, before_writes = command_writes;
         bool result = start_command_io(&session);
-        if (failure == 0) {
-            const unsigned int expected[] = {COMMAND_RESET_IN,COMMAND_RESET_OUT,COMMAND_READ,COMMAND_WRITE};
-            assert(result && command_io_trace_length == 4 && memcmp(command_io_trace, expected, sizeof(expected)) == 0);
-            assert(read_arms == before_reads + 1 && command_writes == before_writes + 1 && session.pending);
-        } else {
-            assert(!result && command_io_trace_length == failure);
-            assert(!session.pending && read_arms == before_reads && command_writes == before_writes);
-            assert(session.status.error_code == kIOReturnIOError);
+        const unsigned int expected[] = {COMMAND_RESET_IN,COMMAND_RESET_OUT,COMMAND_READ,COMMAND_WRITE};
+        assert(result && command_io_trace_length == 4 && memcmp(command_io_trace, expected, sizeof(expected)) == 0);
+        assert(read_arms == before_reads + 1 && command_writes == before_writes + 1 && session.pending);
+        assert(!session.transport_failed && session.status.state != RK3_USB_FAILED);
+        assert(session.status.error_code == (failure ? kIOReturnIOError : 0));
+        command_io_session = NULL; finish(&session);
+    }
+    const IOReturn fatal[] = {kIOReturnNoDevice,kIOReturnNotAttached,kIOReturnNotOpen,(IOReturn)UINT32_C(0xe000404e)};
+    for (size_t index = 0; index < sizeof(fatal) / sizeof(*fatal); ++index) {
+        for (unsigned int failure = 1; failure <= 2; ++failure) {
+            rk3_usb_session session; initialize(&session);
+            RK3HostInterface functions = {.clear_stall=fake_reset_pipe,.bulk_read=fake_read,.bulk_write=fake_write};
+            session.interface=&functions; session.opened=true; session.command_in=4; session.command_out=7;
+            session.run_loop=CFRunLoopGetCurrent();
+            command_io_session=&session; command_io_trace_length=0; reset_failure=failure; reset_result=fatal[index];
+            unsigned int before_reads=read_arms,before_writes=command_writes;
+            assert(!start_command_io(&session) && command_io_trace_length==failure);
+            assert(!session.pending && read_arms==before_reads && command_writes==before_writes);
+            assert(session.transport_failed && session.status.state==RK3_USB_FAILED && session.status.error_code==fatal[index]);
+            command_io_session=NULL; finish(&session);
         }
-        command_io_session = NULL;
-        finish(&session);
+    }
+}
+
+static void fresh_command_connection_test(void) {
+    /* disconnect leaves these worker flags set. A newly opened interface must
+     * initialize its lease before checking clears, not inherit the old stop. */
+    for(unsigned int scenario=0;scenario<4;++scenario) {
+        rk3_usb_session session;initialize(&session);
+        RK3HostInterface functions={.clear_stall=fake_reset_pipe,.bulk_read=fake_read,.bulk_write=fake_write};
+        session.interface=&functions;session.opened=true;session.command_in=4;session.command_out=7;
+        session.run_loop=CFRunLoopGetCurrent();session.stopping_io=session.transport_failed=true;
+        Request active={.deadline=seconds_now()+1,.cancelled=scenario==2};session.active_request=&active;
+        if(scenario==1)atomic_store(&session.closing,true);
+        command_io_session=&session;command_io_trace_length=0;reset_failure=scenario==3?1:0;reset_result=kIOReturnNoDevice;
+        unsigned int before_reads=read_arms,before_writes=command_writes;
+        bool ready=start_command_io(&session);
+        const unsigned int expected[]={COMMAND_RESET_IN,COMMAND_RESET_OUT,COMMAND_READ,COMMAND_WRITE};
+        if(scenario==0) {
+            assert(ready&&command_io_trace_length==4&&memcmp(command_io_trace,expected,sizeof(expected))==0);
+            assert(read_arms==before_reads+1&&command_writes==before_writes+1&&session.pending);
+            assert(!session.stopping_io&&!session.transport_failed);
+        } else {
+            assert(!ready&&command_io_trace_length==(scenario==3?1u:0u));
+            assert(!session.pending&&!session.pending_write&&read_arms==before_reads&&command_writes==before_writes);
+            if(scenario==3)assert(session.transport_failed&&session.status.error_code==kIOReturnNoDevice);
+        }
+        command_io_session=NULL;finish(&session);
+    }
+}
+
+static void initial_reader_rejection_test(void) {
+    const IOReturn failures[] = {kIOReturnIOError,kIOReturnNoDevice,kIOReturnNotAttached,kIOReturnNotOpen,(IOReturn)UINT32_C(0xe000404e)};
+    for (size_t index=0;index<sizeof(failures)/sizeof(*failures);++index) {
+        rk3_usb_session session;initialize(&session);
+        RK3HostInterface functions={.clear_stall=fake_reset_pipe,.bulk_read=fake_read,.bulk_write=fake_write};
+        session.interface=&functions;session.opened=true;session.command_in=4;session.command_out=7;
+        session.run_loop=CFRunLoopGetCurrent();
+        /* A recoverable submission failure does not supply an INFO response.
+         * Keep the current bounded readiness policy visible, not a false pass. */
+        Request active={.deadline=seconds_now()+0.05};session.active_request=&active;
+        command_io_session=&session;command_io_trace_length=0;reset_failure=0;command_read_result=failures[index];
+        unsigned int before_reads=read_arms,before_writes=command_writes;
+        assert(!start_command_io(&session));
+        const unsigned int expected[]={COMMAND_RESET_IN,COMMAND_RESET_OUT,COMMAND_READ,COMMAND_WRITE};
+        unsigned int expected_count=index==0?4:3;
+        assert(command_io_trace_length==expected_count&&memcmp(command_io_trace,expected,expected_count*sizeof(*expected))==0);
+        assert(read_arms==before_reads+1&&command_writes==before_writes+(index==0?1u:0u));
+        assert(!session.pending&&!session.pending_write&&session.command_suspended&&!session.info_received);
+        assert(session.status.info.input_channels==0&&session.status.info.output_channels==0);
+        assert(session.transport_failed==(index!=0));
+        assert(session.status.error_code==(index==0?ETIMEDOUT:failures[index]));
+        command_io_session=NULL;command_read_result=0;finish(&session);
     }
 }
 
@@ -503,10 +573,13 @@ static void controller_startup_test(void) {
         RK3HostInterface *interface = &functions;
         session.interface = interface; session.opened = session.pending = true;
         controller_test_session = &session; controller_count = 0;
-        controller_fail_at = failure; controller_reply_length = 3;
-        assert(initialize_device_commands(&session) == (failure == 0));
-        assert(controller_count == (failure == 0 ? 4 : failure));
-        if (failure == 0) {
+        controller_fail_at = failure; controller_failure_result = kIOReturnIOError; controller_reply_length = 3;
+        /* setupTimerCallback0x3691 ignores command05's result. Later
+         * controller setup failures retain the unresolved A9 policy. */
+        bool ready = failure <= 1;
+        assert(initialize_device_commands(&session) == ready);
+        assert(controller_count == (ready ? 4 : failure));
+        if (ready) {
             const uint8_t audio[] = {5,0,0x40,0x40,0,0,0}, automatic[] = {11,1,2,5};
             assert(controller_lengths[0] == sizeof(audio) && memcmp(controller_commands[0], audio, sizeof(audio)) == 0);
             assert(controller_lengths[1] == 33 && controller_commands[1][0] == 15 && controller_commands[1][1] == 2);
@@ -536,6 +609,45 @@ static void controller_startup_test(void) {
     report_complete(&session, kIOReturnSuccess, 65);
     assert(session.transport_failed && session.status.error_code == EOVERFLOW);
     finish(&session);
+}
+
+static void controller_startup_lifetime_test(void) {
+    const IOReturn fatal[]={kIOReturnNoDevice,kIOReturnNotAttached,kIOReturnNotOpen,(IOReturn)UINT32_C(0xe000404e)};
+    for(size_t index=0;index<sizeof(fatal)/sizeof(*fatal);++index) {
+        rk3_usb_session session;initialize(&session);
+        RK3HostInterface functions={.bulk_write=fake_write,.bulk_read=fake_read};
+        session.interface=&functions;session.opened=session.pending=true;
+        controller_test_session=&session;controller_count=0;controller_fail_at=1;controller_failure_result=fatal[index];
+        assert(!initialize_device_commands(&session)&&controller_count==1);
+        assert(session.transport_failed&&session.status.state==RK3_USB_FAILED&&session.status.error_code==fatal[index]);
+        assert(!session.pending_write&&!session.digital_known);
+        controller_test_session=NULL;finish(&session);
+    }
+    controller_failure_result=kIOReturnIOError;controller_fail_at=0;
+    for(unsigned int stop=1;stop<=3;++stop) {
+        rk3_usb_session session;initialize(&session);
+        RK3HostInterface functions={.bulk_write=fake_write,.bulk_read=fake_read};
+        session.interface=&functions;session.opened=session.pending=true;
+        Request active={.deadline=seconds_now()+1};session.active_request=&active;
+        controller_test_session=&session;controller_count=0;controller_stop_kind=stop;
+        assert(!initialize_device_commands(&session)&&controller_count==1);
+        assert(!session.pending_write&&!session.digital_known&&!session.transport_failed);
+        controller_test_session=NULL;controller_stop_kind=0;finish(&session);
+    }
+    /* A timed-out admitted write still owns the session buffer. Ignoring
+     * command05's result must not overwrite it with a later command. */
+    rk3_usb_session session;initialize(&session);
+    RK3HostInterface functions={.bulk_write=fake_write,.bulk_read=fake_read};
+    session.interface=&functions;session.opened=session.pending=true;
+    Request active={.deadline=seconds_now()+0.01};session.active_request=&active;
+    controller_test_session=&session;controller_count=0;defer_write=true;
+    assert(!initialize_device_commands(&session)&&controller_count==1);
+    const uint8_t audio[]={5,0,0x40,0x40,0,0,0};
+    assert(session.pending_write&&deferred_write_buffer==session.write_buffer&&deferred_write_length==sizeof(audio));
+    assert(memcmp(deferred_write_buffer,audio,sizeof(audio))==0&&!session.digital_known&&!session.transport_failed);
+    deferred_write_callback(deferred_write_context,kIOReturnSuccess,deferred_write_length);
+    assert(!session.pending_write);
+    defer_write=false;controller_test_session=NULL;finish(&session);
 }
 
 typedef struct { rk3_usb_session *session; bool cancel; bool complete_after_cancel; bool read_rearmed; } DeferredEvent;
@@ -1103,7 +1215,7 @@ static void gain_generation_borrow_test(void){
     }
 }
 int main(void) {
-    gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); stop_ack_test(); controller_startup_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
+    gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
     puts("NativeUSB: NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
     return 0;
 }

@@ -40,14 +40,16 @@ static void test_original_frame_progression(void) {
     assert(plan.received_frame == 1101 && plan.requeued_input_frame == 1165 && plan.output_frame == 1165);
     assert(plan.total_bytes == 352 && plan.sample_frame == 0 && plan.output_slot == 0);
     assert(plan.segment_offset[0] == 0 && plan.segment_bytes[0] == 352 && plan.segment_bytes[1] == 0);
-    assert(state.priming && !plan.priming_ended);
+    assert(state.priming && !plan.ends_priming);
     uint32_t sample=99;
     assert(ni_audio_schedule_output_completed(&state,0,&sample) == NI_AUDIO_SCHEDULE_OK && sample == 0);
     assert(ni_audio_schedule_input_completed(&state,1,packets,&plan) == NI_AUDIO_SCHEDULE_OK);
     assert(plan.received_frame == 1102 && plan.output_frame == 1166 && plan.sample_frame == 44);
     /* Priming ends on slot 63, not an inferred number of successful callbacks. */
     assert(ni_audio_schedule_input_completed(&state,63,packets,&plan) == NI_AUDIO_SCHEDULE_OK);
-    assert(plan.priming_ended && !state.priming && state.next_output_slot == 0);
+    assert(plan.ends_priming && state.priming && state.next_output_slot == 3);
+    assert(ni_audio_schedule_finish_priming(&state) == NI_AUDIO_SCHEDULE_OK);
+    assert(!state.priming && state.next_output_slot == 0);
 }
 
 static void test_status_filter_wrap_and_exhaustion(void) {

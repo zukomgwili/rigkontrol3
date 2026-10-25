@@ -11,6 +11,10 @@
 #include <string.h>
 #include <time.h>
 
+/* Actual module, as in NativeUSBTests: deterministic ownership contention
+ * without adding a production probe or exporting private state. */
+#include "../NativeAudioISO.c"
+
 /* Hardware-free host binding. The bus advances independently of callback
  * delivery, and queued output retains the external ring instead of copying. */
 struct RK3HostInterface { unsigned references; };
@@ -52,6 +56,26 @@ static struct {
     MockTransfer *last_write;
 } mock;
 static atomic_bool block_snapshot,snapshot_entered,release_snapshot;
+static rk3_native_audio_iso *priming_observer;
+static unsigned priming_attempts[2];
+static bool hold_priming_guard,fail_priming_prepare;
+static void observe_priming_attempt(uint8_t pipe) {
+    if(!priming_observer)return;
+    rk3_native_audio_iso *e=priming_observer;
+    ++priming_attempts[pipe-1];
+    /* NI7e35/7e40 precede7e92. Both RT entry points must still see priming,
+     * including when epoch2 input0 has already been published by hardware. */
+    assert(e->schedule.priming&&e->decoder.priming&&e->output_ring.priming);
+    assert(!atomic_load(&e->pcm_ready));
+    float capture[2]={1,1},render[2]={0.5f,0.5f};
+    assert(rk3_native_audio_iso_capture_at(e,capture,0,1)==1);
+    assert(capture[0]==0&&capture[1]==0&&!e->initial_timestamp_queued);
+    assert(rk3_native_audio_iso_render_at(e,render,128,1)==1);
+    const uint8_t silent[8]={0,0,1,0,0,0,0,0};
+    assert(!memcmp((uint8_t *)rk3_host_buffer_bytes(e->wire_buffer)+128*8,silent,8));
+    if(pipe==2&&hold_priming_guard)
+        assert(!atomic_flag_test_and_set_explicit(&e->processing,memory_order_acquire));
+}
 
 static uint64_t ticks_for_ns(uint64_t nanoseconds) {
     mach_timebase_info_data_t scale;assert(mach_timebase_info(&scale) == 0);
@@ -141,6 +165,7 @@ void rk3_host_iso_list_release(RK3HostIsoList *list) {
 }
 int32_t rk3_host_iso_list_set(RK3HostIsoList *list, size_t index, uint32_t requested, uint32_t offset, bool wrap) {
     assert(index < list->count && requested <= 512);
+    if(fail_priming_prepare){fail_priming_prepare=false;return kIOReturnBusy;}
     list->entries[index]=(MockEntry){{RK3_HOST_ISO_PENDING,requested,0,0},offset,wrap};return 0;
 }
 bool rk3_host_iso_list_snapshot(const RK3HostIsoList *list, size_t index, RK3HostIsoFrame *frame) {
@@ -163,6 +188,7 @@ int32_t rk3_host_iso_enqueue(RK3HostInterface *interface, uint8_t pipe,
     assert(count > 0 && count <= 8 && first+count <= list->count);
     int32_t *failure=pipe == 1 ? &mock.fail_read : &mock.fail_write;
     if(pipe == 1)++mock.read_submissions;else ++mock.write_submissions;
+    observe_priming_attempt(pipe);
     if(pipe==1&&mock.read_failures_remaining){--mock.read_failures_remaining;return kIOReturnNoResources;}
     if(*failure){int32_t result=*failure;if(pipe==1 ? !mock.persistent_read_failure : !mock.persistent_write_failure)*failure=0;return result;}
     if(frame < mock.bus_frame)return kIOReturnIsoTooOld;
@@ -333,6 +359,74 @@ static void prime(rk3_native_audio_iso *engine) {
     rk3_native_audio_iso_service(engine); /* worker publishes the exact initial zero event */
     output_callback(0);
 }
+/* Source-derived transition order, tested at the actual enqueue call site.
+ * Errors here occur AFTER a valid boundary plan; neither USB return controls
+ * NI's postphase. RAW reverse delivery remains tested by the Host contract. */
+static void test_original_priming_transition_order(void) {
+    for(unsigned variant=0;variant<7;++variant) {
+        rk3_native_audio_iso *e=new_engine();assert(rk3_native_audio_iso_start(e)==0);
+        for(unsigned slot=0;slot<63;++slot){input_primary(slot,false);input_callback(slot,0);}
+        input_primary(0,false); /* Fresh epoch2; do not lose it with epoch1. */
+        input_primary(63,false);
+        priming_observer=e;priming_attempts[0]=priming_attempts[1]=0;
+        hold_priming_guard=variant>=4;
+        if(variant==1){mock.fail_read=kIOReturnNoResources;mock.persistent_read_failure=true;}
+        if(variant==2||variant==6)mock.fail_read=kIOReturnIsoTooOld;
+        if(variant==3)mock.fail_write=kIOReturnNoResources;
+        input_callback(63,0);
+        priming_observer=NULL;
+        assert(priming_attempts[0]==(variant==1?6:1)&&priming_attempts[1]==1);
+        if(hold_priming_guard) {
+            assert(e->schedule.priming&&!atomic_load(&e->pcm_ready));
+            unsigned reads=mock.read_submissions,writes=mock.write_submissions;
+            /* No later ready input may overtake the due transition. */
+            if(variant==4)input_callback(0,0);
+            if(variant==5)rk3_native_audio_iso_stop(e);
+            atomic_flag_clear_explicit(&e->processing,memory_order_release);
+            if(variant==5) {
+                assert(rk3_native_audio_iso_start(e)==0);
+                rk3_native_audio_iso_service(e);
+                assert(e->schedule.priming&&!atomic_load(&e->pcm_ready));
+                destroy_engine(e);continue;
+            }
+            rk3_native_audio_iso_service(e);
+            assert(mock.read_submissions==reads+(variant==4)&&mock.write_submissions==writes+(variant==4));
+        }
+        assert(!e->schedule.priming&&!e->decoder.priming&&!e->output_ring.priming);
+        assert(atomic_load(&e->pcm_ready)&&e->initial_timestamp_queued);
+        assert(e->decoder.completed_frames==48); /* The original postscan ran. */
+        if(variant!=4)assert(e->schedule.next_output_slot==0);
+        if(variant==2||variant==6){uint32_t delay;int32_t error;
+            assert(rk3_native_audio_iso_panic(e,&delay,&error)&&delay==100&&error==kIOReturnIsoTooOld);}
+        if(variant==3)assert(e->schedule.output_busy[63]);
+        float pcm[2];assert(rk3_native_audio_iso_capture_at(e,pcm,0,1)==1&&pcm[1]==0.5f);
+        const float render[2]={0.5f,0.5f};
+        assert(rk3_native_audio_iso_render_at(e,render,128,1)==1);
+        assert(((uint8_t *)rk3_host_buffer_bytes(e->wire_buffer))[128*8+3]==0x40);
+        unsigned reads=mock.read_submissions,writes=mock.write_submissions;
+        rk3_native_audio_iso_service(e);
+        assert(mock.read_submissions==reads&&mock.write_submissions==writes);
+        destroy_engine(e);
+    }
+    /* No postphase before a boundary has reached the two submission calls. */
+    for(unsigned variant=0;variant<5;++variant) {
+        rk3_native_audio_iso *e=new_engine();assert(rk3_native_audio_iso_start(e)==0);
+        for(unsigned slot=0;slot<63;++slot){input_primary(slot,false);input_callback(slot,0);}
+        input_primary(63,false);unsigned reads=mock.read_submissions,writes=mock.write_submissions;
+        if(variant==0)deliver(mock.reads+63,kIOReturnAborted);
+        if(variant==1){for(unsigned i=0;i<128;++i)e->schedule.output_busy[i]=true;input_callback(63,0);}
+        if(variant==2){mock.fail_read=kIOReturnNoDevice;mock.persistent_read_failure=true;input_callback(63,0);}
+        if(variant==3){mock.reads[63].list->entries[63*8].frame.actual=513;input_callback(63,0);}
+        /* Violated Host-list lifetime is a pre-submit ownership stop, not a
+         * recoverable USB rejection and not permission to use busy storage. */
+        if(variant==4){fail_priming_prepare=true;input_callback(63,0);}
+        assert(e->schedule.priming&&!atomic_load(&e->pcm_ready));
+        if(variant!=2)assert(mock.read_submissions==reads&&mock.write_submissions==writes);
+        else assert(!rk3_native_audio_iso_running(e)&&mock.write_submissions==writes);
+        destroy_engine(e);
+    }
+}
+
 static void test_lifted_calendar_and_deferred_dma(void) {
     rk3_native_audio_iso *engine=new_engine();prime(engine);
     const uint8_t stop[6]={9,255,255,136,0,1},start[6]={9,1,2,136,0,1};
@@ -825,6 +919,7 @@ static void test_live_rt_storage(void) {
     atomic_store(&block_snapshot,false);assert(call.frames <= 48);destroy_engine(engine);
 }
 int main(void) {
+    test_original_priming_transition_order();
     test_clock_start_order_and_idle_cadence();
     test_lifted_calendar_and_deferred_dma();test_capture_primary_and_repeatable_positions();
     test_delayed_callbacks_against_advancing_bus();test_completion_acceptance_order_binding();test_microframe_ring_wrap();

@@ -629,8 +629,14 @@ static bool initialize_device_commands(rk3_usb_session *session) {
     const uint8_t controller_configuration[33] = {0x0f, 2};
     const uint8_t controller_reports[] = {0x0b, 1, 2, 5};
     const uint8_t snapshot_command[] = {RK3_COMMAND_DIGITAL};
-    return command_worker(session, audio_initialization, sizeof(audio_initialization), COMMAND_TIMEOUT) &&
-        command_worker(session, controller_configuration, sizeof(controller_configuration), COMMAND_TIMEOUT) &&
+    /* setupTimerCallback0x3691 ignores command05's nonfatal result before
+     * engine creation. Pending write storage still blocks later admission;
+     * removal, cancellation and stopped lifetime remain binding guards. */
+    (void)command_worker(session, audio_initialization, sizeof(audio_initialization), COMMAND_TIMEOUT);
+    if (session->transport_failed || session->stopping_io || active_request_cancelled(session)) return false;
+    /* A9's merged controller activation/defaults and required digital baseline
+     * remain unresolved; this slice changes only the original command05 gate. */
+    return command_worker(session, controller_configuration, sizeof(controller_configuration), COMMAND_TIMEOUT) &&
         command_worker(session, controller_reports, sizeof(controller_reports), COMMAND_TIMEOUT) &&
         command_worker(session, snapshot_command, sizeof(snapshot_command), REPLY_TIMEOUT_MS);
 }
@@ -689,20 +695,36 @@ static bool reset_command_pipes(rk3_usb_session *session) {
      * IOUSBPipe::ClearPipeStall(true). Apple's user-space equivalent also
      * resynchronizes endpoint halt/toggle state on the device. Warm-open
      * differential hardware testing confirmed these two clears are needed. */
-    IOReturn result = rk3_host_clear_stall(session->interface, session->command_in);
-    if (result != kIOReturnSuccess) { set_error(session, result, "Cannot reset command input pipe"); return false; }
-    result = rk3_host_clear_stall(session->interface, session->command_out);
-    if (result != kIOReturnSuccess) { set_error(session, result, "Cannot reset command output pipe"); return false; }
-    return true;
+    /* initUSB ignores both returns. Keep that nonfatal failure policy while
+     * retaining modern ownership/cancellation guards before each operation. */
+    const UInt8 pipes[] = {session->command_in,session->command_out};
+    for (size_t index = 0; index < sizeof(pipes) / sizeof(*pipes); ++index) {
+        if (session->transport_failed || session->stopping_io || active_request_cancelled(session)) return false;
+        IOReturn result = rk3_host_clear_stall(session->interface, pipes[index]);
+        if (result != kIOReturnSuccess) {
+            const char *text = index == 0 ? "Cannot reset command input pipe" : "Cannot reset command output pipe";
+            if (device_lost(result)) {
+                session->transport_failed = true; set_error(session,result,text); return false;
+            }
+            command_warning(session,result,text);
+        }
+    }
+    return !session->transport_failed && !session->stopping_io && !active_request_cancelled(session);
 }
 
 static bool start_command_io(rk3_usb_session *session) {
-    if (!reset_command_pipes(session)) return false;
+    /* connect_device has opened a fresh interface. Retire the previous lease's
+     * stop/failure state before clears; preserve any failure raised by them. */
     session->stopping_io = false;
     session->command_recovering = session->recovery_clears_output = session->recovery_rearms_input = session->command_suspended = false;
     session->recovery_timed_out = false;
     session->transport_failed = false;
-    if (!arm_reader(session)) return false;
+    if (!reset_command_pipes(session)) return false;
+    /* initHardware0x1038 does not test initial Read64 admission before its
+     * one INFO attempt at0x123f. A rejected reader stays suspended; the A7
+     * bounded reply/readiness policy below is deliberately unchanged. */
+    (void)arm_reader(session);
+    if (session->transport_failed || session->stopping_io || active_request_cancelled(session)) return false;
     uint8_t command = RK3_COMMAND_INFO;
     return command_worker(session, &command, 1, REPLY_TIMEOUT_MS);
 }

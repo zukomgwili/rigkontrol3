@@ -121,12 +121,17 @@ NIAudioScheduleResult ni_audio_schedule_input_completed(NIAudioSchedule *state,
     state->output_position[slot] = next.sample_frame;
     state->next_output_slot = (slot + 1) % NI_AUDIO_OUTPUT_SLOTS;
     state->ring_cursor = (state->ring_cursor + next.total_bytes) % state->ring_bytes;
-    if (state->priming && input_slot == 63) {
-        state->priming = false;
-        state->next_output_slot = 0;
-        next.priming_ended = true;
-    }
+    /* readHandler7e35/7e40 attempts both queues before7e51..7ea8 ends
+     * priming. Planning must not expose that later phase to an RT reader. */
+    next.ends_priming = state->priming && input_slot == 63;
     *plan = next;
+    return NI_AUDIO_SCHEDULE_OK;
+}
+
+NIAudioScheduleResult ni_audio_schedule_finish_priming(NIAudioSchedule *state) {
+    if (!valid_schedule(state) || !state->priming) return NI_AUDIO_SCHEDULE_INVALID;
+    state->next_output_slot = 0;
+    state->priming = false;
     return NI_AUDIO_SCHEDULE_OK;
 }
 

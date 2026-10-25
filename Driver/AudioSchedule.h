@@ -33,7 +33,7 @@ typedef struct {
     uint32_t sample_frame;
     size_t segment_offset[2];
     size_t segment_bytes[2];
-    bool priming_ended;
+    bool ends_priming; /* Intent: finish only after IN then OUT attempts. */
 } NIAudioOutputPlan;
 
 typedef struct {
@@ -79,6 +79,9 @@ NIAudioScheduleResult ni_audio_schedule_input_completed(NIAudioSchedule *state,
                                                          unsigned input_slot,
                                                          const NIAudioPacketResult packets[8],
                                                          NIAudioOutputPlan *plan);
+/* Commit an ends_priming plan AFTER both submission attempts, including
+ * recoverable rejections. The caller holds the shared processing guard. */
+NIAudioScheduleResult ni_audio_schedule_finish_priming(NIAudioSchedule *state);
 NIAudioScheduleResult ni_audio_schedule_output_completed(NIAudioSchedule *state,
                                                           unsigned output_slot,
                                                           uint32_t *sample_frame);

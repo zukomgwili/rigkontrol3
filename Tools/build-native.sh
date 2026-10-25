@@ -42,7 +42,7 @@ if [ "$mode" != build ]; then
     for unit in NativeAudioISO NativeUSB; do
         if [ -f "$root/Driver/Tests/${unit}Tests.c" ]; then
             case "$unit" in
-                NativeAudioISO) set -- "$root/Driver/NativeAudioISO.c" ;;
+                NativeAudioISO) set -- ;;
                 NativeUSB) set -- ;;
             esac
             xcrun clang $flags -fblocks -I"$root/Driver" "$root/Driver/Tests/${unit}Tests.c" "$@" \
