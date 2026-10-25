@@ -123,9 +123,10 @@ for a missing hardware anchor.
 
 `NativeAudioISO` uses the original live mapped ring, host sample positions and
 input-led calendar. Render/capture/clock allocate nothing, take no mutex and
-issue no USB calls. Capture polls primary completion data and reads the
-requested ring positions instead of draining a FIFO. Current primary lists
-require macOS 26.4+. See `AudioDriver.md` for exact byte placement, whole-IRP
+issue no USB calls. Capture polls mapped completion data and reads the
+requested ring positions instead of draining a FIFO. Explicit shared lists
+require macOS 26.4+. Their allocation and completion-update contract do not
+establish exact NI primary-interrupt publication timing; that remains unverified. See `AudioDriver.md` for exact byte placement, whole-IRP
 publication, zero timestamps and original 68/136/136 latency/offset values.
 
 NI audio panic is distinct from device removal. The owner preserves EP1,
@@ -172,7 +173,8 @@ EP1 clear/rearm without command replay, no write after active-request expiration
 and valid-clock startup gating versus timeout/cancellation/engine errors.
 It also verifies pinned retirement and successful/timed-out close waiting.
 
-These checks establish software invariants. Earlier installed versions demonstrated real capture and controller input, but
-installed build 4 failed audio continuity. The faithful 0.2.0 source has not
-been installed. Its signal flow, real DMA timing, DIN MIDI, unplug/reconnect,
-sleep/wake and host integration require separate hardware validation.
+These checks establish software invariants. Earlier versions demonstrated capture and controller input, but build 4 failed
+audio continuity. Version 0.2.0/build 5 is now installed and has completed a
+limited silent run with stable sampled status. Current physical results are
+recorded in `HardwareValidation.md`; that run alone does not establish clean
+audible signal flow, DMA timing, DIN MIDI or recovery.

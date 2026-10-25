@@ -8,6 +8,7 @@
 #include "AudioSchedule.h"
 #include <IOKit/usb/USBSpec.h>
 #include <mach/mach_time.h>
+#include <os/log.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,7 +45,7 @@ struct rk3_native_audio_iso {
     uint64_t output_sample[OUTPUT_SLOTS],output_usb_frame[OUTPUT_SLOTS];
     uint32_t output_bytes[OUTPUT_SLOTS];
     size_t pending_count;
-    bool usb_released,servicing,anchor_valid;
+    bool usb_released,servicing,anchor_valid,submit_diagnostic_logged;
     uint64_t anchor_frame,anchor_ns,interval_scaled,measurement_frame,measurement_ns,last_anchor_tick;
     mach_timebase_info_data_t timebase;
     atomic_uint_fast64_t capture_samples[NI_AUDIO_RING_FRAME_COUNT];
@@ -59,6 +60,32 @@ static bool device_gone(int32_t status) {return status==kIOReturnNoDevice||statu
 static void note_stream_error(rk3_native_audio_iso *e,int32_t error) {
     int_least32_t empty=0;
     if(error)(void)atomic_compare_exchange_strong(&e->last_output_error,&empty,error);
+}
+/* Temporary .11 observation: only the first rejected submission per start.
+ * Copy decoder fields with a single try; never wait for RT ownership or log
+ * while holding its guard. No scheduling or sample-placement policy changes. */
+static void log_submit_error(rk3_native_audio_iso *e,bool input,unsigned slot,uint64_t frame,int32_t error) {
+    if(e->submit_diagnostic_logged)return;
+    e->submit_diagnostic_logged=true;
+    unsigned cursor=UINT32_MAX,micro=UINT32_MAX,priming=UINT32_MAX;
+    uint64_t cursor_epoch=0,cursor_consumed=0,slot_epoch=0,slot_consumed=0;
+    bool busy=atomic_flag_test_and_set_explicit(&e->processing,memory_order_acquire);
+    if(!busy) {
+        cursor=e->read_slot;micro=e->read_microframe;priming=e->schedule.priming;
+        if(cursor<INPUT_SLOTS){cursor_epoch=e->input_epoch[cursor];cursor_consumed=e->consumed_epoch[cursor];}
+        if(input&&slot<INPUT_SLOTS){slot_epoch=e->input_epoch[slot];slot_consumed=e->consumed_epoch[slot];}
+        atomic_flag_clear_explicit(&e->processing,memory_order_release);
+    }
+    unsigned head=e->ready_count?e->ready_inputs[e->ready_head]:UINT32_MAX;
+    uint64_t head_frame=head<INPUT_SLOTS?e->schedule.input_frame[head]:0;
+    os_log_error(OS_LOG_DEFAULT,
+        "[DEBUG-rk3-timing] engine %{public}s reject=0x%{public}x pipeIndex=%{public}u slot=%{public}u target=%{public}llu calendar=%{public}llu ready=%{public}u head=%{public}u headFrame=%{public}llu pending=%{public}llu priming=%{public}u decoderBusy=%{public}u cursor=%{public}u micro=%{public}u cursorEpoch=%{public}llu cursorConsumed=%{public}llu slotEpoch=%{public}llu slotConsumed=%{public}llu seed=%{public}llu",
+        input?"IN":"OUT",(unsigned)error,(unsigned)(input?e->input_pipe:e->output_pipe),slot,
+        (unsigned long long)frame,(unsigned long long)e->schedule.last_input_frame,
+        e->ready_count,head,(unsigned long long)head_frame,(unsigned long long)e->pending_count,
+        priming,(unsigned)busy,cursor,micro,(unsigned long long)cursor_epoch,
+        (unsigned long long)cursor_consumed,(unsigned long long)slot_epoch,
+        (unsigned long long)slot_consumed,(unsigned long long)atomic_load(&e->clock_seed));
 }
 static void request_panic(rk3_native_audio_iso *e,uint32_t delay,int32_t error) {
     note_stream_error(e,error);
@@ -218,6 +245,7 @@ static int32_t submit_input(rk3_native_audio_iso *e,unsigned slot,uint64_t frame
         if(result==kIOReturnIsoTooOld)break; /* original queueIn does not retry a past frame */
     }
     t->pending=false;--e->pending_count;
+    log_submit_error(e,true,slot,frame,result);
     /* queueIn0x673f increments its -6 counter; zero branches0x6743->0x6757
      * directly to return. Only IsoTooOld0x6768 arms the100ms panic timer.
      * Other exhausted rejections remain diagnostics, not an invented restart.
@@ -257,6 +285,7 @@ static bool submit_output(rk3_native_audio_iso *e,const NIAudioOutputPlan *p) {
         slot*8,8,p->output_frame,write_complete,t);
     if(result) {
         t->pending=false;--e->pending_count;note_stream_error(e,result);
+        log_submit_error(e,false,slot,p->output_frame,result);
         if(device_gone(result)) request_panic(e,0,result);
         /* NI queueOut leaves the reserved slot busy after a failed submission.
          * It does not directly schedule panic; subsequent exhaustion does. */
@@ -412,6 +441,7 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
        ni_audio_decoder_init(&e->decoder,NI_AUDIO_MODE_2,1,NI_AUDIO_RING_PACKED_BYTES,true)!=NI_AUDIO_OK)return kIOReturnBadArgument;
     memset(e->input_data,0,INPUT_SLOTS*TRANSFER_BYTES);memset(e->input_pcm,0,sizeof(e->input_pcm));
     memset(e->input_epoch,0,sizeof(e->input_epoch));memset(e->consumed_epoch,0,sizeof(e->consumed_epoch));
+    e->submit_diagnostic_logged=false;
     e->ready_head=0;e->ready_count=0;e->zero_head=0;e->zero_count=0;e->initial_timestamp_queued=false;e->read_slot=0;e->read_microframe=0;e->published_frames=0;e->wire_bytes=0;
     e->anchor_valid=false;e->measurement_ns=0;e->interval_scaled=UINT64_C(10000000000);
     for(unsigned i=0;i<NI_AUDIO_RING_FRAME_COUNT;++i)atomic_store(&e->capture_samples[i],0);

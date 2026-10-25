@@ -29,15 +29,15 @@ partial-transfer and ring-wrap checks. The native ARM diagnostic has configured
 the cleaned device and validated its real device-info reply: **2 audio inputs,
 2 outputs, wire mode2, 1 MIDI input and 1 MIDI output**.
 
-The currently installed **0.1.3 (build 4)** is unstable. Its unity-gain guitar
-check produced crackling, dropouts and intermittent controls. A separate silent
-check reproduced repeated `kIOReturnIsoTooOld` errors and USB reconnections,
+The previously installed **0.1.3 (build 4)** failed acceptance. Its unity-gain
+guitar check produced crackling, dropouts and intermittent controls. A separate
+silent check reproduced repeated `kIOReturnIsoTooOld` errors and USB reconnections,
 despite successful audio callbacks. That build used a FIFO snapshot and an
 invented 4 ms output calendar; neither preserves NI's original shared ring.
 
-The **0.2.0 (build 5)** source restores the original data flow. Host output
+The now installed **0.2.0 (build 5)** restores the original data flow. Host output
 writes by sample position into the same mapped wire ring referenced by queued
-USB requests. Capture polls primary completion state and reads the requested
+USB requests. Capture polls mapped completion state and reads the requested
 ring positions without consuming a FIFO. The original 64-input/128-output
 calendar, exact mode-2 byte placement, USB-anchor timestamp arithmetic and
 audio-engine recovery triggers are retained. The 64 ms USB queue horizon is
@@ -47,26 +47,50 @@ bindings and their limits are recorded in
 [USB transport](ReverseEngineering/NativeUSB.md).
 
 This source requires **macOS 26.4 or later** for explicitly kernel/user-shared
-primary transaction lists; the test Mac runs macOS 27.0.1. Version 0.2.0 has
-**not been installed or physically validated**. Mocks establish sample
-placement, live backing identity, clock arithmetic and buffer lifetime. They
-do not establish hardware DMA timing, clean sound or reliable recovery.
+transaction lists; the test Mac runs macOS 27.0.1. All 12 installed
+build-5 files match the frozen manifest, and both bundle signatures verify.
+A 20-second standard CoreAudio run with silent output and a verified 128-frame
+buffer completed 7526 callbacks and 963328 input frames, then stopped cleanly.
+A parallel 25-second, 10 Hz status watch reported generation 1 and error 0 at
+every sample through idle, running and idle transitions.
+
+A subsequent dry guitar check at unity gain and 128 frames passed the user's
+first home-practice listening check: clear, comfortably audible guitar,
+acceptable delay and no heard crackles or dropouts. All eight switch LEDs
+worked reliably while playing; incoming feedback also produced the requested
+odd/even LED pattern. The full status log nevertheless revealed **five
+unsolicited audio-engine restarts with `kIOReturnIsoTooOld` before the deliberate
+USB unplug**, while USB generation stayed 1. Sustained acceptance remains open
+as P1 `rigkontrol3-40h.11`; clear listening and successful callbacks do not make
+that run error-free. This is a subjective physical pass, not a measured
+round-trip latency or proof of zero signal loss. No effects host was tested.
 
 The native MIDI bundle retains its separate Controller source and LED Feedback
-destination, alongside the hardware DIN endpoints. Earlier installed controller
-checks recorded two presses of all eight switches and full pedal MIDI 0–127.
-Fresh calibration measured **88–648** from 555 samples; host CC80 on/off lit and
-extinguished LED 1. Those results are retained evidence, not a new combined
-0.2.0 acceptance result. Incoming feedback remains explicit; applications must
-send their effect states to synchronize LEDs.
+destination, alongside the hardware DIN endpoints. The build-5 combined check
+recorded all eight switch CCs at 0 and 127 and the pedal across MIDI 0–127.
+Saved calibration **88–648**, measured earlier from 555 samples, was independently
+read back from the Controller device. Incoming feedback remains explicit;
+applications must send their effect states to synchronize LEDs.
 
 These checks use standard CoreAudio and CoreMIDI clients, without the retired
-app or MainStage. Sustained guitar audio, simultaneous controls, reconnect and
-sleep/wake on the faithful port remain acceptance work. Physical DIN loopback,
-toe/external inputs and other sample rates remain separately tracked in Beads
+app or MainStage. Held-switch USB recovery passed without an extra toggle,
+and status confirmed a new connection generation 2. Resolving the steady-state
+restarts, longer operation and sleep/wake remain acceptance work. Physical DIN
+loopback, toe/external inputs and other sample rates remain separately tracked in Beads
 under `rigkontrol3-40h`. See [hardware validation](ReverseEngineering/HardwareValidation.md)
 for actual installed outcomes and [the MIDI component](Driver/MIDI/README.md)
 for mappings and calibration.
+
+The **0.2.1 (build 6) source** corrects a deterministic completion-order
+bug in the modern USB binding. Accepted requests now deliver their ISO
+callbacks in order for each pipe, matching the order required by NI's ring
+traversal. Raw callbacks may arrive out of order; the binding retains their
+storage until ordered delivery. A production-engine regression demonstrates
+the previous stall and sustained progress with the ordered contract. This
+changes neither the NI queue calendar nor sample placement. Temporary,
+failure-only timing observations will distinguish the remaining live
+`IsoTooOld` cause; **build 6 is not installed or physically validated yet**.
+The ordering fix is not claimed to resolve that live error without testing.
 
 ## Build and install
 
@@ -120,7 +144,7 @@ request unity gain and a smaller buffer:
 
 Explicit `--gain` accepts a finite decimal from 0 to 1 and uses a ±0.95 clamp;
 the client prints the selected gain, limit and actual CoreAudio buffer size.
-The driver has not yet passed a listening test with these settings.
+The first dry listening check passed with these settings; effects-host integration remains untested.
 Each client prints its PID. `kill -USR1 <PID>` prints cumulative statistics
 without stopping; Control-C stops the client cleanly. The timed `--seconds`
 option remains available. With no MIDI applications or test clients open,

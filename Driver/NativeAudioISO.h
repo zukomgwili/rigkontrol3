@@ -11,7 +11,10 @@ typedef struct {
     uint64_t sample_frame,host_time,seed;
     uint64_t zero_sample_frame,zero_host_time; /* exact NI input-ring timestamp */
 } rk3_native_audio_clock;
-/* One worker owns USB submissions/callback retirement. The live output ring is
+/* One worker owns USB submissions/callback retirement. NativeHostUSB delivers
+ * accepted ISO callbacks in per-pipe submission order, restoring the ordering
+ * needed by NI's positional ring traversal despite modern raw callback order.
+ * The live output ring is
  * kernel-backed mapped DMA storage. HAL writes use NI host sample positions;
  * no per-transfer PCM snapshots or FIFO queue-lead adjustment is performed. */
 rk3_native_audio_iso *rk3_native_audio_iso_create(RK3HostInterface *,uint8_t,uint8_t,

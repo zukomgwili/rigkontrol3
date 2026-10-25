@@ -23,7 +23,8 @@
 @public
     dispatch_queue_t queue;
     NSMutableArray<FakeHostRequest *> *requests;
-    bool fail_enqueue;
+    bool fail_enqueue,reverse_aborts;
+    int32_t enqueue_error;
     unsigned clears,aborts;
 }
 - (BOOL)enqueueIORequestWithData:(NSMutableData *)data completionTimeout:(NSTimeInterval)timeout error:(NSError **)error completionHandler:(IOUSBHostCompletionHandler)completion;
@@ -34,19 +35,20 @@
 @implementation FakeHostPipe
 - (instancetype)init {self=[super init];if(self)requests=[NSMutableArray new];return self;}
 - (BOOL)enqueueIORequestWithData:(NSMutableData *)data completionTimeout:(NSTimeInterval)seconds error:(NSError **)error completionHandler:(IOUSBHostCompletionHandler)completion {
-    if(fail_enqueue) {if(error)*error=[NSError errorWithDomain:IOUSBHostErrorDomain code:kIOReturnNoResources userInfo:nil];return NO;}
+    if(fail_enqueue) {if(error)*error=[NSError errorWithDomain:IOUSBHostErrorDomain code:(enqueue_error?enqueue_error:kIOReturnNoResources) userInfo:nil];return NO;}
     FakeHostRequest *request=[FakeHostRequest new];request->payload=data;request->bulk=[completion copy];request->timeout=seconds;
     [requests addObject:request];return YES;
 }
 - (BOOL)enqueueIORequestWithData:(NSMutableData *)data transactionList:(IOUSBHostIsochronousTransaction *)list transactionListCount:(NSUInteger)length firstFrameNumber:(uint64_t)start options:(IOUSBHostIsochronousTransferOptions)options error:(NSError **)error completionHandler:(IOUSBHostIsochronousTransactionCompletionHandler)completion {
     assert(options==IOUSBHostIsochronousTransferOptionsNone);
-    if(fail_enqueue) {if(error)*error=[NSError errorWithDomain:IOUSBHostErrorDomain code:kIOReturnNoResources userInfo:nil];return NO;}
+    if(fail_enqueue) {if(error)*error=[NSError errorWithDomain:IOUSBHostErrorDomain code:(enqueue_error?enqueue_error:kIOReturnNoResources) userInfo:nil];return NO;}
     FakeHostRequest *request=[FakeHostRequest new];request->payload=data;request->iso=[completion copy];request->transactions=list;request->count=length;request->frame=start;
     [requests addObject:request];return YES;
 }
 - (BOOL)abortWithOption:(IOUSBHostAbortOption)option error:(NSError **)error {
     (void)error;assert(option==IOUSBHostAbortOptionAsynchronous);++aborts;
     NSArray<FakeHostRequest *> *pending=[requests copy];[requests removeAllObjects];
+    if(reverse_aborts)pending=[[pending reverseObjectEnumerator] allObjects];
     for(FakeHostRequest *request in pending) dispatch_async(queue,^{
         if(request->bulk) request->bulk(kIOReturnAborted,0);
         else request->iso(kIOReturnAborted,request->transactions);
@@ -144,8 +146,8 @@ static void iso_done(void *context,int32_t status,RK3HostIsoList *list,size_t fi
     assert(rk3_host_iso_list_set(list,first,4,14,true)==0);
 }
 static void pump(void) {(void)CFRunLoopRunInMode(kCFRunLoopDefaultMode,0.01,false);}
-static void finish(FakeHostPipe *pipe,int32_t status,size_t actual,bool invalid_pointer) {
-    assert(pipe->requests.count);FakeHostRequest *request=pipe->requests[0];[pipe->requests removeObjectAtIndex:0];
+static void finish_at(FakeHostPipe *pipe,size_t index,int32_t status,size_t actual,bool invalid_pointer) {
+    assert(index<pipe->requests.count);FakeHostRequest *request=pipe->requests[index];[pipe->requests removeObjectAtIndex:index];
     dispatch_semaphore_t sent=dispatch_semaphore_create(0);
     dispatch_async(pipe->queue,^{
         assert(CFRunLoopGetCurrent()!=owner_loop);
@@ -154,6 +156,9 @@ static void finish(FakeHostPipe *pipe,int32_t status,size_t actual,bool invalid_
         dispatch_semaphore_signal(sent);
     });
     assert(dispatch_semaphore_wait(sent,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC))==0);
+}
+static void finish(FakeHostPipe *pipe,int32_t status,size_t actual,bool invalid_pointer) {
+    finish_at(pipe,0,status,actual,invalid_pointer);
 }
 static RK3HostInterface *open_owner(void) {
     int32_t error=99;RK3HostInterface *owner=rk3_host_open(42,owner_loop,&error);
@@ -246,6 +251,140 @@ static void test_rejected_iso_and_allocation(void) {
     assert(rk3_host_iso_enqueue(owner,4,data,list,1,2,1100,iso_done,(void *)0x5678)==kIOReturnNoResources&&rk3_host_pending(owner)==0);
     assert(rk3_host_iso_list_set(list,1,4,14,true)==0);
     rk3_host_buffer_release(data);rk3_host_iso_list_release(list);assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+}
+typedef struct {unsigned id;int32_t status;size_t first,count;} OrderedContext;
+static unsigned ordered_ids[16],ordered_calls;
+static void ordered_done(void *context,int32_t status,RK3HostIsoList *list,size_t first,size_t count) {
+    OrderedContext *expected=context;
+    assert(CFRunLoopGetCurrent()==owner_loop&&list&&status==expected->status&&first==expected->first&&count==expected->count);
+    assert(ordered_calls<sizeof(ordered_ids)/sizeof(ordered_ids[0]));
+    ordered_ids[ordered_calls++]=expected->id;
+}
+static void test_iso_callbacks_follow_acceptance_per_pipe(void) {
+    RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);int32_t error=0;
+    RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
+    RK3HostIsoList *list=rk3_host_iso_list_create(owner,4,&error);assert(data&&list);
+    for(size_t index=0;index<4;++index)assert(rk3_host_iso_list_set(list,index,4,(uint32_t)(index*4),false)==0);
+    OrderedContext contexts[]={{1,0,0,1},{2,kIOReturnUnderrun,1,1},{10,0,2,1},{3,0,3,1}};
+    ordered_calls=0;
+    for(unsigned index=0;index<4;++index)
+        assert(rk3_host_iso_enqueue(owner,index==2?3:4,data,list,index,1,1100+index,ordered_done,contexts+index)==0);
+    FakeHostPipe *out=last_interface->pipes[@6],*in=last_interface->pipes[@0x82];
+    finish_at(out,1,kIOReturnUnderrun,0,false);pump();
+    assert(ordered_calls==0&&rk3_host_pending(owner)==4);
+    assert(rk3_host_iso_list_set(list,1,4,4,false)==kIOReturnBusy);
+    finish(in,0,0,false);pump();
+    assert(ordered_calls==1&&ordered_ids[0]==10&&rk3_host_pending(owner)==3); /* endpoints independent */
+    finish_at(out,1,0,0,false);pump();assert(ordered_calls==1&&rk3_host_pending(owner)==3);
+    finish(out,0,0,false);pump();
+    assert(ordered_calls==4&&ordered_ids[1]==1&&ordered_ids[2]==2&&ordered_ids[3]==3&&rk3_host_pending(owner)==0);
+    rk3_host_iso_list_release(list);rk3_host_buffer_release(data);assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+}
+static void test_rejected_iso_has_no_ordered_position(void) {
+    RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);int32_t error=0;
+    RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
+    RK3HostIsoList *list=rk3_host_iso_list_create(owner,3,&error);assert(data&&list);
+    for(size_t index=0;index<3;++index)assert(rk3_host_iso_list_set(list,index,4,(uint32_t)(index*4),false)==0);
+    OrderedContext contexts[]={{1,0,0,1},{2,0,1,1},{3,0,2,1}};ordered_calls=0;
+    assert(rk3_host_iso_enqueue(owner,4,data,list,0,1,1100,ordered_done,contexts)==0);
+    FakeHostPipe *pipe=last_interface->pipes[@6];pipe->fail_enqueue=true;
+    assert(rk3_host_iso_enqueue(owner,4,data,list,1,1,1101,ordered_done,contexts+1)==kIOReturnNoResources);
+    assert(rk3_host_pending(owner)==1&&rk3_host_iso_list_set(list,1,4,4,false)==0);
+    pipe->fail_enqueue=false;
+    assert(rk3_host_iso_enqueue(owner,4,data,list,2,1,1102,ordered_done,contexts+2)==0);
+    finish_at(pipe,1,0,0,false);pump();assert(ordered_calls==0&&rk3_host_pending(owner)==2);
+    finish(pipe,0,0,false);pump();assert(ordered_calls==2&&ordered_ids[0]==1&&ordered_ids[1]==3);
+    /* Rejection when the provisional job is the only head must unlink tail too. */
+    pipe->fail_enqueue=true;
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0);
+    assert(rk3_host_iso_enqueue(owner,4,data,list,0,1,1103,ordered_done,contexts)==kIOReturnNoResources);
+    pipe->fail_enqueue=false;
+    assert(rk3_host_iso_enqueue(owner,4,data,list,1,1,1104,ordered_done,contexts+1)==0);
+    finish(pipe,0,0,false);pump();assert(ordered_calls==3&&ordered_ids[2]==2&&rk3_host_pending(owner)==0);
+    rk3_host_iso_list_release(list);rk3_host_buffer_release(data);assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+}
+static RK3HostInterface *reentrant_owner;
+static RK3HostBuffer *reentrant_data;
+static OrderedContext reentrant_third={3,0,0,1};
+static void reentrant_ordered_done(void *context,int32_t status,RK3HostIsoList *list,size_t first,size_t count) {
+    ordered_done(context,status,list,first,count);OrderedContext *expected=context;
+    if(expected->id!=1)return;
+    assert(rk3_host_iso_list_set(list,first,4,0,false)==0); /* retired before callback */
+    assert(rk3_host_iso_enqueue(reentrant_owner,4,reentrant_data,list,first,1,1102,ordered_done,&reentrant_third)==0);
+    finish(last_interface->pipes[@6],0,0,false);pump();
+    assert(ordered_calls==1); /* nested worker entry cannot recurse into later callbacks */
+}
+static void test_reentrant_iso_enqueue_and_nested_delivery(void) {
+    RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);int32_t error=0;
+    RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
+    RK3HostIsoList *list=rk3_host_iso_list_create(owner,2,&error);assert(data&&list);
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0&&rk3_host_iso_list_set(list,1,4,4,false)==0);
+    OrderedContext contexts[]={{1,0,0,1},{2,0,1,1}};ordered_calls=0;reentrant_owner=owner;reentrant_data=data;
+    assert(rk3_host_iso_enqueue(owner,4,data,list,0,1,1100,reentrant_ordered_done,contexts)==0);
+    assert(rk3_host_iso_enqueue(owner,4,data,list,1,1,1101,ordered_done,contexts+1)==0);
+    FakeHostPipe *pipe=last_interface->pipes[@6];finish_at(pipe,1,0,0,false);pump();assert(ordered_calls==0);
+    finish(pipe,0,0,false);pump();
+    assert(ordered_calls==3&&ordered_ids[0]==1&&ordered_ids[1]==2&&ordered_ids[2]==3&&rk3_host_pending(owner)==0);
+    reentrant_owner=NULL;reentrant_data=NULL;
+    rk3_host_iso_list_release(list);rk3_host_buffer_release(data);assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+}
+static void test_reverse_abort_retains_until_ordered_drain(void) {
+    __weak RK3HostState *released_state;ordered_calls=0;
+    OrderedContext contexts[]={{1,kIOReturnAborted,0,1},{2,kIOReturnAborted,1,1},{3,kIOReturnAborted,2,1}};
+    @autoreleasepool {
+        RK3HostInterface *owner=open_owner();released_state=state_of(owner);
+        assert(rk3_host_set_alt(owner,1)==0);int32_t error=0;
+        RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
+        RK3HostIsoList *list=rk3_host_iso_list_create(owner,3,&error);assert(data&&list);
+        for(size_t index=0;index<3;++index) {
+            assert(rk3_host_iso_list_set(list,index,4,(uint32_t)(index*4),false)==0);
+            assert(rk3_host_iso_enqueue(owner,4,data,list,index,1,1100+index,ordered_done,contexts+index)==0);
+        }
+        last_interface->pipes[@6]->reverse_aborts=true;
+        assert(rk3_host_abort(owner,4)==0);
+        rk3_host_iso_list_release(list);rk3_host_buffer_release(data);rk3_host_release(owner);
+        /* Accepted aborted requests now own every interface/mapping reference. */
+        pump();assert(ordered_calls==3&&ordered_ids[0]==1&&ordered_ids[1]==2&&ordered_ids[2]==3);
+    }
+    assert(!released_state&&last_interface->destroys>=1);
+}
+static void test_zero_count_request_is_ordered_with_payload(void) {
+    RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);int32_t error=0;
+    RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
+    RK3HostIsoList *list=rk3_host_iso_list_create(owner,9,&error);assert(data&&list);
+    for(size_t index=0;index<8;++index)assert(rk3_host_iso_list_set(list,index,0,8,false)==0);
+    assert(rk3_host_iso_list_set(list,8,4,0,false)==0);
+    OrderedContext contexts[]={{1,0,0,8},{2,0,8,1}};ordered_calls=0;
+    assert(rk3_host_iso_enqueue(owner,4,data,list,0,8,1100,ordered_done,contexts)==0);
+    assert(rk3_host_iso_enqueue(owner,4,data,list,8,1,1101,ordered_done,contexts+1)==0);
+    FakeHostPipe *pipe=last_interface->pipes[@6];finish_at(pipe,1,0,0,false);pump();
+    assert(ordered_calls==0&&rk3_host_pending(owner)==2&&rk3_host_close(owner)==kIOReturnBusy);
+    rk3_host_iso_list_release(list);rk3_host_buffer_release(data);
+    finish(pipe,0,0,false);pump();assert(ordered_calls==2&&ordered_ids[0]==1&&ordered_ids[1]==2&&rk3_host_pending(owner)==0);
+    assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+}
+static void test_first_too_old_observation_preserves_order_and_is_bounded(void) {
+    RK3HostInterface *owner=open_owner();assert(rk3_host_set_alt(owner,1)==0);int32_t error=0;
+    RK3HostBuffer *data=rk3_host_buffer_create(owner,16,&error);
+    RK3HostIsoList *list=rk3_host_iso_list_create(owner,1,&error);assert(data&&list);
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0);
+    OrderedContext context={1,0,0,1};ordered_calls=0;
+    assert(rk3_host_iso_enqueue(owner,4,data,list,0,1,1100,ordered_done,&context)==0);
+    FakeHostPipe *pipe=last_interface->pipes[@6];pipe->requests[0]->transactions[0].timeStamp=12345;
+    finish(pipe,0,0,false);pump();
+    RK3HostState *state=state_of(owner);RK3DebugIsoTiming last=state->debug_last_iso;
+    assert(last.pipe_address==6&&last.start_frame==1100&&last.last_timestamp==12345);
+    assert(last.raw_tick&&last.raw_tick<=last.worker_tick&&last.worker_tick<=last.delivery_tick);
+    assert(!state->debug_too_old_logged&&ordered_calls==1&&rk3_host_pending(owner)==0);
+    pipe->fail_enqueue=true;pipe->enqueue_error=kIOReturnIsoTooOld;
+    unsigned observations=last_interface->io_observations;
+    assert(rk3_host_iso_list_set(list,0,4,0,false)==0);
+    assert(rk3_host_iso_enqueue(owner,4,data,list,0,1,1101,ordered_done,&context)==kIOReturnIsoTooOld);
+    assert(state->debug_too_old_logged&&last_interface->io_observations==observations+1);
+    assert(rk3_host_iso_enqueue(owner,4,data,list,0,1,1102,ordered_done,&context)==kIOReturnIsoTooOld);
+    assert(last_interface->io_observations==observations+1&&ordered_calls==1&&rk3_host_pending(owner)==0);
+    assert(state->debug_last_iso.start_frame==1100); /* rejection is not a delivered job */
+    rk3_host_iso_list_release(list);rk3_host_buffer_release(data);assert(rk3_host_close(owner)==0);rk3_host_release(owner);
 }
 static void zero_iso_done(void *context,int32_t status,RK3HostIsoList *list,size_t first,size_t count) {
     RK3HostInterface *owner=context;
@@ -367,7 +506,7 @@ static void test_removal_interest_and_late_delivery(void) {
 }
 int main(void) {@autoreleasepool {
     owner_loop=CFRunLoopGetCurrent();rk3_host_test_factory=factory;
-    test_open_and_properties();test_bulk_and_abort();test_shared_iso_and_lifetime();test_owner_retained_through_delivery();test_rejected_iso_and_allocation();test_removal_interest_and_late_delivery();test_retirement_before_completion_wake();test_zero_count_iso_transactions();
+    test_open_and_properties();test_bulk_and_abort();test_shared_iso_and_lifetime();test_owner_retained_through_delivery();test_rejected_iso_and_allocation();test_removal_interest_and_late_delivery();test_retirement_before_completion_wake();test_zero_count_iso_transactions();test_iso_callbacks_follow_acceptance_per_pipe();test_rejected_iso_has_no_ordered_position();test_reentrant_iso_enqueue_and_nested_delivery();test_reverse_abort_retains_until_ordered_drain();test_zero_count_request_is_ordered_with_payload();test_first_too_old_observation_preserves_order_and_is_bounded();
     last_interface=nil;
     puts("NativeHostUSB: mapped backing, offsets/wrap, worker callbacks, pending ranges, abort/drain, removal interest and lifetime mocks passed.");
     return 0;

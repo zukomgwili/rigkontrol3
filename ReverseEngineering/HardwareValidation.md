@@ -215,12 +215,12 @@ peak 0.011254), while the owner generation changed from 99 to 105 with
 counts therefore do not prove transport continuity. Detailed logs, hashes and
 chronology are preserved in Beads `rigkontrol3-40h.3` and the checkpoint `.4`.
 
-Audio test clients were stopped. No rollback was performed; build 4 remains the
-installed version until the next explicit installation. All 12 installed files
-matched the build manifest after installation, which establishes content
-integrity rather than audio quality.
+Audio test clients were stopped at that checkpoint. No rollback was performed;
+build 4 remained installed until the build-5 installation below. All 12 installed
+files matched the build-4 manifest after installation, which establishes
+content integrity rather than audio quality.
 
-## Version 0.2.0 (build 5): faithful port awaiting installation
+## Installed version 0.2.0 (build 5): physical checks and unresolved restarts
 
 The user directed preserving NI's original audio ring, timing and recovery.
 The source replaces the FIFO/snapshot adapter with the sample-addressed live
@@ -231,15 +231,161 @@ panic recovery. The protocol, original controller profile, measured calibration
 and incoming LED feedback are retained. See `AudioDriver.md` and `NativeUSB.md`
 for original addresses and explicit current-platform substitutions.
 
-**This version has not been installed or tested on the device.** Hardware-free
-regressions model late callbacks and future ring writes, whole-IRP primary
-publication, exact timestamp fractions, wrapped host blocks, stop/drain and
-transient EP1/MIDI failures. They cannot establish real DMA prefetch timing,
-audible latency, sound continuity or actual host power behavior.
+The user installed both build-5 bundles in session:
 
-The next acceptance stage uses the installed owner through ordinary CoreAudio
-and CoreMIDI clients: silent continuity with stable generation/error status,
-then sustained unity-gain guitar with all eight switches, pedal and incoming
-LED feedback, followed by recovery checks. Direct diagnostic USB claims must
-not compete with the installed owner. Physical DIN loopback, toe/external
-inputs and rates beyond stereo 48 kHz remain unvalidated.
+`/Library/Application Support/RigKontrol3/NativeDriverBackups/20261025T003945Z-82467aa5`
+
+The root-only session journal was not readable by the verification process.
+Independent read-only checks nevertheless confirmed both expected bundle
+identities, ARM64 executables, version 0.2.0/build 5, valid signatures and all
+12 installed file hashes against the frozen manifest. Its SHA-256 is:
+
+`35977658b0bc13636cb990f15841788bdc8dc0e8504e022821e0f82da6ffb01e`
+
+A standard CoreAudio client then ran for 20 seconds with silent output and a
+verified actual buffer size of 128 frames:
+
+```text
+7526 callbacks; 963328 input1 frames; RMS 0.000247; peak 0.003749; stop 0
+```
+
+A parallel 25-second status watch sampled at 10 Hz. Audio device 173 retained
+USB generation 1 and error 0; flags moved from 1 (connected/idle) to 3
+(connected/audio running) and back to 1. These observations establish only
+this silent run's sampled status and clean client stop. They do not establish
+full signal continuity, audible sound quality or guitar latency.
+
+At the silent-run checkpoint, the fresh persistent CoreMIDI monitor was PID
+83847 and MIDIServer was PID 83848; the old monitor PID 51213 had been stopped.
+
+### Dry guitar/controller physical pass with residual audio restarts
+
+The user subsequently played dry guitar through the standard monitor at unity
+gain with the actual 128-frame buffer. They confirmed clear, comfortably audible
+guitar, acceptable delay for home practice, no heard crackles or dropouts, and
+reliable operation of all eight switch LEDs. This is a subjective first
+listening pass, not a measured round-trip latency or proof of zero signal loss.
+No effects host was tested on build 5.
+
+The concurrent persistent CoreMIDI monitor recorded:
+
+| Control | Messages | Minimum | Maximum | Last value |
+| --- | ---: | ---: | ---: | ---: |
+| Each switch CC76–83 | 2 | 0 | 127 | 0 |
+| Built-in pedal CC4 | 162 | 0 | 127 | 127 |
+
+Independent CoreMIDI readback of the saved 16-byte calibration Data property
+returned `{version=1, axis=2, raw_min=88, raw_max=648}`. The user also confirmed
+incoming LED feedback while guitar continued: LEDs 1/3/5/7 on and 2/4/6/8 off.
+All eight feedback values were then cleared to zero before the recovery test.
+
+At approximately 172 seconds, an intermediate live audio snapshot reported:
+
+```text
+64421 callbacks; 8245888 input1 frames; RMS 0.014331; peak 0.257267
+```
+
+A point-in-time status read showed generation 1 and error 0, but later review
+of the **full status log superseded any error-free interpretation**. Before the
+deliberate unplug, it recorded five unsolicited transitions from flags 3/error 0
+to flags 1/error `0xe00002ee` (`kIOReturnIsoTooOld`) and back to flags 3/error 0.
+USB generation remained 1 throughout all five:
+
+| TooOld / not-running tick | Running again tick |
+| ---: | ---: |
+| 303 | 304 |
+| 1392 | 1394 |
+| 2086 | 2087 |
+| 2585 | 2587 |
+| 2749 | 2750 |
+
+The watcher sampled at a nominal 10 Hz. Flags 1 retain the USB connection but
+lack AUDIO_RUNNING; flags 3 restore it. This proves sampled audio-running
+loss/restoration, consistent with host-mediated pause/start. It is not a direct
+host-call trace or a measured interruption duration. The five audio-only
+restarts remain a P1 failure under `rigkontrol3-40h.11`, even though the user
+reported clear guitar and reliable controls. The sustained-run failure
+criterion is any unsolicited nonzero error or loss of AUDIO_RUNNING before
+intentional unplug; unchanged USB generation alone is insufficient.
+
+### Held-switch USB recovery and final client stop
+
+The user confirmed all requested recovery behavior: reconnecting with switch 1
+held preserved the state without an extra toggle, release did not toggle, the
+next press worked once, and guitar/pedal operation returned. The deliberate
+unplug began at tick 3114. At tick 3324, generation 2 was connected with held
+snapshot `80000010`; audio was running at tick 3326. Release appeared at tick
+3540 as snapshot `80000000`. These are a separate intentional recovery check,
+not the five earlier steady-state failures.
+
+After recovery, CC80 had four messages total and last value 0, consistent with
+the held press and next press without an extra held/release event. The pedal
+CC4 count reached 448 across the full 0–127 range. The guitar client then
+stopped cleanly:
+
+```text
+182667 callbacks; 23381376 input1 frames; RMS 0.013495; peak 0.257267; stop 0
+```
+
+The audio helper PID 84504 and status watcher PID 84498 were stopped; the
+persistent MIDI monitor PID 83847 remained active at this checkpoint. Logs are
+`.build/native/test/installed-v5-guitar-status.log`,
+`.build/native/test/installed-v5-guitar-audio.log` and
+`.build/native/test/installed-v5-midi.log`. Final callback/RMS/stop statistics do
+not negate the five observed audio-engine restarts. No sleep/wake or effects-host
+pass is claimed.
+
+Hardware-free regressions model late callbacks and future ring writes,
+whole-IRP primary publication, exact timestamp fractions, wrapped host blocks,
+stop/drain and transient EP1/MIDI failures. They cannot establish real DMA
+prefetch timing, audible latency, sound continuity or actual host power behavior.
+
+Residual steady-state TooOld diagnosis is tracked in `rigkontrol3-40h.11`.
+Further acceptance uses the installed owner through ordinary CoreAudio and
+CoreMIDI clients; direct diagnostic USB claims must not compete with it.
+Physical DIN loopback, toe/external inputs, sleep/wake, effects-host integration
+and rates beyond stereo 48 kHz remain unvalidated.
+
+## Follow-up silent reproduction and build 6
+
+A focused unattended checker reproduced the installed build-5 fault with
+silent output and the persistent MIDI client: at status tick 257 (approximately
+25.7 seconds), generation 2 retained its identity while the owner reported
+`IsoTooOld` and lost AUDIO_RUNNING. The client stopped cleanly with 9881
+callbacks and 1264768 frames. Existing unified logs independently show XHCI
+request-link rejection and remote RK3 enqueue errors at
+00:53:25.309 UTC, followed by the host stop/restart handshake. Scheduled/current
+USB frames, endpoint and request identity are not visible in those logs.
+
+A controlled audio-only run, with MIDI client and server absent, then completed
+120 seconds without a new error: 45022 callbacks, 5762816 frames, RMS 0.000102,
+peak 0.003777, stop 0. A restored-MIDI repeat also completed 120.028 observed
+stable seconds: 44886 callbacks, 5745408 frames, RMS 0.000102, peak 0.003783,
+stop 0. A subsequent identical silent run failed after 15.646 observed seconds
+at tick 148. Thus MIDI alone is not established as the cause, and successful
+short repeats do not establish sustained reliability.
+
+The diagnostic checker ignores retained idle errors only before the first
+AUDIO_RUNNING observation. Once running, transport errors, unsolicited state
+loss or generation changes fail the check. Offline process fixtures verify
+full-duration acceptance, premature observer/client exit, stalled output,
+deadlines and cleanup. Debug files remain clearly labeled under
+`.build/native/debug/`; none opens USB directly.
+
+Separately, a production-ISO simulation proved a callback-order dependency
+cycle with only a one-millisecond delay on slot 0. An earlier callback needed
+to advance the read cursor could sit behind a newer, blocked FIFO head. After
+128 further simulated milliseconds, all 64 input requests were stalled with
+no diagnostic or panic. Delivering the same raw completions in acceptance
+order sustains 20 simulated seconds. This is a proven current-binding bug,
+not proof of the physical `IsoTooOld` cause.
+
+Version **0.2.1/build 6** restores per-pipe ISO callback delivery order in the
+Host binding and retains mappings through ordered retirement. It also adds
+first-rejection-only `[DEBUG-rk3-timing]` observations: requested/current USB
+frames, submission timing, kernel transaction timestamp, framework/worker/
+ordered-delivery times, and engine cursor/queue state. These observations do
+not alter NI ring placement, queue depth, calendar or recovery policy. They
+are temporary and must be removed after the causal correction is verified.
+Build 6 is not installed; build 5 remains the active system version. Beads
+`.11` tracks the live fault and `.12` the proven ordering bug.

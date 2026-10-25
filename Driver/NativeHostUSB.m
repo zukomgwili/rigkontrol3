@@ -10,11 +10,19 @@
 #import <Foundation/Foundation.h>
 #import <IOUSBHost/IOUSBHost.h>
 #include <libkern/OSByteOrder.h>
+#include <mach/mach_time.h>
+#include <os/log.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define RK3_HOST_PIPE_LIMIT 30
+typedef struct IsoJob IsoJob;
+/* [DEBUG-rk3-timing] temporary observation only; no scheduling policy. */
+typedef struct {
+    uint8_t pipe_address;
+    uint64_t start_frame,last_timestamp,raw_tick,worker_tick,delivery_tick;
+} RK3DebugIsoTiming;
 struct RK3HostInterface { atomic_uint references; CFRunLoopRef worker; CFRunLoopSourceRef keepalive; void *state; atomic_bool *connected; };
 struct RK3HostBuffer {
     atomic_uint references;
@@ -43,6 +51,10 @@ struct RK3HostIsoList {
     atomic_bool connected;
     CFRunLoopRef interest_worker;
     size_t pending, mapped_buffers;
+    IsoJob *iso_head[RK3_HOST_PIPE_LIMIT],*iso_tail[RK3_HOST_PIPE_LIMIT];
+    bool iso_delivering[RK3_HOST_PIPE_LIMIT];
+    RK3DebugIsoTiming debug_last_iso; /* worker-only; temporary [DEBUG-rk3-timing] */
+    bool debug_too_old_logged;
 }
 @end
 @implementation RK3HostState
@@ -73,6 +85,8 @@ static NSMutableData *allocate_data(IOUSBHostInterface *host, size_t size, bool 
         return [host dataWithCapacity:size options:list ? IOUSBHostObjectDataOptionsKernelUserShared : IOUSBHostObjectDataOptionsNone error:error];
     return [host ioDataWithCapacity:size error:error];
 }
+/* Availability of explicit shared list allocation, not a proof of its
+ * primary-interrupt publication timing on the current controller. */
 bool rk3_host_primary_lists_supported(void) {
     if(@available(macOS 26.4, *)) return true;
     return false;
@@ -374,14 +388,19 @@ int32_t rk3_host_bulk_write(RK3HostInterface *owner,uint8_t pipe,const void *byt
     return bulk(owner,pipe,NULL,bytes,length,timeout_ms,completion,context);
 }
 
-typedef struct {
+struct IsoJob {
     RK3HostInterface *owner;
     RK3HostBuffer *data;
     RK3HostIsoList *list;
     size_t first,count;
     RK3HostIsoCompletion completion;
     void *context;
-} IsoJob;
+    uint8_t pipe;
+    IsoJob *next;
+    bool completed;
+    int32_t result;
+    uint64_t start_frame,debug_raw_tick,debug_worker_tick;
+};
 static void retire_iso_job(IsoJob *job) {
     for(size_t index=job->first;index<job->first+job->count;++index) job->list->busy[index]=0;
     RK3HostState *state=state_of(job->owner);if(state->pending) --state->pending;
@@ -389,6 +408,57 @@ static void retire_iso_job(IsoJob *job) {
 static void release_iso_job(IsoJob *job) {
     RK3HostInterface *owner=job->owner;
     rk3_host_buffer_release(job->data);rk3_host_iso_list_release(job->list);free(job);rk3_host_release(owner);
+}
+static void append_iso_job(IsoJob *job) {
+    RK3HostState *state=state_of(job->owner);unsigned pipe=job->pipe-1;
+    if(state->iso_tail[pipe])state->iso_tail[pipe]->next=job;else state->iso_head[pipe]=job;
+    state->iso_tail[pipe]=job;
+}
+static void unlink_iso_job(IsoJob *job) {
+    RK3HostState *state=state_of(job->owner);unsigned pipe=job->pipe-1;
+    IsoJob **link=&state->iso_head[pipe],*previous=NULL;
+    while(*link&&*link!=job){previous=*link;link=&(*link)->next;}
+    if(*link){*link=job->next;if(state->iso_tail[pipe]==job)state->iso_tail[pipe]=previous;}
+    job->next=NULL;
+}
+static void deliver_iso_prefix(RK3HostInterface *owner,uint8_t pipe_index) {
+    RK3HostState *state=state_of(owner);unsigned pipe=pipe_index-1;
+    if(state->iso_delivering[pipe])return;
+    /* The final job may release the last mapping/client owner reference. Pin
+     * the interface across the whole drain and clear the reentrancy gate before
+     * releasing it. Completion blocks are worker-owned, not raw-arrival ordered. */
+    rk3_host_retain(owner);state->iso_delivering[pipe]=true;
+    while(state->iso_head[pipe]&&state->iso_head[pipe]->completed) {
+        IsoJob *job=state->iso_head[pipe];
+        state->iso_head[pipe]=job->next;
+        if(!state->iso_head[pipe])state->iso_tail[pipe]=NULL;
+        job->next=NULL; /* detach before a user callback can reenter enqueue */
+        retire_iso_job(job);
+        /* [DEBUG-rk3-timing] cheap scalar observation before list reuse. All
+         * state stays worker-only; raw framework arrival was captured by value. */
+        state->debug_last_iso=(RK3DebugIsoTiming){state->addresses[pipe],job->start_frame,
+            job->list->entries[job->first+job->count-1].timeStamp,job->debug_raw_tick,
+            job->debug_worker_tick,mach_absolute_time()};
+        job->completion(job->context,job->result,job->list,job->first,job->count);
+        release_iso_job(job);
+    }
+    state->iso_delivering[pipe]=false;rk3_host_release(owner);
+}
+/* [DEBUG-rk3-timing] first actual TooOld enqueue rejection per interface.
+ * Bus query and log occur only after rejection, never on the steady path. */
+static void note_iso_rejection(RK3HostInterface *owner,uint8_t pipe,size_t first,size_t count,
+    uint64_t requested,uint64_t before,uint64_t after,int32_t result) {
+    RK3HostState *state=state_of(owner);
+    if(result!=kIOReturnIsoTooOld||state->debug_too_old_logged)return;
+    state->debug_too_old_logged=true;
+    uint64_t current=0,host_time=0;
+    int32_t query=rk3_host_bus_frame(owner,&current,&host_time);
+    RK3DebugIsoTiming last=state->debug_last_iso;
+    os_log_error(OS_LOG_DEFAULT,"[DEBUG-rk3-timing] TooOld pipe=%{public}u first=%{public}zu count=%{public}zu requested=%{public}llu current=%{public}llu busStatus=%{public}d enqueueBefore=%{public}llu enqueueAfter=%{public}llu lastPipe=%{public}u lastStart=%{public}llu lastTransaction=%{public}llu rawArrival=%{public}llu workerEntry=%{public}llu orderedDelivery=%{public}llu",
+        (unsigned)state->addresses[pipe-1],first,count,(unsigned long long)requested,
+        (unsigned long long)current,(int)query,(unsigned long long)before,(unsigned long long)after,
+        (unsigned)last.pipe_address,(unsigned long long)last.start_frame,(unsigned long long)last.last_timestamp,
+        (unsigned long long)last.raw_tick,(unsigned long long)last.worker_tick,(unsigned long long)last.delivery_tick);
 }
 int32_t rk3_host_iso_enqueue(RK3HostInterface *owner,uint8_t pipe,RK3HostBuffer *data,RK3HostIsoList *list,
     size_t first,size_t count,uint64_t start_frame,RK3HostIsoCompletion completion,void *context) { @autoreleasepool {
@@ -407,29 +477,38 @@ int32_t rk3_host_iso_enqueue(RK3HostInterface *owner,uint8_t pipe,RK3HostBuffer 
            (wrap ? end<=data->size : end>data->size)) return kIOReturnBadArgument;
     }
     IsoJob *job=calloc(1,sizeof(*job));if(!job) return kIOReturnNoMemory;
-    *job=(IsoJob){owner,data,list,first,count,completion,context};
+    *job=(IsoJob){.owner=owner,.data=data,.list=list,.first=first,.count=count,
+        .completion=completion,.context=context,.pipe=pipe,.start_frame=start_frame};
     buffer_retain(data);list_retain(list);rk3_host_retain(owner);++state->pending;
     for(size_t index=first;index<first+count;++index) list->busy[index]=1;
+    append_iso_job(job); /* rejection unlinks; successful submission owns its position */
     NSMutableData *payload=(__bridge NSMutableData *)data->object;NSError *failure=nil;
+    uint64_t enqueue_before=mach_absolute_time(); /* temporary [DEBUG-rk3-timing] */
     BOOL accepted=[object enqueueIORequestWithData:payload transactionList:list->entries+first transactionListCount:count
         firstFrameNumber:start_frame options:IOUSBHostIsochronousTransferOptionsNone error:&failure
         completionHandler:^(IOReturn status,IOUSBHostIsochronousTransaction *transactions){
+            uint64_t raw_tick=mach_absolute_time(); /* [DEBUG-rk3-timing] captured scalar */
             int32_t result=(int32_t)status;
             if(transactions!=job->list->entries+job->first) result=(int32_t)kIOReturnBadArgument;
             /* Same independent-loop pin as complete_bulk: retirement may free
              * every job/owner/mapping reference before publication returns. */
             CFRunLoopRef worker=(CFRunLoopRef)CFRetain(owner->worker);
             CFRunLoopPerformBlock(worker,kCFRunLoopDefaultMode,^{ @autoreleasepool {
-                retire_iso_job(job);
-                job->completion(job->context,result,job->list,job->first,job->count);
-                release_iso_job(job);
+                job->debug_worker_tick=mach_absolute_time();job->debug_raw_tick=raw_tick;
+                job->result=result;job->completed=true;
+                deliver_iso_prefix(owner,job->pipe);
             }});
 #ifdef RK3_HOST_USB_TESTING
             if(rk3_host_test_after_publication)rk3_host_test_after_publication();
 #endif
             CFRunLoopWakeUp(worker);CFRelease(worker);
         }];
-    if(!accepted) {retire_iso_job(job);release_iso_job(job);return error_code(failure);}
+    uint64_t enqueue_after=mach_absolute_time(); /* temporary [DEBUG-rk3-timing] */
+    if(!accepted) {
+        int32_t rejected=error_code(failure);
+        note_iso_rejection(owner,pipe,first,count,start_frame,enqueue_before,enqueue_after,rejected);
+        unlink_iso_job(job);retire_iso_job(job);release_iso_job(job);return rejected;
+    }
     return 0;
 }
 }

@@ -103,7 +103,7 @@ Apple's current `IOUSBHostObject.h` documents controller-compatible mapped
 `IOUSBHostIsochronousTransaction` structure supplies an offset and `Wrap`
 option, including a transfer crossing the end of its backing ring. Thus queued
 requests can reference the same storage addressed by host sample writes,
-without a software PCM copy. Explicit `KernelUserShared` allocation for primary
+without a software PCM copy. Explicit `KernelUserShared` allocation for shared
 transaction lists is available on macOS 26.4+. The fresh audio engine requires
 that API rather than guessing that an older fallback has equivalent visibility.
 These declarations are in the selected SDK's `IOUSBHost.framework` headers;
@@ -114,7 +114,12 @@ interval 1. Command9 still requests NI's capacity 136. The old user-space
 `SetPipePolicy` call rejected both 136 and 512 on this host; original NI calls
 ignore its return. The new provider validates actual descriptors instead.
 Mapped storage and transaction lists remain owned through callback delivery.
-Primary status is read using the SDK's publication contract. Mocks establish
+Mapped status is read using the SDK's transaction-completion publication
+contract. The modern public contract does not establish NI's exact primary-
+interrupt publication timing. `rk3_host_primary_lists_supported` checks only
+shared-allocation API availability, not measured interrupt cadence. The public
+transaction options are `None` and `Wrap`; no documented `Interrupt` option
+was found, so no such flag is invented. Mocks establish
 backing identity and safe ownership; actual hardware prefetch/deadline timing
 still requires validation. Mapped memory alone does not prove arbitrary late
 writes are safe.
@@ -475,13 +480,15 @@ audio latency: host writes future sample positions in already queued storage.
 
 The HAL places output using `mOutputTime.mSampleTime` and captures using
 `mInputTime.mSampleTime`, modulo the 16384-frame ring, including negative
-initial sample times. Capture invokes primary processing before conversion,
+initial sample times. Capture polls mapped transaction state before conversion,
 then reads those exact sample positions repeatedly without consuming a FIFO.
 NI submits input lists with updateFrequency zero, publishing the complete
 eight-microframe IRP at primary completion. The modern provider exposes
-per-transaction primary status, so the engine waits for all eight entries
+per-transaction completion status, so the engine waits for all eight entries
 before decoding the batch. This preserves the complete actual-byte denominator
-used by NI timestamps even when the asynchronous callback is delayed.
+used by NI timestamps even when the asynchronous callback is delayed. It does
+not by itself prove that modern kernel updates occur at NI's primary-interrupt
+time; that platform timing remains an explicit validation gap.
 
 A bounded ownership flag serializes decoder state against list reset on the
 modern worker/host threads. Atomic 64-bit stereo snapshots preserve coherent
@@ -497,10 +504,10 @@ bindings, not new audio queue policies.
 | --- | --- | --- |
 | `prepareMemory` / `queueOutIrp`: same wired output backing, split ring ranges | IOUSBHost optimized mapped buffer, transaction offsets and `Wrap` | SDK documents no bouncing; CPU identity/wrap/lifetime tested; physical DMA timing pending. |
 | `clipOutputSamples`: write host `firstSampleFrame` into ring | `mOutputTime` addressed `AudioRing` write, same queued backing | Exact mode-2 lane/carry/wrap/priming vectors and deferred-pointer tests. |
-| `convertInputSamples` / `readFrameList`: primary polling then positioned conversion | `mInputTime` ring reads, complete-IRP primary gate, bounded decoder ownership and atomic stereo views | Primary storage publication documented; delayed-callback and partial-batch tests. |
+| `convertInputSamples` / `readFrameList`: primary polling then positioned conversion | `mInputTime` ring reads, complete-IRP primary gate, bounded decoder ownership and atomic stereo views | Shared storage and transaction-completion updates documented; exact primary timing unproved; delayed-callback and partial-batch tests. |
 | `writeHandler` / `getCurrentSampleFrame`: completed OUT start position | Saved start position plus USB-frame time | Position and integer timestamp vectors; no completion-receipt clock fallback. |
 | `takeSimpleTimeStamp` / timestamp timer | Exact input boundary fraction; USB/host anchors refreshed at 128 ms | Initial and variable-length ring-wrap vectors; hardware drift pending. |
-| IOAudioEngine pause/resume panic | AudioServerPlugIn configuration handshake, preserving EP1/USB generation | SDK stop/Perform/restart ordering and mocked lifecycle; actual host recovery pending. |
+| IOAudioEngine pause/resume panic | AudioServerPlugIn configuration handshake, preserving EP1/USB generation | SDK stop/Perform/restart ordering; host stop/restart observed in logs; sustained reliability remains open (.11). |
 | Last-output-client inactive clear | Output `StreamIsActive`; original literal wire clear | Clear bytes tested; host last-client transition equivalence pending. |
 | Kernel controller-only `ClearPipeStall(false)` | Public IOUSBHost both-end clear with interrupted-read retirement gate | Unavoidable API difference; no failed-command replay; error matrix tested. |
 | Sleep/wake wire clear and clock reset | Host audio lifecycle expected to stop/restart engine | Physical verification required, especially if host keeps I/O active; no invented EP1 wake retry. |
@@ -573,5 +580,6 @@ publication, exact zero-event fractions, empty requests, original retries and
 panic delays, teardown and early completion retirement under ASan/UBSan.
 These establish software invariants. Actual controller DMA visibility, clean
 sustained guitar audio, latency and recovery are still installation/hardware
-acceptance work. The installed build 4 failed those checks; no 0.2.0 hardware
-pass is claimed.
+acceptance work. Build 4 failed those checks. Version 0.2.0/build 5 is now
+installed; `HardwareValidation.md` records its limited silent run and subsequent
+physical results. A silent callback/status check alone is not audible acceptance.

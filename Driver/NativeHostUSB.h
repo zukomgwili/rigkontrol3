@@ -84,19 +84,27 @@ RK3HostIsoList *rk3_host_iso_list_create(RK3HostInterface *interface, size_t cou
 size_t rk3_host_iso_list_count(const RK3HostIsoList *list);
 void rk3_host_iso_list_release(RK3HostIsoList *list);
 /* The explicit KernelUserShared list allocation is available on macOS26.4+.
- * Older ioData fallback is mapped, but primary-update parity is unproven. */
+ * This query tests that allocation API's availability, not proven primary-
+ * interrupt publication cadence. The older mapped fallback likewise has no
+ * established primary-update parity; neither path proves interrupt timing. */
 bool rk3_host_primary_lists_supported(void);
 int32_t rk3_host_iso_list_set(RK3HostIsoList *list, size_t index,
                               uint32_t requested, uint32_t offset, bool wrap);
 /* Snapshot has no Objective-C or USB call. The engine must pin list lifetime
  * and serialize its own snapshot/reset/reuse of the same entry. Kernel primary
- * completion updates are observed using the SDK status publication contract. */
+ * completion updates use the SDK's status/actual-count contract; the public
+ * API does not establish primary-interrupt publication timing. */
 bool rk3_host_iso_list_snapshot(const RK3HostIsoList *list, size_t index,
                                 RK3HostIsoFrame *frame);
 /* No audio copy: offsets reference data's same mapped backing store. Wrap is
  * the public transaction option, including within one microframe; unsupported
  * controllers reject it. Entries cannot be reused until their callback begins.
- * Both list and data must belong to this interface. */
+ * Both list and data must belong to this interface. Successful ISO submissions
+ * deliver callbacks in acceptance order per pipe, including aborted/error and
+ * zero-count transfers. Endpoints are independent. A rejected submission takes
+ * no position and delivers no callback. Raw system completions may arrive out
+ * of order; mappings, pending counts and busy ranges stay pinned until ordered
+ * delivery. The range is retired before its callback, permitting requeue. */
 int32_t rk3_host_iso_enqueue(RK3HostInterface *interface, uint8_t pipe,
                              RK3HostBuffer *data, RK3HostIsoList *list,
                              size_t first, size_t count, uint64_t start_frame,

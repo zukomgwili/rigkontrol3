@@ -29,6 +29,7 @@ typedef struct {
     RK3HostIsoCompletion completion;
     void *context;
     bool pending,aborted;
+    uint64_t acceptance;
 } MockTransfer;
 static struct {
     RK3HostInterface interface;
@@ -36,7 +37,7 @@ static struct {
     unsigned read_count,write_count,read_submissions,write_submissions;
     unsigned buffers,buffer_releases,lists,list_releases,commands,retains,releases;
     unsigned aborts[3],clears[3],pipe_queries,read_failures_remaining,reads_at_format,format_failures_remaining;
-    uint64_t bus_frame,anchor_host;
+    uint64_t bus_frame,anchor_host,accepted[3];
     int32_t fail_read,fail_write;
     bool persistent_read_failure,persistent_write_failure,fail_command,fail_stop,defer_abort,primary_supported;
     uint8_t commands_bytes[2][6];
@@ -123,7 +124,7 @@ int32_t rk3_host_iso_enqueue(RK3HostInterface *interface, uint8_t pipe,
     MockTransfer *transfer=pipe == 1 ? find_transfer(mock.reads,64,&mock.read_count,list,first) :
         find_transfer(mock.writes,128,&mock.write_count,list,first);
     assert(!transfer->pending);
-    *transfer=(MockTransfer){buffer,list,first,count,frame,completion,context,true,false};
+    *transfer=(MockTransfer){buffer,list,first,count,frame,completion,context,true,false,++mock.accepted[pipe]};
     if(pipe == 2)mock.last_write=transfer;
     return 0;
 }
@@ -300,6 +301,101 @@ static void test_delayed_callbacks_against_advancing_bus(void) {
     assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
     assert(rk3_native_audio_iso_error(engine) == 0);
     destroy_engine(engine);
+}
+/* NativeHostUSB callback contract: successful requests retire in acceptance
+ * order on each pipe, even when raw system completions arrive out of order.
+ * Primary-list publication is independent of that ordered callback delivery.
+ * This exercises the production ISO engine, not a second scheduling model. */
+typedef struct {
+    uint64_t acceptance,frame,due;
+    bool primary,raw_complete;
+} CompletionEvent;
+typedef struct {
+    unsigned inversions,submissions,pending_reads;
+    bool stalled;
+} CompletionBindingResult;
+static MockTransfer *oldest_pending_input(void) {
+    MockTransfer *oldest=NULL;
+    for(unsigned i=0;i<mock.read_count;++i)if(mock.reads[i].pending&&
+        (!oldest||mock.reads[i].acceptance<oldest->acceptance))oldest=mock.reads+i;
+    return oldest;
+}
+static unsigned pending_inputs(void) {
+    unsigned count=0;for(unsigned i=0;i<mock.read_count;++i)count+=mock.reads[i].pending;return count;
+}
+static void deliver_ordered_inputs(CompletionEvent events[64]) {
+    for(;;) {
+        MockTransfer *oldest=oldest_pending_input();
+        if(!oldest)return;
+        CompletionEvent *event=events+(size_t)(oldest-mock.reads);
+        if(event->acceptance!=oldest->acceptance||!event->raw_complete)return;
+        /* deliver() retires before invoking the engine callback. That callback
+         * may enqueue another request for this same reusable input slot. */
+        deliver(oldest,0);
+    }
+}
+static CompletionBindingResult simulate_completion_binding(bool ordered) {
+    CompletionEvent events[64]={{0}};
+    CompletionBindingResult result={0};
+    rk3_native_audio_iso *engine=new_engine();assert(rk3_native_audio_iso_start(engine)==0);
+    unsigned last_submissions=mock.read_submissions;uint64_t last_progress=1000;
+    for(uint64_t now=1000;now<21000;++now) {
+        mock.bus_frame=now;
+        for(unsigned slot=0;slot<64;++slot)if(mock.reads[slot].pending) {
+            MockTransfer *transfer=mock.reads+slot;CompletionEvent *event=events+slot;
+            if(event->acceptance!=transfer->acceptance)
+                *event=(CompletionEvent){transfer->acceptance,transfer->scheduled_frame,
+                    transfer->scheduled_frame+1+(slot==0?1:0),false,false};
+            if(!event->primary&&event->frame+1<=now){input_primary(slot,false);event->primary=true;}
+        }
+        for(unsigned slot=0;slot<mock.write_count;++slot)
+            if(mock.writes[slot].pending&&mock.writes[slot].scheduled_frame+1<=now)output_callback(slot);
+        /* Coalesced raw arrivals deliberately visit slot1 before slot0 when
+         * both are due. Slot0 adds only1ms callback delay; every primary batch
+         * still publishes exactly at its scheduled USB frame+1ms. */
+        for(unsigned reverse=0;reverse<64;++reverse) {
+            unsigned slot=63-reverse;MockTransfer *transfer=mock.reads+slot;
+            CompletionEvent *event=events+slot;
+            if(!transfer->pending||event->acceptance!=transfer->acceptance||
+                !event->primary||event->raw_complete||event->due>now)continue;
+            assert(now-event->frame-1<=1);
+            MockTransfer *oldest=oldest_pending_input();assert(oldest);
+            if(oldest->acceptance<transfer->acceptance&&!events[(size_t)(oldest-mock.reads)].raw_complete)
+                ++result.inversions;
+            event->raw_complete=true;
+            if(!ordered)deliver(transfer,0);
+        }
+        if(ordered)deliver_ordered_inputs(events);
+        rk3_native_audio_iso_service(engine);
+        if(now%3==0) {
+            float samples[256];
+            assert(rk3_native_audio_iso_capture_at(engine,samples,(now-1000)*48,128)==128);
+            rk3_native_audio_iso_service(engine);
+        }
+        uint32_t delay=0;int32_t error=0;
+        assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
+        assert(rk3_native_audio_iso_stream_error(engine)==0&&rk3_native_audio_iso_error(engine)==0);
+        if(mock.read_submissions!=last_submissions){last_submissions=mock.read_submissions;last_progress=now;}
+        if(ordered)assert(pending_inputs()==64);
+        if(now>1200&&now-last_progress>=128){result.stalled=true;break;}
+    }
+    result.submissions=mock.read_submissions;result.pending_reads=pending_inputs();
+    if(ordered) {
+        rk3_native_audio_clock clock;assert(rk3_native_audio_iso_clock(engine,&clock));
+        assert(clock.sample_frame>UINT64_C(900000));
+    }
+    destroy_engine(engine);return result;
+}
+static void test_completion_acceptance_order_binding(void) {
+    /* Negative control proves this fixture can expose the original callback-
+     * arrival FIFO/consumed-epoch cycle. Unordered delivery violates the Host
+     * contract; it is not an alternative supported binding for this engine.
+     * The valid binding must prevent that failure without changing NI timing. */
+    CompletionBindingResult unordered=simulate_completion_binding(false);
+    assert(unordered.inversions>0&&unordered.stalled&&unordered.pending_reads==0);
+    CompletionBindingResult ordered=simulate_completion_binding(true);
+    assert(ordered.inversions>100&&!ordered.stalled&&ordered.pending_reads==64);
+    assert(ordered.submissions>19500);
 }
 static void complete_due_outputs(uint64_t input_frame) {
     for(unsigned i=0;i<mock.write_count;++i)if(mock.writes[i].pending && mock.writes[i].scheduled_frame <= input_frame)output_callback(i);
@@ -555,7 +651,7 @@ static void test_live_rt_storage(void) {
 }
 int main(void) {
     test_lifted_calendar_and_deferred_dma();test_capture_primary_and_repeatable_positions();
-    test_delayed_callbacks_against_advancing_bus();test_microframe_ring_wrap();
+    test_delayed_callbacks_against_advancing_bus();test_completion_acceptance_order_binding();test_microframe_ring_wrap();
     test_empty_output_request_lifecycle();test_panic_classification();test_input_retry_exhaustion_no_invented_panic();test_initial_start_nonfatal_failures();test_real_format_retries_preserve_panic_policy();
     test_priming_written_inactive_clear();test_partial_output_diagnostic();
     test_exact_variable_count_zero_event();test_backward_output_host_time_guard();
