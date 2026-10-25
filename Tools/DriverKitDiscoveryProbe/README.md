@@ -52,15 +52,24 @@ Normal Xcode development provisioning can be requested explicitly:
 xcodebuild -project Tools/DriverKitDiscoveryProbe/DiscoveryProbe.xcodeproj \
   -scheme DiscoveryProbe -configuration Debug \
   -derivedDataPath /private/tmp/rk3-discovery-probe-development \
+  -destination "platform=macOS,id=$RK3_MAC_PROVISIONING_UDID,arch=arm64" \
   -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
   DEVELOPMENT_TEAM="$RK3_DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
   'CODE_SIGN_IDENTITY=Apple Development' \
   CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES build
 ```
 
-This command may register the current Mac and create development App IDs and
-profiles. Verify both bundles' signatures, matching team and actual profile
-capabilities before activation. The default checked-in build scripts explicitly
+Set `RK3_MAC_PROVISIONING_UDID` to this Mac's Provisioning UDID from System
+Information, and `RK3_DEVELOPMENT_TEAM` to the existing signing team. Keep the
+device identifier private. This command may register the current Mac and create
+development App IDs and profiles. Before activation, verify both bundles'
+signatures, matching team, App IDs, expiry and actual profile capabilities.
+Both embedded profiles must include the current Mac's **Provisioning UDID**
+(or legitimately permit all devices). Valid signatures and capabilities alone
+do not establish device eligibility. If Xcode reuses an ineligible profile,
+follow [Apple's profile refresh guidance](https://developer.apple.com/help/account/provisioning-profiles/edit-download-or-delete-profiles/)
+to preserve and remove only that cached profile before rebuilding. Do not alter
+security settings. The default checked-in build scripts explicitly
 disable signing and never pass provisioning flags.
 
 The containing host defaults to `--inspect`, which only checks its bundle
@@ -69,6 +78,8 @@ layout and reports `request_submitted=false`. Only explicit `--activate` or
 Existing extension replacement is cancelled. Actual activation requires normal
 macOS approval; exiting the host is not claimed to cancel a pending OS request.
 No activation occurs merely by building or opening the default scheme.
+An activated/enabled extension listing does not prove its executable launched;
+a missing probe remains inconclusive, with any startup audit planned separately.
 
 Once the signed app is installed through the recorded runtime plan and macOS
 has approved activation, run the separately built `discovery-client --check`:

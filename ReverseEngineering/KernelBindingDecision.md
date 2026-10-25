@@ -351,31 +351,53 @@ DriverKit route or every NI application is impossible. A positive result
 likewise proves no user-client ABI or actual application acceptance. The user
 still requires actual original NI automatic recognition.
 
-## One development activation: inconclusive discovery
+## Development activation and device eligibility
 
-The user approved the signed probe through normal macOS settings. The activation
-request completed successfully and `systemextensionsctl` reported the probe as
-activated and enabled while SIP remained enabled. This establishes this Mac's
-normal development activation path, not publication of the probe service or NI
-compatibility.
+Normal user approval completed for both software-probe attempts, and
+`systemextensionsctl` reported activated and enabled with SIP enabled. That
+state did not establish that the DriverKit executable launched.
 
-Exactly one diagnostic attempt returned exit 2, `INCONCLUSIVE / PROBE_QUERY_ERROR`
-(`0xe00002bc`), before the NI class query was reached. The result cannot distinguish
-an IOKit API error from the diagnostic's own null-iterator or invalid-iterator
-handling. Offline inspection found one definite diagnostic bug: the installed
-SDK's IOKitLib.h439 permits a successful null iterator to mean zero matches, but
-the client converted it to an error. A regression compiling the actual adapter
-with fake IOKit calls failed before a one-line correction, then passed strict
-compilation and ASan/UBSan. Independent review passes. This does not retrospectively
-prove that bug caused the observed result. Iterator-validity checks remain,
-consistent with [Apple's IOKit implementation](https://github.com/apple-oss-distributions/IOKitUser/blob/main/IOKitLib.c).
+The first diagnostic returned `INCONCLUSIVE / PROBE_QUERY_ERROR` before NI's
+class query. The installed SDK permits successful empty searches to return a
+null iterator; our diagnostic incorrectly converted that case into an error.
+An actual-adapter regression with fake IOKit calls reproduced the bug. Its
+one-line correction passed strict compilation, ASan/UBSan and independent
+review. The original output does not identify whether that bug caused the first
+result. Iterator-validity checks remain, consistent with
+[Apple's IOKit implementation](https://github.com/apple-oss-distributions/IOKitUser/blob/main/IOKitLib.c).
 
-No second live attempt occurred. The probe's deactivation callback reported that
-a reboot is required; the subsequent extension list contained zero entries. Full
-teardown is therefore pending a normal reboot. The exact signed containing app
-is retained at `/Applications/RK3DiscoveryProbeHost.app` for that cleanup boundary.
-Private exports, build/signature manifests, runtime logs and regression evidence
-are preserved in ignored `.build/ni/driverkit-discovery-evidence/20261025-ec89cd6`,
-with a 67-file hash manifest. Beads `.17` records the source/artifact identities,
-review, bounded plans and next gate. No production audio, USB, MIDI, timing or
-recovery code was changed; no original NI functionality has been waived.
+After the user rebooted, a fresh corrected client passed its offline fixtures.
+The single second attempt returned `INCONCLUSIVE / NO_PROBE`, with no API error;
+it also stopped before NI's class query. A separately planned, narrow startup
+log inspection identified the actual launch failure: macOS rejected the dext's
+profile as not provisioned for this device (`CPProfileManager -212`, then AMFI
+`-413` and spawn failure). The extra registry snapshot was unusable because its
+output failed plist parsing; it supplies no registry conclusion.
+
+Our earlier validation checked cryptographic trust, team, App IDs, capabilities
+and expiry, but omitted device eligibility. Private comparison confirmed that
+the host profile included this Mac's provisioning UDID, while the dext's
+three-device profile included neither this Mac's provisioning UDID nor hardware
+UUID. This was our signing validation omission, not evidence against NI's class
+contract or the ARM instruction set.
+
+Following [Apple's profile refresh guidance](https://developer.apple.com/help/account/provisioning-profiles/edit-download-or-delete-profiles/),
+we preserved and removed only the exact ineligible cached profile, then built
+the unchanged probe for the physical Mac using normal automatic development
+signing. The refreshed dext profile includes four devices, including this Mac;
+the host profile remains unchanged and eligible. Both actual embedded profiles
+now pass the current-device, team, App ID, capability and expiry checks. Both
+bundles pass strict Apple signature and architecture checks. No new capability,
+NI code, timing or recovery behavior was introduced.
+
+The second probe was deactivated. Its callback again requires a reboot, while
+the subsequent extension list contains zero entries. Full teardown remains a
+normal-reboot prerequisite before another activation. The refreshed app was copied to `/Applications/RK3DiscoveryProbeHost.app`
+after the old verified app was backed up. Its nine hashes, strict Apple
+signatures and default inspection verify; no fresh activation occurred.
+The build and its nine-file manifest are preserved under ignored
+`.build/ni/driverkit-discovery-evidence/20261025-postreboot-e980ae5`; Beads `.17`
+records the exact hashes, failed and corrected eligibility checks, independent
+reviews and installation boundary. The prior original-agent exports and timing
+measurement evidence remain preserved separately. No legacy class-match,
+user-client ABI or actual NI application recognition result is claimed.
