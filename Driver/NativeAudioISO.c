@@ -45,9 +45,10 @@ struct rk3_native_audio_iso {
     uint64_t output_sample[OUTPUT_SLOTS],output_usb_frame[OUTPUT_SLOTS];
     uint32_t output_bytes[OUTPUT_SLOTS];
     size_t pending_count;
-    bool usb_released,servicing,anchor_valid,submit_diagnostic_logged;
-    uint64_t anchor_frame,anchor_ns,interval_scaled,measurement_frame,measurement_ns,last_anchor_tick;
+    bool usb_released,servicing,submit_diagnostic_logged;
+    NIAudioClock ni_clock;
     mach_timebase_info_data_t timebase;
+    NIAudioClockProvider clock_provider;
     atomic_uint_fast64_t capture_samples[NI_AUDIO_RING_FRAME_COUNT];
     atomic_flag processing,render_busy;
     atomic_bool running,pcm_ready,panic_pending,output_active,output_written;
@@ -100,40 +101,30 @@ static void request_panic(rk3_native_audio_iso *e,uint32_t delay,int32_t error) 
         atomic_store_explicit(&e->panic_pending,true,memory_order_release);
     }
 }
+static uint64_t default_to_ns(void *context,uint64_t ticks) {
+    const rk3_native_audio_iso *e=context;
+    return ni_audio_clock_scale_time(ticks,e->timebase.numer,e->timebase.denom);
+}
+static uint64_t default_to_ticks(void *context,uint64_t ns) {
+    const rk3_native_audio_iso *e=context;
+    return ni_audio_clock_scale_time(ns,e->timebase.denom,e->timebase.numer);
+}
 static uint64_t ticks_to_ns(const rk3_native_audio_iso *e,uint64_t ticks) {
-    long double n=(long double)ticks*e->timebase.numer/e->timebase.denom;
-    return n>=0x1p64L?UINT64_MAX:(uint64_t)n;
+    return e->clock_provider.to_nanoseconds(e->clock_provider.context,ticks);
 }
 static uint64_t ns_to_ticks(const rk3_native_audio_iso *e,uint64_t ns) {
-    long double n=(long double)ns*e->timebase.denom/e->timebase.numer;
-    return n>=0x1p64L?UINT64_MAX:(uint64_t)n;
+    return e->clock_provider.to_absolute(e->clock_provider.context,ns);
 }
-/* NI's anchors are bus-frame/host-time pairs, not delayed transaction callback
- * receipt timestamps. Only the worker calls this bounded frame-boundary probe. */
-static bool refresh_anchor(rk3_native_audio_iso *e,bool force) {
-    uint64_t now=mach_absolute_time();
-    if(!force&&e->anchor_valid&&ticks_to_ns(e,now-e->last_anchor_tick)<128000000) return true;
-    uint64_t frame=0,host=0;
-    int32_t result=rk3_host_bus_frame(e->interface,&frame,&host);
-    if(result) {request_panic(e,0,result);return false;}
-    uint64_t first=frame,limit=now+ns_to_ticks(e,1100000);
-    while(frame==first&&mach_absolute_time()<limit) {
-        result=rk3_host_bus_frame(e->interface,&frame,&host);
-        if(result) {request_panic(e,0,result);return false;}
-    }
-    uint64_t ns=ticks_to_ns(e,host);
-    if(!host||ns==UINT64_MAX) return false;
-    if(e->measurement_ns&&frame>e->measurement_frame&&ns>=e->measurement_ns) {
-        uint64_t elapsed=ns-e->measurement_ns,frames=frame-e->measurement_frame;
-        if(elapsed<=UINT64_MAX/10000) {
-            uint64_t measured=elapsed*10000/frames;
-            if(measured>=10000&&measured<UINT64_C(100000000000))
-                e->interval_scaled=(measured+e->interval_scaled*1023+512)>>10;
-        }
-    }
-    e->measurement_frame=frame;e->measurement_ns=ns;
-    e->anchor_frame=frame;e->anchor_ns=ns;e->anchor_valid=true;e->last_anchor_tick=now;
-    return true;
+static uint64_t default_uptime(void *context) {(void)context;return mach_absolute_time();}
+static int32_t default_frame(void *context,uint64_t *frame,uint64_t *paired) {
+    rk3_native_audio_iso *e=context;return rk3_host_bus_frame(e->interface,frame,paired);
+}
+static bool clock_source_fatal(void *context,int32_t error) {(void)context;return device_gone(error);}
+static void clock_error(rk3_native_audio_iso *e,int32_t result) {
+    /* Legacy frame sampling has no NSError return. Keep a failed periodic
+     * observation's last clock and cadence, without inventing audio panic.
+     * Actual closed/removed ownership retains the existing fatal path. */
+    if(device_gone(result))request_panic(e,0,result);
 }
 /* NI updateFrequency=0 publishes the complete eight-microframe IRP at
  * primary interrupt time. Modern per-transaction publication must not expose a
@@ -160,14 +151,16 @@ static void queue_zero_locked(rk3_native_audio_iso *e,unsigned slot,unsigned mic
 /* Clock publication remains on the serial worker. RT primary processing only
  * records the exact event coordinates; it does no USB/time-anchor work. */
 static void publish_zero_events(rk3_native_audio_iso *e) {
+    /* Initial observations may fail without losing the exact queued ring
+     * event. Its coordinates remain pending until maintenance has an anchor. */
+    if(!ni_audio_clock_valid(&e->ni_clock))return;
     for(unsigned attempt=0;attempt<8;++attempt) {
         if(atomic_flag_test_and_set_explicit(&e->processing,memory_order_acquire))return;
         if(!e->zero_count){atomic_flag_clear_explicit(&e->processing,memory_order_release);return;}
         ZeroEvent event=e->zero_events[e->zero_head];e->zero_head=(e->zero_head+1)%8;--e->zero_count;
         atomic_flag_clear_explicit(&e->processing,memory_order_release);
-        if(!refresh_anchor(e,false))return;
         uint64_t ns=0;
-        if(ni_audio_timestamp_nanoseconds(e->anchor_frame,e->anchor_ns,e->interval_scaled,
+        if(ni_audio_timestamp_nanoseconds(e->ni_clock.anchor_frame,ticks_to_ns(e,e->ni_clock.anchor_time),e->ni_clock.interval_scaled,
             event.usb_frame,event.offset,event.total,&ns)!=NI_AUDIO_SCHEDULE_OK){request_panic(e,0,kIOReturnBadArgument);return;}
         uint64_t ticks=ns_to_ticks(e,ns),previous=atomic_load(&e->zero_host);
         if(previous&&ticks<previous)continue; /* recovered takeSimpleTimeStamp guard */
@@ -296,6 +289,8 @@ static bool submit_output(rk3_native_audio_iso *e,const NIAudioOutputPlan *p) {
 void rk3_native_audio_iso_service(rk3_native_audio_iso *e) {
     if(!e||e->servicing||!atomic_load(&e->running)) return;
     e->servicing=true;
+    clock_error(e,ni_audio_clock_service(&e->ni_clock));
+    if(!atomic_load(&e->running)){e->servicing=false;return;}
     clear_inactive_output(e);
     publish_zero_events(e);
     while(e->ready_count&&!atomic_load(&e->panic_pending)&&atomic_load(&e->running)) {
@@ -375,9 +370,9 @@ static void write_complete(void *context,int32_t result,RK3HostIsoList *list,siz
     }
     clear_inactive_output(e);
     publish_zero_events(e);
-    if(!refresh_anchor(e,false)||!e->anchor_valid) return;
+    if(!ni_audio_clock_valid(&e->ni_clock)) return;
     uint64_t ns=0;
-    if(ni_audio_timestamp_nanoseconds(e->anchor_frame,e->anchor_ns,e->interval_scaled,
+    if(ni_audio_timestamp_nanoseconds(e->ni_clock.anchor_frame,ticks_to_ns(e,e->ni_clock.anchor_time),e->ni_clock.interval_scaled,
         e->output_usb_frame[t->slot],0,e->output_bytes[t->slot],&ns)!=NI_AUDIO_SCHEDULE_OK) {request_panic(e,0,kIOReturnBadArgument);return;}
     uint64_t sample=e->output_sample[t->slot];
     uint64_t host_ticks=ns_to_ticks(e,ns);
@@ -394,10 +389,18 @@ static int32_t validate_pipe(rk3_native_audio_iso *e,uint8_t pipe,uint8_t direct
 }
 rk3_native_audio_iso *rk3_native_audio_iso_create(RK3HostInterface *interface,uint8_t in,uint8_t out,
     rk3_native_audio_command command,void *context) {
+    return rk3_native_audio_iso_create_with_clock(interface,in,out,command,context,NULL);
+}
+rk3_native_audio_iso *rk3_native_audio_iso_create_with_clock(RK3HostInterface *interface,uint8_t in,uint8_t out,
+    rk3_native_audio_command command,void *context,const NIAudioClockProvider *provider) {
+    if(provider&&(!provider->frame||!provider->uptime||!provider->to_nanoseconds||!provider->to_absolute))return NULL;
     if(!interface||!in||!out||!command||!rk3_host_primary_lists_supported()) return NULL;
     rk3_native_audio_iso *e=calloc(1,sizeof(*e));if(!e)return NULL;
     e->interface=interface;e->input_pipe=in;e->output_pipe=out;e->command=command;e->command_context=context;
     rk3_host_retain(interface);(void)mach_timebase_info(&e->timebase);
+    e->clock_provider=provider?*provider:(NIAudioClockProvider){e,default_frame,default_uptime,default_to_ns,default_to_ticks,clock_source_fatal};
+    e->clock_provider.is_fatal=clock_source_fatal; /* Existing ISO removal policy. */
+    (void)ni_audio_clock_init(&e->ni_clock,&e->clock_provider);
     atomic_flag_clear(&e->processing);atomic_flag_clear(&e->render_busy);
     atomic_init(&e->running,false);atomic_init(&e->pcm_ready,false);atomic_init(&e->panic_pending,false);
     atomic_init(&e->output_active,true);atomic_init(&e->output_written,false);
@@ -443,12 +446,10 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
     memset(e->input_epoch,0,sizeof(e->input_epoch));memset(e->consumed_epoch,0,sizeof(e->consumed_epoch));
     e->submit_diagnostic_logged=false;
     e->ready_head=0;e->ready_count=0;e->zero_head=0;e->zero_count=0;e->initial_timestamp_queued=false;e->read_slot=0;e->read_microframe=0;e->published_frames=0;e->wire_bytes=0;
-    e->anchor_valid=false;e->measurement_ns=0;e->interval_scaled=UINT64_C(10000000000);
     for(unsigned i=0;i<NI_AUDIO_RING_FRAME_COUNT;++i)atomic_store(&e->capture_samples[i],0);
     atomic_store(&e->fatal_error,0);atomic_store(&e->panic_error,0);atomic_store(&e->last_output_error,0);
     atomic_store(&e->panic_delay,0);atomic_store(&e->panic_pending,false);atomic_store(&e->pcm_ready,false);
     atomic_store(&e->clock_frame,0);atomic_store(&e->clock_host,0);atomic_store(&e->zero_frame,0);atomic_store(&e->zero_host,0);atomic_fetch_add(&e->clock_seed,1);
-    if(!refresh_anchor(e,true))return kIOReturnIOError;
     atomic_store(&e->running,true);
     for(unsigned i=0;i<INPUT_SLOTS;++i) {
         if(!atomic_load(&e->running))return atomic_load(&e->fatal_error)?atomic_load(&e->fatal_error):kIOReturnAborted;
@@ -470,7 +471,10 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
      * recoverable panic does not suppress them. Actual stopped/fatal lifetime
      * remains a modern binding guard; NativeUSB separately checks cancellation. */
     for(unsigned attempt=0;attempt<5;++attempt) {
-        if(e->command(e->command_context,start,sizeof(start),1200))return 0;
+        if(e->command(e->command_context,start,sizeof(start),1200)) {
+            int32_t observed=ni_audio_clock_start(&e->ni_clock);clock_error(e,observed);
+            return device_gone(observed)?observed:0;
+        }
         if(!atomic_load(&e->running))break;
         if(attempt!=4) {
             uint64_t deadline=mach_absolute_time()+ns_to_ticks(e,200000000);
@@ -484,6 +488,7 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
 }
 void rk3_native_audio_iso_stop(rk3_native_audio_iso *e) {
     if(!e)return;atomic_store(&e->running,false);atomic_store(&e->pcm_ready,false);
+    ni_audio_clock_stop(&e->ni_clock);
     if(!e->usb_released){(void)rk3_host_abort(e->interface,e->input_pipe);(void)rk3_host_abort(e->interface,e->output_pipe);}
 }
 size_t rk3_native_audio_iso_pending(const rk3_native_audio_iso *e){return e?e->pending_count:0;}

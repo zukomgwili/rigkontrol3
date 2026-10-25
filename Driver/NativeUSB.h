@@ -100,6 +100,11 @@ bool rk3_usb_write_midi(rk3_usb_session *session, uint8_t port,
 typedef void (*rk3_usb_audio_panic_handler)(void *context, uint64_t generation, int32_t error);
 bool rk3_usb_set_audio_panic_handler(rk3_usb_session *session,
     rk3_usb_audio_panic_handler handler, void *context);
+/* Software input gain: raw Float32 bits, current logical-engine generation.
+ * Non-RT only; returns EINVAL, ENODEV or ESTALE without changing gain/output.
+ * Optional changed is false on failure or an identical-bit successful set. */
+int32_t rk3_usb_input_gain_get(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t *bits);
+int32_t rk3_usb_input_gain_set(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t bits,bool *changed);
 /* Non-RT stream-property update. Desired activity survives reconnect and is
  * applied before publishing each engine. It pins the engine and invokes only
  * the ISO atomic setter; no USB transfer is issued. */

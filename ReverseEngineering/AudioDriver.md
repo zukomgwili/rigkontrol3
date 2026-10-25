@@ -531,13 +531,28 @@ prefix before the event. A variable-size example with counts
 USB frame 1506 gives zero time **1507 ms + 125/352 ms**, sample frame 16384.
 Using nominal 16384/48000 to infer that time is incorrect.
 
-The current worker performs a boundary anchor probe on each 128 ms refresh.
-The Stage 1 audit found that this is **not NI's exact cadence**: original
-`timestampTimerCallback` (`0xbbb0`) updates the interval estimator every 128 ms
-but calls the boundary anchor routine only at its eight-tick condition, about
-1.024 seconds. The fractional formula and smoothing vectors do not establish
-full clock parity. Beads `.14` requires recovering and restoring the original
-start/wake/periodic counter behavior before claiming matched clocks.
+Candidate **0.2.2/build7** ports the original clock maintenance into
+`Driver/AudioClock.c`. Interval observations use local uptime between two
+matching USB-frame reads. The callback updates the original integer filter,
+advances the byte counter and probes a boundary at its eight-tick condition,
+then rearms128ms relative to completion. Cold counter8 can cause both the
+missing-anchor bootstrap probe and the threshold probe. Ordinary Stop/Start
+preserves the estimator/anchor/counter; the immediate start callback follows
+accepted real-format setup. Output and zero-event delivery no longer drive
+clock maintenance.
+
+The boundary stores the **first frame+1** and final local uptime, including the
+original deadline-equality and timeout/fallback distinctions. Default Mach-time
+conversion uses checked integer quotient/remainder; the recovered estimator
+retains original unsigned low64 arithmetic and rounding. Nonfatal failed public
+observations preserve usable state without inventing audio panic; actual
+NoDevice/NotOpen retains existing fatal lifetime handling. Scripted production
+seams distinguish these public-error cases from the original successful traces.
+The portable sleep/awake state transitions are tested separately; actual OS
+wake-event delivery remains `.10`. Installed clock/deadline parity is not
+established by source tests, and this correction is not a proved TooOld fix.
+The currently installed package remains0.2.1/build6 until explicitly replaced.
+
 RT capture records exact boundary coordinates without USB/time-anchor work.
 Backwards timestamps are rejected. The public clock becomes valid only after
 both real output progress and an input zero event. Original format metadata
@@ -607,11 +622,12 @@ Beads `rigkontrol3-40h.13` contains the completed source-backed inventory and
 bounded Architecture Necessity Decision. [The audit report](ParityAudit.md)
 links 67 capability rows and exhaustive 241-audio/132-MIDI classification ledgers.
 The primary port remains incomplete. `.17` resolves the deployment choice;
-each affected change still needs its relevant contract disposition and planned
-original-parity checks. Confirmed gaps include additional rates and original
-44100 Hz default, per-channel input gains, direct-monitor commands (RK3 mode meanings remain
-unverified), startup
-failure/activation policies, clock cadence and priming side-effect order.
+[the selected-binding contract report](SelectedBindingContracts.md) records
+`.6`/`.2` entry dispositions. Candidate0.2.2 restores clock maintenance and
+callable software input gain, with installed acceptance still pending.
+Additional rates/original44100Hz default, direct-monitor commands (RK3 mode
+meanings unverified), startup/activation policies and priming side-effect order
+remain separate missing/different functions.
 Ordinary CoreAudio/CoreMIDI operation does not prove original NI private-client
 compatibility. Conditional firmware download is unimplemented but would be
 skipped for the verified attached release 000d. These are classified separately

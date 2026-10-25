@@ -163,6 +163,51 @@ completion delivery; close and alternate changes return Busy while these
 owners remain. A cached, separately retained run loop protects completion
 publication against immediate worker-side retirement.
 
+## Software input gain: candidate0.2.2
+
+The original engine's64 raw Float32 slots initialize to unity. Setter/getter
+bounds follow the original distinct predicates; the attached RK3 still has two
+inputs/two outputs. Capture applies one coherent stereo gain snapshot **after**
+packed-to-Float32 conversion, to the actual returned caller frames only. It
+never changes packed ring storage, output render, sample positions, controller
+state or unread-tail zero filling. Unity preserves all sample bits without
+multiplication. No clamp, dB mapping or finite-value filter is introduced.
+Raw NaN/Inf/signed-zero gain storage is exact; cross-ISA arithmetic payloads or
+FP flags are not claimed identical.
+
+Gain state belongs to the existing published engine context and retires with
+it. RT readers pin one context and use that engine's gains even if a new USB
+generation is published during conversion. A new context initializes to unity;
+same-context Stop/Start and audio-only recovery retain gains. Non-RT GET/SET
+validates the current context/generation and commits under the same short gate
+used for publication/unpublication. No RT mutex/allocation/IPC or new global
+reader-drain wait is added. No disk-persistence behavior is invented.
+
+The native functional API is a new DEVICE/global/main CFPropertyList custom
+property **`ngai`**, not an emulated NI service/selector ABI:
+
+| CFData record | Fields | Exact size |
+| --- | --- | --- |
+| Query qualifier | U32 version1, U32 zero-based channel, U64 generation |16bytes |
+| Value | Query fields, U32 raw Float32 value_bits, U32 reserved0 |24bytes |
+
+GET returns an owned CFData Value; NativeClient validates/copies/releases it.
+SET requires matching Query/Value identity and a nonzero current generation.
+Malformed type/size, wrong version/reserved, invalid channel and stale/offline
+requests fail without mutation. Numeric value_bits are not restricted. A
+successful software SET commits before returning; changed-only notification
+runs outside driver/session locks. This operation sends no USB command and
+does not widen the MIDI/LED command whitelist.
+
+`Tools/rk3-input-gain.c` is a diagnostic for the **installed candidate**, using
+ordinary CoreAudio/NativeClient only. `get CHANNEL` reads; explicit
+`set CHANNEL U32_BITS` commits and checks exact readback. It refuses an absent
+or ambiguous native provider, performs no retry, claims no USB interface and
+starts no audio. Only compilation/`--help` is exercised before installation.
+Real cross-process and finite-gain audio validation remain in Beads `.15`.
+Direct monitoring is a separate unimplemented function; software gain does not
+provide hardware monitor routing.
+
 ## Verification
 
 The full transport/ISO/codec/scheduler library builds as ARM64 with strict

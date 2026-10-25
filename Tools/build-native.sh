@@ -17,12 +17,12 @@ if [ "$mode" = sanitize ]; then
 else
     flags="$flags -O2"
 fi
-for unit in DeviceProtocol MIDIEvent AudioCodec AudioSchedule AudioRing Controller; do
+for unit in DeviceProtocol MIDIEvent AudioCodec AudioSchedule AudioRing AudioClock InputGain Controller; do
     xcrun clang $flags -I"$root/Driver" -c "$root/Driver/$unit.c" -o "$out/$unit.o"
 done
-xcrun ar rcs "$out/librk3-native.a" "$out/DeviceProtocol.o" "$out/MIDIEvent.o" "$out/AudioCodec.o" "$out/AudioSchedule.o" "$out/AudioRing.o" "$out/Controller.o"
+xcrun ar rcs "$out/librk3-native.a" "$out/DeviceProtocol.o" "$out/MIDIEvent.o" "$out/AudioCodec.o" "$out/AudioSchedule.o" "$out/AudioRing.o" "$out/AudioClock.o" "$out/InputGain.o" "$out/Controller.o"
 if [ "$mode" != build ]; then
-    for unit in DeviceProtocol MIDIEvent AudioCodec AudioSchedule AudioRing Controller; do
+    for unit in DeviceProtocol MIDIEvent AudioCodec AudioSchedule AudioRing AudioClock InputGain Controller; do
         xcrun clang $flags -I"$root/Driver" "$root/Driver/Tests/${unit}Tests.c" \
             "$out/librk3-native.a" -o "$out/${unit}Tests"
         "$out/${unit}Tests"
@@ -36,6 +36,7 @@ if [ -f "$root/Tools/rk3-device-probe.c" ]; then
 fi
 if [ "$mode" != build ]; then
     xcrun clang $flags -I"$root/Driver" -fblocks "$root/Driver/Tests/AudioDriverTests.c" \
+        "$root/Driver/InputGain.c" \
         -framework CoreAudio -framework CoreFoundation -o "$out/AudioDriverTests"
     "$out/AudioDriverTests"
     for unit in NativeAudioISO NativeUSB; do
@@ -44,9 +45,9 @@ if [ "$mode" != build ]; then
                 NativeAudioISO) set -- "$root/Driver/NativeAudioISO.c" ;;
                 NativeUSB) set -- ;;
             esac
-            xcrun clang $flags -I"$root/Driver" "$root/Driver/Tests/${unit}Tests.c" "$@" \
-                "$root/Driver/DeviceProtocol.c" "$root/Driver/AudioCodec.c" "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" \
-                -framework IOKit -framework CoreFoundation -o "$out/${unit}Tests"
+            xcrun clang $flags -fblocks -I"$root/Driver" "$root/Driver/Tests/${unit}Tests.c" "$@" \
+                "$root/Driver/DeviceProtocol.c" "$root/Driver/AudioCodec.c" "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" "$root/Driver/AudioClock.c" "$root/Driver/InputGain.c" \
+                -framework IOKit -framework CoreFoundation -framework CoreAudio -o "$out/${unit}Tests"
             "$out/${unit}Tests"
         fi
     done
@@ -68,12 +69,14 @@ if [ "$mode" != build ]; then
 fi
 xcrun clang $flags -I"$root/Driver" "$root/Tools/rk3-native-test.c" \
     "$root/Driver/NativeUSB.c" "$root/Driver/NativeAudioISO.c" "$root/Driver/AudioCodec.c" \
-    "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" "$root/Driver/DeviceProtocol.c" "$out/NativeHostUSB.o" \
+    "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" "$root/Driver/AudioClock.c" "$root/Driver/InputGain.c" "$root/Driver/DeviceProtocol.c" "$out/NativeHostUSB.o" \
     -framework IOUSBHost -framework Foundation -framework IOKit -framework CoreFoundation -o "$out/rk3-native-test"
 for unit in rk3-calibrate rk3-midi-monitor rk3-midi-feedback; do
     xcrun clang $flags -I"$root/Driver" "$root/Tools/$unit.c" \
         -framework CoreAudio -framework CoreMIDI -framework CoreFoundation -o "$out/$unit"
 done
+xcrun clang $flags -I"$root/Driver" "$root/Tools/rk3-input-gain.c" \
+    -framework CoreAudio -framework CoreFoundation -o "$out/rk3-input-gain"
 xcrun clang $flags "$root/Tools/rk3-driver-smoke.c" -framework CoreAudio \
     -framework CoreFoundation -o "$out/rk3-driver-smoke"
 xcrun clang $flags "$root/Tools/rk3-audio-client.c" -framework CoreAudio -framework CoreFoundation \

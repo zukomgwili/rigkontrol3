@@ -1,5 +1,11 @@
 # Fresh native hardware validation
 
+The source candidate0.2.2/build7 restores clock maintenance and software input
+gain after the recorded contract checks. It has not replaced installed0.2.1/build6
+or received a new physical acceptance result. Historical passes/failures below
+remain version-specific; source tests do not establish the candidate's audio
+continuity, gain, controls, LED feedback or recovery on hardware.
+
 Observed2026-10-24 on this Apple Silicon Mac. The previous RK3 bundles were
 quarantined by the user; all five original installation paths were then
 independently confirmed absent. CoreAudio restarted from process90679 to5169.

@@ -1,6 +1,7 @@
 #ifndef RK3_NATIVE_AUDIO_ISO_H
 #define RK3_NATIVE_AUDIO_ISO_H
 #include "NativeHostUSB.h"
+#include "AudioClock.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -19,6 +20,12 @@ typedef struct {
  * no per-transfer PCM snapshots or FIFO queue-lead adjustment is performed. */
 rk3_native_audio_iso *rk3_native_audio_iso_create(RK3HostInterface *,uint8_t,uint8_t,
     rk3_native_audio_command,void *);
+/* Same production engine with an explicit frame/local-time provider. The
+ * provider/context must remain valid until engine destruction. NULL selects
+ * the normal Host-frame and local Mach-clock adapter. ISO retains its existing
+ * NoDevice/NotOpen removal classification with either provider. */
+rk3_native_audio_iso *rk3_native_audio_iso_create_with_clock(RK3HostInterface *,uint8_t,uint8_t,
+    rk3_native_audio_command,void *,const NIAudioClockProvider *);
 int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *);
 void rk3_native_audio_iso_stop(rk3_native_audio_iso *);
 void rk3_native_audio_iso_service(rk3_native_audio_iso *);

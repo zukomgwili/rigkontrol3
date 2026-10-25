@@ -9,6 +9,7 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <math.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../NativeUSB.h"
@@ -76,6 +77,15 @@ static OSStatus read_cfdata(UInt32 size,const void *data,void *wire,size_t wire_
         return kAudioHardwareBadPropertySizeError;
     memcpy(wire,CFDataGetBytePtr((CFDataRef)object),wire_size);return 0;
 }
+static OSStatus gain_error(int32_t error) {
+    if(!error)return 0;
+    return error==EINVAL?kAudioHardwareIllegalOperationError:
+        error==ENODEV||error==ESTALE?kAudioHardwareNotRunningError:kAudioHardwareUnspecifiedError;
+}
+static OSStatus gain_query(UInt32 size,const void *data,RK3NativeGainQuery *query) {
+    OSStatus error=read_cfdata(size,data,query,sizeof(*query));if(error)return error;
+    return query->version==RK3_CONTROL_VERSION&&query->generation?0:kAudioHardwareIllegalOperationError;
+}
 static OSStatus return_cfdata(const void *wire,size_t wire_size,void *output) {
     CFDataRef object=CFDataCreate(NULL,wire,(CFIndex)wire_size);
     if(!object)return kAudioHardwareUnspecifiedError;
@@ -125,7 +135,7 @@ static OSStatus initialize(AudioServerPlugInDriverRef value, AudioServerPlugInHo
                 static uint32_t flags;static uint64_t generation;static int32_t last_error;
                 RK3NativeInfo current=info();
                 bool transport_changed=flags!=current.flags||generation!=current.generation;
-                if(transport_changed){notify(kAudioDevicePropertyDeviceIsAlive);notify(kAudioDevicePropertyDeviceIsRunning);}
+                if(transport_changed){notify(kAudioDevicePropertyDeviceIsAlive);notify(kAudioDevicePropertyDeviceIsRunning);notify(RK3_PROPERTY_INPUT_GAIN);}
                 if(transport_changed||last_error!=current.last_error)notify(RK3_PROPERTY_INFO);
                 flags=current.flags;generation=current.generation;last_error=current.last_error;
             });
@@ -187,7 +197,8 @@ static bool has(AudioObjectID o, const AudioObjectPropertyAddress *a) {
             case kAudioDevicePropertyAvailableNominalSampleRates: case kAudioDevicePropertyIsHidden:
             case kAudioDevicePropertyPreferredChannelsForStereo: case kAudioDevicePropertyZeroTimeStampPeriod:
             case kAudioDevicePropertyClockAlgorithm: case kAudioDevicePropertyClockIsStable:
-            case kAudioDevicePropertyStreamConfiguration: case kAudioObjectPropertyCustomPropertyInfoList:
+            case kAudioDevicePropertyStreamConfiguration: case kAudioObjectPropertyCustomPropertyInfoList:return true;
+            case RK3_PROPERTY_INPUT_GAIN:return a->mScope==kAudioObjectPropertyScopeGlobal;
             case RK3_PROPERTY_INFO: case RK3_PROPERTY_REPORTS: case RK3_PROPERTY_COMMAND: return true;
             default:return false;
         }
@@ -205,7 +216,7 @@ static Boolean has_property(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t p
     (void)pid;return valid(v)&&has(o,a);
 }
 static bool settable(AudioObjectID o,AudioObjectPropertySelector s) {
-    return (o==DEVICE&&(s==RK3_PROPERTY_COMMAND||s==kAudioDevicePropertyNominalSampleRate))||
+    return (o==DEVICE&&(s==RK3_PROPERTY_COMMAND||s==RK3_PROPERTY_INPUT_GAIN||s==kAudioDevicePropertyNominalSampleRate))||
         ((o==INPUT||o==OUTPUT)&&(s==kAudioStreamPropertyIsActive||s==kAudioStreamPropertyVirtualFormat||s==kAudioStreamPropertyPhysicalFormat));
 }
 static OSStatus is_settable(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const AudioObjectPropertyAddress *a,Boolean *result) {
@@ -235,8 +246,8 @@ static UInt32 size_for(AudioObjectID o,const AudioObjectPropertyAddress *a) {
         case kAudioDevicePropertyStreamConfiguration:return sizeof(AudioBufferList);
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:return sizeof(AudioStreamBasicDescription);
         case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:return sizeof(AudioStreamRangedDescription);
-        case kAudioObjectPropertyCustomPropertyInfoList:return 3*sizeof(AudioServerPlugInCustomPropertyInfo);
-        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:return sizeof(CFPropertyListRef);
+        case kAudioObjectPropertyCustomPropertyInfoList:return 4*sizeof(AudioServerPlugInCustomPropertyInfo);
+        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:return sizeof(CFPropertyListRef);
         default:return sizeof(UInt32);
     }
 }
@@ -296,8 +307,15 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
             AudioServerPlugInCustomPropertyInfo custom[]={
                 {RK3_PROPERTY_INFO,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeNone},
                 {RK3_PROPERTY_REPORTS,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
-                {RK3_PROPERTY_COMMAND,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
+                {RK3_PROPERTY_COMMAND,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
+                {RK3_PROPERTY_INPUT_GAIN,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
             memcpy(out,custom,sizeof(custom));return 0;}
+        case RK3_PROPERTY_INPUT_GAIN:{
+            RK3NativeGainQuery query;OSStatus error=gain_query(qs,q,&query);if(error)return error;
+            RK3NativeGainValue value={.version=RK3_CONTROL_VERSION,.channel=query.channel,.generation=query.generation};
+            error=gain_error(usb?rk3_usb_input_gain_get(usb,query.generation,query.channel,&value.value_bits):ENODEV);
+            return error?error:return_cfdata(&value,sizeof(value),out);
+        }
         case RK3_PROPERTY_INFO:{RK3NativeInfo current=info();return return_cfdata(&current,sizeof(current),out);}
         case RK3_PROPERTY_REPORTS:{
             RK3NativeReportQuery query;RK3NativeReports reports;
@@ -316,6 +334,16 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
     (void)pid;OSStatus error=checked(v,o);if(error)return error;
     if(!has(o,a)||!settable(o,a->mSelector))return kAudioHardwareUnknownPropertyError;
     if(size!=size_for(o,a)||!data)return kAudioHardwareBadPropertySizeError;
+    if(a->mSelector==RK3_PROPERTY_INPUT_GAIN){
+        RK3NativeGainQuery query;RK3NativeGainValue value;
+        OSStatus error=gain_query(qs,q,&query);if(error)return error;
+        error=read_cfdata(size,data,&value,sizeof(value));if(error)return error;
+        if(value.version!=RK3_CONTROL_VERSION||value.reserved||value.channel!=query.channel||
+           value.generation!=query.generation)return kAudioHardwareIllegalOperationError;
+        bool changed=false;
+        error=gain_error(usb?rk3_usb_input_gain_set(usb,query.generation,query.channel,value.value_bits,&changed):ENODEV);
+        if(!error&&changed)notify(RK3_PROPERTY_INPUT_GAIN);return error;
+    }
     if(a->mSelector==RK3_PROPERTY_COMMAND){
         RK3NativeCommand command_value;RK3NativeCommandLease lease_value;
         OSStatus decoded=read_cfdata(size,data,&command_value,sizeof(command_value));if(decoded)return decoded;

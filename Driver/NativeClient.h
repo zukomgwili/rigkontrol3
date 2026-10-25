@@ -26,6 +26,26 @@ static inline OSStatus rk3_native_copy_blob(AudioObjectID device, UInt32 selecto
     if(object)CFRelease(object);
     return error;
 }
+static inline OSStatus rk3_native_copy_input_gain(AudioObjectID device,
+    const RK3NativeGainQuery *query,RK3NativeGainValue *value) {
+    if(!query||!value)return kAudioHardwareIllegalOperationError;
+    RK3NativeGainValue current;
+    OSStatus error=rk3_native_copy_blob(device,RK3_PROPERTY_INPUT_GAIN,query,sizeof(*query),&current,sizeof(current));
+    if(error)return error;
+    if(current.version!=RK3_CONTROL_VERSION||current.reserved||current.channel!=query->channel||
+       current.generation!=query->generation)return kAudioHardwareIllegalOperationError;
+    *value=current;return 0;
+}
+static inline OSStatus rk3_native_set_input_gain(AudioObjectID device,
+    const RK3NativeGainQuery *query,const RK3NativeGainValue *value) {
+    if(!query||!value)return kAudioHardwareIllegalOperationError;
+    CFDataRef qualifier=CFDataCreate(NULL,(const UInt8 *)query,sizeof(*query));
+    CFDataRef data=CFDataCreate(NULL,(const UInt8 *)value,sizeof(*value));
+    if(!qualifier||!data){if(qualifier)CFRelease(qualifier);if(data)CFRelease(data);return kAudioHardwareUnspecifiedError;}
+    AudioObjectPropertyAddress address={RK3_PROPERTY_INPUT_GAIN,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
+    OSStatus error=AudioObjectSetPropertyData(device,&address,sizeof(qualifier),&qualifier,sizeof(data),&data);
+    CFRelease(data);CFRelease(qualifier);return error;
+}
 static inline OSStatus rk3_native_copy_info(AudioObjectID device,RK3NativeInfo *info) {
     return rk3_native_copy_blob(device,RK3_PROPERTY_INFO,NULL,0,info,sizeof(*info));
 }

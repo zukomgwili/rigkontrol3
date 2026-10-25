@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "../Audio/RK3AudioDriver.c"
+#include "../InputGain.h"
+static RK3InputGain mock_gain;
 
 static unsigned starts,stops,capture_calls,render_calls,opens,output_active_changes;
 static bool backend_output_active=true;
@@ -22,6 +24,16 @@ bool rk3_usb_info(rk3_usb_session *s,RK3NativeInfo *value){
     (void)s;memset(value,0,sizeof(*value));value->version=1;value->flags=(mock_connected?RK3_NATIVE_CONNECTED:0)|(mock_running?RK3_NATIVE_AUDIO_RUNNING:0);
     value->generation=mock_generation;value->midi_inputs=1;value->midi_outputs=1;
     value->audio_inputs=value->audio_outputs=2;value->sample_rate=RATE;value->wire_mode=2;return true;
+}
+int32_t rk3_usb_input_gain_get(rk3_usb_session *s,uint64_t generation,uint32_t channel,uint32_t *bits) {
+    (void)s;if(!mock_connected)return ENODEV;if(generation!=mock_generation)return ESTALE;
+    return rk3_input_gain_get(&mock_gain,2,channel,bits)?0:EINVAL;
+}
+int32_t rk3_usb_input_gain_set(rk3_usb_session *s,uint64_t generation,uint32_t channel,uint32_t bits,bool *changed) {
+    (void)s;*changed=false;if(!mock_connected)return ENODEV;if(generation!=mock_generation)return ESTALE;
+    uint32_t previous=0;(void)rk3_input_gain_get(&mock_gain,2,channel,&previous);
+    if(!rk3_input_gain_set(&mock_gain,2,2,channel,bits))return EINVAL;
+    *changed=previous!=bits;return 0;
 }
 bool rk3_usb_reports(rk3_usb_session *s,const RK3NativeReportQuery *q,RK3NativeReports *r){
     (void)s;if(q->version!=1)return false;memset(r,0,sizeof(*r));r->version=1;return true;
@@ -103,9 +115,9 @@ static void properties(void){
     RK3NativeInfo current={0};
     assert(rk3_native_copy_info(DEVICE,&current)==0&&current.version==1&&current.generation==7);
     a.mSelector=kAudioObjectPropertyCustomPropertyInfoList;
-    AudioServerPlugInCustomPropertyInfo metadata[3];
+    AudioServerPlugInCustomPropertyInfo metadata[4];
     assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(metadata),&written,metadata)==0);
-    for(unsigned i=0;i<3;++i)assert(metadata[i].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
+    for(unsigned i=0;i<4;++i)assert(metadata[i].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
     assert(metadata[0].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone);
     assert(metadata[1].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
     RK3NativeReportQuery query={1,0,0};RK3NativeReports reports;
@@ -121,6 +133,13 @@ static void properties(void){
     CFDataRef valid_lease=CFDataCreate(NULL,(const UInt8 *)&lease,sizeof(lease));
     assert(table.SetPropertyData(driver,DEVICE,0,&a,sizeof(valid_lease),&valid_lease,sizeof(wrong),&wrong)==kAudioHardwareBadPropertySizeError);
     CFRelease(valid_lease);
+}
+/* Tracer through NativeClient's CFData bridge into the production HAL table. */
+static void input_gain_transport_test(void) {
+    struct { uint32_t version,channel; uint64_t generation; } query={1,0,7};
+    struct { uint32_t version,channel; uint64_t generation; uint32_t value_bits,reserved; } value={0};
+    assert(rk3_native_copy_blob(DEVICE,UINT32_C(0x6e676169),&query,sizeof(query),&value,sizeof(value))==0);
+    assert(value.version==1&&value.channel==0&&value.generation==7&&value.value_bits==UINT32_C(0x3f800000));
 }
 static void audio(void){
     usb=&mock_session;
@@ -293,6 +312,6 @@ static void panic_handshake(void){
 }
 int main(void){
     assert(RK3AudioFactory(NULL,kAudioServerPlugInTypeUUID)==driver);
-    usb=&mock_session;properties();audio();stream_activity();panic_handshake();assert(opens==0);
+    rk3_input_gain_init(&mock_gain);usb=&mock_session;properties();input_gain_transport_test();audio();stream_activity();panic_handshake();assert(opens==0);
     puts("Audio driver: host ABI, CFData, NI timing, addressed PCM, lifecycle, clock and panic handshake passed");return 0;
 }

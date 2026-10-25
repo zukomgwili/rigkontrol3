@@ -1,6 +1,7 @@
 #include "NativeUSB.h"
 #include "NativeAudioISO.h"
 #include "NativeHostUSB.h"
+#include "InputGain.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOCFPlugIn.h>
 #include <IOKit/IOKitLib.h>
@@ -32,7 +33,10 @@ typedef struct Request {
 } Request;
 typedef struct RetiredAudio {
     struct RetiredAudio *next;
-    rk3_native_audio_iso *audio;
+    rk3_native_audio_iso *audio; /* Immutable with generation/counts after publication. */
+    uint64_t generation;
+    uint32_t inputs,outputs;
+    RK3InputGain gain;
 } RetiredAudio;
 
 struct rk3_usb_session {
@@ -76,7 +80,7 @@ struct rk3_usb_session {
     UInt8 original_alt, command_in, command_out, iso_in, iso_out;
     uint8_t read_buffer[64];
     uint8_t write_buffer[64];
-    _Atomic(rk3_native_audio_iso *) audio;
+    _Atomic(RetiredAudio *) audio;
     atomic_uint_fast64_t clock_generation;
     atomic_bool output_active;
     bool want_audio;
@@ -84,6 +88,11 @@ struct rk3_usb_session {
     size_t retired_count;
 };
 
+/* Worker-only loads do not outlive its serialized retirement operations.
+ * External readers pin rt_readers before taking the whole context. */
+static rk3_native_audio_iso *current_audio(rk3_usb_session *session) {
+    RetiredAudio *context=atomic_load(&session->audio);return context?context->audio:NULL;
+}
 static double seconds_now(void) {
     struct timespec now;
     if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
@@ -133,15 +142,15 @@ static void set_audio_error(rk3_usb_session *session, int32_t code, const char *
 
 /* Setter and publication share this non-RT gate. A reconnect cannot overwrite
  * a newer desired output activity update after its setter has returned. */
-static void publish_audio(rk3_usb_session *session, rk3_native_audio_iso *audio) {
+static void publish_audio(rk3_usb_session *session, RetiredAudio *context) {
     pthread_mutex_lock(&session->mutex);
-    rk3_native_audio_iso_set_output_active(audio, atomic_load(&session->output_active));
-    atomic_store(&session->audio, audio);
+    rk3_native_audio_iso_set_output_active(context->audio, atomic_load(&session->output_active));
+    atomic_store(&session->audio, context);
     pthread_mutex_unlock(&session->mutex);
 }
 
 static void service_audio(rk3_usb_session *session) {
-    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    rk3_native_audio_iso *audio = current_audio(session);
     if (audio == NULL) return;
     rk3_native_audio_iso_service(audio);
     int32_t diagnostic = rk3_native_audio_iso_stream_error(audio);
@@ -194,11 +203,11 @@ static void reclaim_retired(rk3_usb_session *session) {
      * A reader pinned before unpublish prevents reclamation; a later reader
      * can only acquire the current published engine, which is never freed. */
     if (atomic_load(&session->rt_readers) != 0) return;
-    rk3_native_audio_iso *current = atomic_load(&session->audio);
+    RetiredAudio *current = atomic_load(&session->audio);
     RetiredAudio **link = &session->retired;
     while (*link != NULL) {
         RetiredAudio *retired = *link;
-        if (retired->audio != current && rk3_native_audio_iso_is_quiescent(retired->audio) &&
+        if (retired != current && rk3_native_audio_iso_is_quiescent(retired->audio) &&
             rk3_native_audio_iso_destroy(retired->audio)) {
             *link = retired->next; --session->retired_count; free(retired);
         } else link = &retired->next;
@@ -748,11 +757,14 @@ static bool connect_device(rk3_usb_session *session) {
         free(retired); set_error(session, ENOMEM, "Cannot allocate native audio state"); return false;
     }
     retired->audio = audio;
+    retired->inputs=info.input_channels;retired->outputs=info.output_channels;
+    rk3_input_gain_init(&retired->gain);
     retired->next = session->retired;
     session->retired = retired;
     ++session->retired_count;
     pthread_mutex_lock(&session->mutex);
     ++session->generation;
+    retired->generation=session->generation;
     atomic_store(&session->clock_generation, session->generation);
     session->status.state = RK3_USB_READY;
     session->status.error_code = 0;
@@ -761,7 +773,7 @@ static bool connect_device(rk3_usb_session *session) {
     /* Old engines are unpublished before reconnect. Publish the new engine
      * only after its generation so clock readers cannot assign an old lease
      * to a newly published engine. Readers also recheck pointer+generation. */
-    publish_audio(session, audio);
+    publish_audio(session, retired);
     session->panic_seen = session->panic_pending = false;
     if (session->want_audio) {
         pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
@@ -785,7 +797,10 @@ static bool io_pending(rk3_usb_session *session, rk3_native_audio_iso *audio) {
 }
 
 static void disconnect_device(rk3_usb_session *session) {
-    rk3_native_audio_iso *audio = atomic_exchange(&session->audio, NULL);
+    pthread_mutex_lock(&session->mutex);
+    RetiredAudio *context=atomic_exchange(&session->audio,NULL);
+    pthread_mutex_unlock(&session->mutex);
+    rk3_native_audio_iso *audio=context?context->audio:NULL;
     session->panic_pending = false; session->panic_seen = true;
     session->stopping_io = true;
     session->command_recovering = false; session->command_suspended = true;
@@ -832,7 +847,7 @@ static void disconnect_device(rk3_usb_session *session) {
  * EP1, histories, assignments or the USB connection-generation lease. ISO
  * classifies the exact recovered triggers and supplies their 0/100ms delay. */
 static void audio_panic_tick(rk3_usb_session *session, double now) {
-    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    rk3_native_audio_iso *audio = current_audio(session);
     if (audio == NULL || session->stopping_io || session->transport_failed) return;
     int32_t error = rk3_native_audio_iso_error(audio);
     if (device_lost(error)) {
@@ -877,7 +892,7 @@ static void defer_stop(rk3_usb_session *session, Request *request, double now) {
 
 static void complete_stops(rk3_usb_session *session, bool connected, double now) {
     if (session->stop_head == NULL) return;
-    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    rk3_native_audio_iso *audio = current_audio(session);
     bool drained = rk3_native_audio_iso_is_quiescent(audio);
     if (!drained && now < session->stop_deadline) return;
     if (!drained) set_audio_error(session, ETIMEDOUT, "ISO stop is still draining; storage retained");
@@ -917,7 +932,7 @@ static void process_one_request(rk3_usb_session *session, bool connected) {
     if (request != NULL) {
         session->active_request = request;
         int32_t result = cancelled ? ETIMEDOUT : connected ? 0 : ENODEV;
-        rk3_native_audio_iso *audio = atomic_load_explicit(&session->audio, memory_order_acquire);
+        rk3_native_audio_iso *audio = current_audio(session);
         bool deferred = false;
         if (request->kind == REQUEST_STOP) {
             /* A stop revokes automatic restart even when the device is absent. */
@@ -1159,12 +1174,37 @@ bool rk3_usb_write_midi(rk3_usb_session *session, uint8_t port, const uint8_t *b
     return rk3_usb_command(session, command, length + 3, timeout_ms);
 }
 
+/* Only the non-RT property path takes this gate. Publication/unpublication
+ * use the same lock; a lease cannot commit into an already retired context. */
+static int32_t input_gain(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t *bits,bool write,bool *changed) {
+    if(changed)*changed=false;
+    if(!session||!bits||!generation)return EINVAL;
+    atomic_fetch_add(&session->rt_readers,1);pthread_mutex_lock(&session->mutex);
+    RetiredAudio *context=atomic_load(&session->audio);
+    int32_t result=0;
+    if(!context||atomic_load(&session->closing)||
+       (session->status.state!=RK3_USB_READY&&session->status.state!=RK3_USB_RUNNING&&
+        session->status.state!=RK3_USB_STARTING&&session->status.state!=RK3_USB_STOPPING))result=ENODEV;
+    else if(generation!=context->generation||generation!=session->generation)result=ESTALE;
+    else if(write){
+        uint32_t previous=(uint32_t)(rk3_input_gain_snapshot(&context->gain,channel/2)>>((channel&1)*32));
+        if(!rk3_input_gain_set(&context->gain,context->inputs,context->outputs,channel,*bits))result=EINVAL;
+        else if(changed)*changed=previous!=*bits;
+    } else if(!rk3_input_gain_get(&context->gain,context->inputs,channel,bits))result=EINVAL;
+    pthread_mutex_unlock(&session->mutex);atomic_fetch_sub(&session->rt_readers,1);return result;
+}
+int32_t rk3_usb_input_gain_get(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t *bits) {
+    return input_gain(session,generation,channel,bits,false,NULL);
+}
+int32_t rk3_usb_input_gain_set(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t bits,bool *changed) {
+    return input_gain(session,generation,channel,&bits,true,changed);
+}
 void rk3_usb_set_output_active(rk3_usb_session *session, bool active) {
     if (session == NULL) return;
     atomic_fetch_add(&session->rt_readers, 1);
     pthread_mutex_lock(&session->mutex);
     atomic_store(&session->output_active, active);
-    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    rk3_native_audio_iso *audio = current_audio(session);
     if (audio != NULL) rk3_native_audio_iso_set_output_active(audio, active);
     pthread_mutex_unlock(&session->mutex);
     atomic_fetch_sub(&session->rt_readers, 1);
@@ -1194,7 +1234,7 @@ size_t rk3_usb_render_at(rk3_usb_session *session, const float *interleaved,
     uint64_t first_sample_frame, size_t frames) {
     if (session == NULL || interleaved == NULL) return 0;
     atomic_fetch_add(&session->rt_readers, 1);
-    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    rk3_native_audio_iso *audio = current_audio(session);
     size_t accepted = audio != NULL ? rk3_native_audio_iso_render_at(audio, interleaved, first_sample_frame, frames) : 0;
     atomic_fetch_sub(&session->rt_readers, 1);
     return accepted;
@@ -1204,8 +1244,16 @@ size_t rk3_usb_capture_at(rk3_usb_session *session, float *interleaved,
     uint64_t first_sample_frame, size_t frames) {
     if (interleaved == NULL || frames > SIZE_MAX / (2 * sizeof(float))) return 0;
     if (session != NULL) atomic_fetch_add(&session->rt_readers, 1);
-    rk3_native_audio_iso *audio = session != NULL ? atomic_load(&session->audio) : NULL;
-    size_t captured = audio != NULL ? rk3_native_audio_iso_capture_at(audio, interleaved, first_sample_frame, frames) : 0;
+    RetiredAudio *context=session?atomic_load(&session->audio):NULL;
+    size_t captured=context?rk3_native_audio_iso_capture_at(context->audio,interleaved,first_sample_frame,frames):0;
+    if(context){
+        uint64_t gain=rk3_input_gain_snapshot(&context->gain,0);
+#ifdef RK3_NATIVE_USB_TESTING
+        extern void rk3_test_input_gain_snapshot(void);
+        rk3_test_input_gain_snapshot();
+#endif
+        rk3_input_gain_apply(gain,interleaved,captured);
+    }
     if (session != NULL) atomic_fetch_sub(&session->rt_readers, 1);
     if (captured < frames) memset(interleaved + 2 * captured, 0, (frames - captured) * 2 * sizeof(float));
     return captured;
@@ -1215,10 +1263,10 @@ bool rk3_usb_clock(rk3_usb_session *session, rk3_usb_clock_snapshot *clock) {
     if (session == NULL || clock == NULL) return false;
     atomic_fetch_add(&session->rt_readers, 1);
     uint64_t generation = atomic_load(&session->clock_generation);
-    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    RetiredAudio *context=atomic_load(&session->audio);
     rk3_native_audio_clock value;
-    if (audio == NULL || !rk3_native_audio_iso_clock(audio, &value) ||
-        audio != atomic_load(&session->audio) || generation != atomic_load(&session->clock_generation)) {
+    if (context == NULL || !rk3_native_audio_iso_clock(context->audio, &value) ||
+        context != atomic_load(&session->audio) || generation != atomic_load(&session->clock_generation)) {
         atomic_fetch_sub(&session->rt_readers, 1); return false;
     }
     *clock = (rk3_usb_clock_snapshot){

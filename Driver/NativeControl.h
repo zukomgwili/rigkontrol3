@@ -10,6 +10,7 @@
  * No former app, virtual MIDI bridge, socket or MainStage dependency. */
 enum {
     RK3_CONTROL_VERSION = 1,
+    RK3_PROPERTY_INPUT_GAIN = 0x6e676169, /* ngai; raw Float32 software input gain */
     RK3_PROPERTY_INFO = 0x6e696e66,     /* ninf; get RK3NativeInfo */
     RK3_PROPERTY_REPORTS = 0x6e727074,  /* nrpt; get RK3NativeReports */
     RK3_PROPERTY_COMMAND = 0x6e636d64,  /* ncmd; set RK3NativeCommand */
@@ -21,6 +22,19 @@ enum {
 #define RK3_CONTROLLER_IDENTITY_KEY "org.rigkontrol3.ni-arm.midi.identity"
 #define RK3_CONTROLLER_CALIBRATION_KEY "org.rigkontrol3.ni-arm.calibration"
 #define RK3_NATIVE_DEVICE_UID "org.rigkontrol3.ni-arm.usb.17cc1940"
+
+/* Zero-based original channel; all Float32 bit patterns are valid values.
+ * This is a native functional property, not an NI user-client selector ABI. */
+typedef struct { uint32_t version,channel; uint64_t generation; } RK3NativeGainQuery;
+typedef struct {
+    uint32_t version,channel;
+    uint64_t generation;
+    uint32_t value_bits,reserved;
+} RK3NativeGainValue;
+_Static_assert(sizeof(RK3NativeGainQuery)==16,"Gain query ABI");
+_Static_assert(sizeof(RK3NativeGainValue)==24,"Gain value ABI");
+_Static_assert(offsetof(RK3NativeGainValue,generation)==8,"Gain generation ABI");
+_Static_assert(offsetof(RK3NativeGainValue,value_bits)==16,"Gain bits ABI");
 
 typedef struct {
     uint32_t version;

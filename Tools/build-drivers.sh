@@ -33,7 +33,7 @@ xcrun clang $flags -fobjc-arc -fblocks -I"$root/Driver" -c "$root/Driver/NativeH
 xcrun clang $flags -fblocks -bundle -I"$root/Driver" \
     "$root/Driver/Audio/RK3AudioDriver.c" "$root/Driver/NativeUSB.c" \
     "$root/Driver/NativeAudioISO.c" "$root/Driver/DeviceProtocol.c" \
-    "$root/Driver/AudioCodec.c" "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" "$out/NativeHostUSB.o" \
+    "$root/Driver/AudioCodec.c" "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" "$root/Driver/AudioClock.c" "$root/Driver/InputGain.c" "$out/NativeHostUSB.o" \
     -framework CoreAudio -framework CoreFoundation -framework IOKit -framework IOUSBHost -framework Foundation \
     -o "$audio/Contents/MacOS/RK3AudioDriver"
 xcrun clang $flags -bundle -I"$root/Driver" "$root/Driver/MIDI/RK3MIDIDriver.c" \

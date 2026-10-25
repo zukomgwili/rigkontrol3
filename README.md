@@ -116,6 +116,16 @@ and `.2`'s NI-client/control entry criteria, plus each card's original-parity te
 and stop rules. No functionality exception was accepted. No coding, loading,
 toolchain or security change occurred in that decision.
 
+Candidate **0.2.2/build7** continues the lift-and-shift after the
+[`.6`/`.2` contract checks](ReverseEngineering/SelectedBindingContracts.md).
+Its scoped changes restore original clock sampling/counter/start behavior and
+callable per-input software gain with NI's raw Float32 semantics. The existing
+mappings, calibration and LED paths are retained. Source checks and installed
+acceptance are separate: **0.2.1/build6 remains installed** until the candidate
+is explicitly installed and verified. Remaining original rates, direct monitor,
+startup/priming, client compatibility, power and stability requirements stay in
+Beads; this candidate does not complete the primary port.
+
 ## Build and install
 
 ```sh
