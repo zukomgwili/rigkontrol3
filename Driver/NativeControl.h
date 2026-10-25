@@ -10,6 +10,7 @@
  * No former app, virtual MIDI bridge, socket or MainStage dependency. */
 enum {
     RK3_CONTROL_VERSION = 1,
+    RK3_PROPERTY_DIRECT_MONITOR = 0x6e646d6f, /* ndmo; opaque NI direct-monitor byte */
     RK3_PROPERTY_INPUT_GAIN = 0x6e676169, /* ngai; raw Float32 software input gain */
     RK3_PROPERTY_INFO = 0x6e696e66,     /* ninf; get RK3NativeInfo */
     RK3_PROPERTY_REPORTS = 0x6e727074,  /* nrpt; get RK3NativeReports */
@@ -35,6 +36,24 @@ _Static_assert(sizeof(RK3NativeGainQuery)==16,"Gain query ABI");
 _Static_assert(sizeof(RK3NativeGainValue)==24,"Gain value ABI");
 _Static_assert(offsetof(RK3NativeGainValue,generation)==8,"Gain generation ABI");
 _Static_assert(offsetof(RK3NativeGainValue,value_bits)==16,"Gain bits ABI");
+
+/* Functional native control, not the legacy NI selector ABI. SET transmits the
+ * low byte of value, as NI2ee0 does. GET always preserves the raw byte: ff with
+ * reply_received=1 is a real reply, ff with0 is NI's one-second timeout result.
+ * transport_error diagnoses a nonfatal query-write failure; it is not a mode.
+ * SET input requires reply_received/transport_error=0. No mode labels, numeric
+ * range, startup defaults or automatic restore writes are implied. */
+typedef struct { uint32_t version,reserved; uint64_t generation; } RK3NativeMonitorQuery;
+typedef struct {
+    uint32_t version,value;
+    uint64_t generation;
+    uint32_t reply_received;
+    int32_t transport_error;
+} RK3NativeMonitorValue;
+_Static_assert(sizeof(RK3NativeMonitorQuery)==16,"Monitor query ABI");
+_Static_assert(sizeof(RK3NativeMonitorValue)==24,"Monitor value ABI");
+_Static_assert(offsetof(RK3NativeMonitorValue,generation)==8,"Monitor generation ABI");
+_Static_assert(offsetof(RK3NativeMonitorValue,reply_received)==16,"Monitor reply ABI");
 
 typedef struct {
     uint32_t version;

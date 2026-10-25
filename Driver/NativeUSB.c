@@ -18,7 +18,7 @@
 
 enum { REPORT_HISTORY = 256, COMMAND_QUEUE = 32, COMMAND_TIMEOUT = 200,
        CONNECT_RETRY_MS = 1000, REPLY_TIMEOUT_MS = 3000, DRAIN_MS = 2000 };
-typedef enum { REQUEST_COMMAND, REQUEST_START, REQUEST_STOP } RequestKind;
+typedef enum { REQUEST_COMMAND, REQUEST_START, REQUEST_STOP, REQUEST_MONITOR_GET, REQUEST_MONITOR_SET } RequestKind;
 typedef struct Request {
     struct Request *next;
     RequestKind kind;
@@ -28,6 +28,7 @@ typedef struct Request {
     double deadline;
     bool complete, cancelled;
     int32_t result;
+    RK3NativeMonitorValue monitor;
     unsigned int references;
     pthread_cond_t condition;
 } Request;
@@ -77,6 +78,8 @@ struct rk3_usb_session {
     bool digital_known;
     uint16_t digital_snapshot;
     int ack_result;
+    bool monitor_reply_received; /* worker-only, reset for each explicit query */
+    uint8_t monitor_value;
     UInt8 original_alt, command_in, command_out, iso_in, iso_out;
     uint8_t read_buffer[64];
     uint8_t write_buffer[64];
@@ -229,8 +232,9 @@ static void complete_locked(Request *request, int32_t result) {
     }
 }
 
-static int32_t submit(rk3_usb_session *session, RequestKind kind,
-                      const uint8_t *bytes, size_t length, uint64_t generation, uint32_t timeout_ms) {
+static int32_t submit_result(rk3_usb_session *session, RequestKind kind,
+                      const uint8_t *bytes, size_t length, uint64_t generation, uint32_t timeout_ms,
+                      RK3NativeMonitorValue *monitor) {
     if (session == NULL || timeout_ms == 0 || timeout_ms > 5000 || length > 64) return EINVAL;
     Request *request = calloc(1, sizeof(*request));
     if (request == NULL) return ENOMEM;
@@ -263,12 +267,17 @@ static int32_t submit(rk3_usb_session *session, RequestKind kind,
         if (waited != 0 && waited != ETIMEDOUT) break;
     }
     int32_t result = request->complete ? request->result : ETIMEDOUT;
+    if(result==0&&monitor)*monitor=request->monitor;
     if (!request->complete) request->cancelled = true;
     if (--request->references == 0) {
         pthread_cond_destroy(&request->condition); free(request);
     }
     pthread_mutex_unlock(&session->mutex);
     return result;
+}
+static int32_t submit(rk3_usb_session *session, RequestKind kind,
+    const uint8_t *bytes,size_t length,uint64_t generation,uint32_t timeout_ms) {
+    return submit_result(session,kind,bytes,length,generation,timeout_ms,NULL);
 }
 
 static IOUSBDeviceInterface300 **make_device(io_service_t service) {
@@ -423,6 +432,11 @@ static void report_complete(void *context, int32_t result, size_t length) {
     }
     if (length >= 2 && session->read_buffer[0] == RK3_COMMAND_AUDIO_PARAMS)
         session->ack_result = session->read_buffer[1];
+    /* NI commandReplyDispatch2524 copies only reply12's first payload byte. */
+    if (length >= 2 && session->read_buffer[0] == 0x12) {
+        session->monitor_value=session->read_buffer[1];
+        session->monitor_reply_received=true;
+    }
     if (length >= 3 && session->read_buffer[0] == RK3_COMMAND_DIGITAL) {
         pthread_mutex_lock(&session->mutex);
         session->digital_snapshot = (uint16_t)(((uint16_t)session->read_buffer[1] |
@@ -619,6 +633,43 @@ static bool command_worker(void *context, const uint8_t *bytes, size_t length, u
     ++session->status.commands_completed;
     pthread_mutex_unlock(&session->mutex);
     return true;
+}
+
+static int32_t direct_monitor_guard(rk3_usb_session *session,uint64_t generation) {
+    if(session->transport_failed||!session->interface||!session->opened)return ENODEV;
+    if(session->stopping_io||active_request_cancelled(session))return ECANCELED;
+    if(session->active_request&&seconds_now()>=session->active_request->deadline)return ETIMEDOUT;
+    return generation&&generation==session->generation?0:ESTALE;
+}
+static int32_t direct_monitor_worker(rk3_usb_session *session,Request *request) {
+    int32_t error=direct_monitor_guard(session,request->generation);if(error)return error;
+    bool query=request->kind==REQUEST_MONITOR_GET;
+    uint8_t bytes[]={query?0x12:0x0e,request->bytes[0]};
+    if(query) {session->monitor_reply_received=false;session->monitor_value=255;}
+    /* NI user-client97f0 ignores setter failure. Getter2f2e also ignores its
+     * send result before the one-second reply wait. Keep the failure visible
+     * as a diagnostic without fabricating a successful reply or replaying IO. */
+    bool sent=command_worker(session,bytes,query?1:2,COMMAND_TIMEOUT);
+    error=direct_monitor_guard(session,request->generation);if(error)return error;
+    int32_t transport_error=0;
+    if(!sent) {
+        pthread_mutex_lock(&session->mutex);
+        transport_error=session->status.error_code;
+        pthread_mutex_unlock(&session->mutex);
+        if(!transport_error)transport_error=EIO;
+    }
+    if(!query)return 0;
+    double deadline=seconds_now()+1.0;
+    while(!session->monitor_reply_received&&seconds_now()<deadline) {
+        error=direct_monitor_guard(session,request->generation);if(error)return error;
+        pump_callbacks(session,0.001);
+    }
+    error=direct_monitor_guard(session,request->generation);if(error)return error;
+    request->monitor=(RK3NativeMonitorValue){.version=RK3_CONTROL_VERSION,
+        .value=session->monitor_reply_received?session->monitor_value:255,
+        .generation=request->generation,.reply_received=session->monitor_reply_received,
+        .transport_error=transport_error};
+    return 0;
 }
 
 static bool initialize_device_commands(rk3_usb_session *session) {
@@ -965,6 +1016,8 @@ static void process_one_request(rk3_usb_session *session, bool connected) {
         if (result == 0 && request->kind == REQUEST_COMMAND) {
             if (request->generation == 0 || request->generation != session->generation) result = ESTALE;
             else if (!command_worker(session, request->bytes, request->length, REPLY_TIMEOUT_MS)) result = EIO;
+        } else if(result==0&&(request->kind==REQUEST_MONITOR_GET||request->kind==REQUEST_MONITOR_SET)) {
+            result=direct_monitor_worker(session,request);
         } else if (result == 0 && request->kind == REQUEST_START) {
             pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
             result = audio == NULL ? ENODEV : session->stop_head != NULL ? kIOReturnBusy :
@@ -1187,6 +1240,18 @@ bool rk3_usb_command(rk3_usb_session *session, const uint8_t *bytes, size_t leng
     if (session == NULL) return false;
     pthread_mutex_lock(&session->mutex); uint64_t generation = session->generation; pthread_mutex_unlock(&session->mutex);
     return rk3_usb_command_for_generation(session, bytes, length, generation, timeout_ms);
+}
+
+int32_t rk3_usb_direct_monitor_get(rk3_usb_session *session,uint64_t generation,
+    RK3NativeMonitorValue *value,uint32_t timeout_ms) {
+    if(!session||!generation||!value)return EINVAL;
+    return submit_result(session,REQUEST_MONITOR_GET,NULL,0,generation,timeout_ms,value);
+}
+int32_t rk3_usb_direct_monitor_set(rk3_usb_session *session,uint64_t generation,
+    uint32_t value,uint32_t timeout_ms) {
+    if(!session||!generation)return EINVAL;
+    uint8_t byte=(uint8_t)value; /* NI2ee8 preserves exactly the low byte. */
+    return submit(session,REQUEST_MONITOR_SET,&byte,1,generation,timeout_ms);
 }
 
 bool rk3_usb_write_midi(rk3_usb_session *session, uint8_t port, const uint8_t *bytes, size_t length, uint32_t timeout_ms) {

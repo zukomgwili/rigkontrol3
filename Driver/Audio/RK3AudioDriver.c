@@ -86,6 +86,10 @@ static OSStatus gain_query(UInt32 size,const void *data,RK3NativeGainQuery *quer
     OSStatus error=read_cfdata(size,data,query,sizeof(*query));if(error)return error;
     return query->version==RK3_CONTROL_VERSION&&query->generation?0:kAudioHardwareIllegalOperationError;
 }
+static OSStatus monitor_query(UInt32 size,const void *data,RK3NativeMonitorQuery *query) {
+    OSStatus error=read_cfdata(size,data,query,sizeof(*query));if(error)return error;
+    return query->version==RK3_CONTROL_VERSION&&!query->reserved&&query->generation?0:kAudioHardwareIllegalOperationError;
+}
 static OSStatus return_cfdata(const void *wire,size_t wire_size,void *output) {
     CFDataRef object=CFDataCreate(NULL,wire,(CFIndex)wire_size);
     if(!object)return kAudioHardwareUnspecifiedError;
@@ -198,7 +202,7 @@ static bool has(AudioObjectID o, const AudioObjectPropertyAddress *a) {
             case kAudioDevicePropertyPreferredChannelsForStereo: case kAudioDevicePropertyZeroTimeStampPeriod:
             case kAudioDevicePropertyClockAlgorithm: case kAudioDevicePropertyClockIsStable:
             case kAudioDevicePropertyStreamConfiguration: case kAudioObjectPropertyCustomPropertyInfoList:return true;
-            case RK3_PROPERTY_INPUT_GAIN:return a->mScope==kAudioObjectPropertyScopeGlobal;
+            case RK3_PROPERTY_INPUT_GAIN:case RK3_PROPERTY_DIRECT_MONITOR:return a->mScope==kAudioObjectPropertyScopeGlobal;
             case RK3_PROPERTY_INFO: case RK3_PROPERTY_REPORTS: case RK3_PROPERTY_COMMAND: return true;
             default:return false;
         }
@@ -216,7 +220,7 @@ static Boolean has_property(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t p
     (void)pid;return valid(v)&&has(o,a);
 }
 static bool settable(AudioObjectID o,AudioObjectPropertySelector s) {
-    return (o==DEVICE&&(s==RK3_PROPERTY_COMMAND||s==RK3_PROPERTY_INPUT_GAIN||s==kAudioDevicePropertyNominalSampleRate))||
+    return (o==DEVICE&&(s==RK3_PROPERTY_COMMAND||s==RK3_PROPERTY_INPUT_GAIN||s==RK3_PROPERTY_DIRECT_MONITOR||s==kAudioDevicePropertyNominalSampleRate))||
         ((o==INPUT||o==OUTPUT)&&(s==kAudioStreamPropertyIsActive||s==kAudioStreamPropertyVirtualFormat||s==kAudioStreamPropertyPhysicalFormat));
 }
 static OSStatus is_settable(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const AudioObjectPropertyAddress *a,Boolean *result) {
@@ -246,8 +250,8 @@ static UInt32 size_for(AudioObjectID o,const AudioObjectPropertyAddress *a) {
         case kAudioDevicePropertyStreamConfiguration:return sizeof(AudioBufferList);
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:return sizeof(AudioStreamBasicDescription);
         case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:return sizeof(AudioStreamRangedDescription);
-        case kAudioObjectPropertyCustomPropertyInfoList:return 4*sizeof(AudioServerPlugInCustomPropertyInfo);
-        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:return sizeof(CFPropertyListRef);
+        case kAudioObjectPropertyCustomPropertyInfoList:return 5*sizeof(AudioServerPlugInCustomPropertyInfo);
+        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:case RK3_PROPERTY_DIRECT_MONITOR:return sizeof(CFPropertyListRef);
         default:return sizeof(UInt32);
     }
 }
@@ -308,12 +312,19 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
                 {RK3_PROPERTY_INFO,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeNone},
                 {RK3_PROPERTY_REPORTS,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
                 {RK3_PROPERTY_COMMAND,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
-                {RK3_PROPERTY_INPUT_GAIN,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
+                {RK3_PROPERTY_INPUT_GAIN,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
+                {RK3_PROPERTY_DIRECT_MONITOR,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
             memcpy(out,custom,sizeof(custom));return 0;}
         case RK3_PROPERTY_INPUT_GAIN:{
             RK3NativeGainQuery query;OSStatus error=gain_query(qs,q,&query);if(error)return error;
             RK3NativeGainValue value={.version=RK3_CONTROL_VERSION,.channel=query.channel,.generation=query.generation};
             error=gain_error(usb?rk3_usb_input_gain_get(usb,query.generation,query.channel,&value.value_bits):ENODEV);
+            return error?error:return_cfdata(&value,sizeof(value),out);
+        }
+        case RK3_PROPERTY_DIRECT_MONITOR:{
+            RK3NativeMonitorQuery query;OSStatus error=monitor_query(qs,q,&query);if(error)return error;
+            RK3NativeMonitorValue value;
+            error=gain_error(usb?rk3_usb_direct_monitor_get(usb,query.generation,&value,2000):ENODEV);
             return error?error:return_cfdata(&value,sizeof(value),out);
         }
         case RK3_PROPERTY_INFO:{RK3NativeInfo current=info();return return_cfdata(&current,sizeof(current),out);}
@@ -334,6 +345,15 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
     (void)pid;OSStatus error=checked(v,o);if(error)return error;
     if(!has(o,a)||!settable(o,a->mSelector))return kAudioHardwareUnknownPropertyError;
     if(size!=size_for(o,a)||!data)return kAudioHardwareBadPropertySizeError;
+    if(a->mSelector==RK3_PROPERTY_DIRECT_MONITOR){
+        RK3NativeMonitorQuery query;RK3NativeMonitorValue value;
+        OSStatus error=monitor_query(qs,q,&query);if(error)return error;
+        error=read_cfdata(size,data,&value,sizeof(value));if(error)return error;
+        if(value.version!=RK3_CONTROL_VERSION||value.generation!=query.generation||
+           value.reply_received||value.transport_error)return kAudioHardwareIllegalOperationError;
+        error=gain_error(usb?rk3_usb_direct_monitor_set(usb,query.generation,value.value,2000):ENODEV);
+        if(!error)notify(RK3_PROPERTY_DIRECT_MONITOR);return error;
+    }
     if(a->mSelector==RK3_PROPERTY_INPUT_GAIN){
         RK3NativeGainQuery query;RK3NativeGainValue value;
         OSStatus error=gain_query(qs,q,&query);if(error)return error;

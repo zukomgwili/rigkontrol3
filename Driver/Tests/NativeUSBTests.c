@@ -1091,6 +1091,157 @@ static OSStatus gain_bridge_set(AudioObjectID device,const AudioObjectPropertyAd
 #include "../NativeClient.h"
 #undef AudioObjectGetPropertyData
 #undef AudioObjectSetPropertyData
+/* Production Client -> HAL -> request queue -> EP1 -> reply dispatch. */
+typedef struct {
+    rk3_usb_session session;
+    pthread_t thread;
+    atomic_bool ready,stop;
+    uint8_t value;
+    unsigned writes;
+    uint8_t packets[16][2];size_t lengths[16];
+    bool reply,delayed,truncated,unrelated,defer;
+    unsigned interrupt;
+    int32_t write_error;
+    RK3HostBulkCompletion deferred_callback;void *deferred_context;
+    const uint8_t *deferred_buffer;size_t deferred_length;
+} MonitorFixture;
+static void monitor_reply(MonitorFixture *fixture) {
+    rk3_usb_session *session=&fixture->session;
+    if(fixture->unrelated) {session->read_buffer[0]=0x14;report_complete(session,0,1);}
+    if(fixture->truncated) {session->read_buffer[0]=0x12;report_complete(session,0,1);}
+    if(fixture->reply) {
+        session->read_buffer[0]=0x12;session->read_buffer[1]=fixture->value;
+        report_complete(session,0,2);
+    }
+}
+static int32_t monitor_write(void *self,uint8_t pipe,const void *data,size_t size,
+    uint32_t timeout,RK3HostBulkCompletion callback,void *context) {
+    (void)self;(void)pipe;(void)timeout;
+    rk3_usb_session *session=context;
+    MonitorFixture *fixture=(MonitorFixture *)session;
+    const uint8_t *bytes=data;assert(fixture->writes<16&&size<=2);
+    fixture->lengths[fixture->writes]=size;memcpy(fixture->packets[fixture->writes++],bytes,size);
+    assert((size==1&&bytes[0]==0x12)||(size==2&&bytes[0]==0x0e));
+    if(fixture->interrupt==1) {pthread_mutex_lock(&session->mutex);session->active_request->cancelled=true;pthread_mutex_unlock(&session->mutex);}
+    if(fixture->interrupt==2)atomic_store(&session->closing,true);
+    if(fixture->interrupt==3)session->stopping_io=true;
+    if(fixture->interrupt==4)++session->generation;
+    if(!fixture->write_error&&size==2)fixture->value=bytes[1];
+    if(fixture->defer) {
+        fixture->deferred_callback=callback;fixture->deferred_context=context;
+        fixture->deferred_buffer=data;fixture->deferred_length=size;return 0;
+    }
+    if(!fixture->write_error)callback(context,0,size);
+    if(size==1&&!device_lost(fixture->write_error)) {
+        if(fixture->delayed)CFRunLoopPerformBlock(CFRunLoopGetCurrent(),kCFRunLoopDefaultMode,^{monitor_reply(fixture);});
+        else monitor_reply(fixture);
+    }
+    return fixture->write_error;
+}
+static int32_t monitor_abort(void *self,uint8_t pipe) {
+    (void)self;
+    /* Only the reader retires here; deferred OUT explicitly retains storage. */
+    if(pipe==4&&usb&&usb->pending)report_complete(usb,kIOReturnAborted,0);
+    return 0;
+}
+static void *monitor_worker(void *context) {
+    MonitorFixture *fixture=context;
+    fixture->session.run_loop=CFRunLoopGetCurrent();
+    atomic_store(&fixture->ready,true);
+    for(;;) {
+        process_one_request(&fixture->session,true);
+        pump_callbacks(&fixture->session,0.001);
+        pthread_mutex_lock(&fixture->session.mutex);
+        bool done=atomic_load(&fixture->stop)&&!fixture->session.head&&!fixture->session.pending_write;
+        pthread_mutex_unlock(&fixture->session.mutex);
+        if(done)break;
+    }
+    fixture->session.run_loop=NULL;return NULL;
+}
+static void monitor_start(MonitorFixture *fixture,RK3HostInterface *functions) {
+    memset(fixture,0,sizeof(*fixture));initialize(&fixture->session);
+    *functions=(RK3HostInterface){.bulk_write=monitor_write,.bulk_read=fake_read,.abort_pipe=monitor_abort};
+    fixture->session.interface=functions;fixture->session.opened=fixture->session.pending=true;
+    fixture->session.command_in=4;fixture->session.command_out=7;
+    fixture->reply=true;fixture->value=0x7f;
+    atomic_init(&fixture->ready,false);atomic_init(&fixture->stop,false);
+    usb=&fixture->session;host=NULL;
+    assert(!pthread_create(&fixture->thread,NULL,monitor_worker,fixture));
+    while(!atomic_load(&fixture->ready))sched_yield();
+}
+static void monitor_finish(MonitorFixture *fixture) {
+    atomic_store(&fixture->stop,true);pthread_join(fixture->thread,NULL);
+    usb=NULL;finish(&fixture->session);
+}
+static void direct_monitor_property_test(void) {
+    MonitorFixture fixture;RK3HostInterface functions;monitor_start(&fixture,&functions);
+    RK3NativeMonitorQuery query={1,0,9};RK3NativeMonitorValue value={0};
+    const uint8_t values[]={0,0x7f,0xff};
+    for(size_t i=0;i<sizeof(values);++i) {
+        RK3NativeMonitorValue set_value={.version=1,.value=UINT32_C(0x12340000)|values[i],.generation=9};
+        unsigned before=fixture.writes;
+        assert(rk3_native_set_direct_monitor(DEVICE,&query,&set_value)==0);
+        assert(fixture.writes==before+1&&fixture.lengths[before]==2&&fixture.packets[before][0]==0x0e&&fixture.packets[before][1]==values[i]);
+        assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==0);
+        assert(value.version==1&&value.value==values[i]&&value.generation==9&&value.reply_received==1&&value.transport_error==0);
+        assert(fixture.writes==before+2&&fixture.lengths[before+1]==1&&fixture.packets[before+1][0]==0x12);
+    }
+    fixture.delayed=fixture.truncated=fixture.unrelated=true;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==0&&value.reply_received==1&&value.value==255);
+    fixture.reply=false;fixture.delayed=false;
+    double began=seconds_now();
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==0&&value.value==255&&!value.reply_received&&!value.transport_error);
+    assert(seconds_now()-began>=1.0); /* No prior reply/cache or truncated frame is reused. */
+    fixture.write_error=kIOReturnIOError;fixture.reply=fixture.delayed=true;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==0&&value.reply_received==1&&value.value==255&&value.transport_error==kIOReturnIOError);
+    fixture.reply=fixture.delayed=false;
+    began=seconds_now();
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==0&&!value.reply_received&&value.value==255&&value.transport_error==kIOReturnIOError);
+    assert(seconds_now()-began>=1.0); /* Original nonfatal send result does not bypass polling. */
+    RK3NativeMonitorValue set_value={.version=1,.value=0,.generation=9};
+    assert(rk3_native_set_direct_monitor(DEVICE,&query,&set_value)==0&&fixture.value==255);
+    unsigned before=fixture.writes;
+    query.generation=8;value=(RK3NativeMonitorValue){.value=42};
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareNotRunningError&&value.value==42&&fixture.writes==before);
+    query.generation=9;query.reserved=1;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareIllegalOperationError&&value.value==42&&fixture.writes==before);
+    query.reserved=0;set_value.reply_received=1;
+    assert(rk3_native_set_direct_monitor(DEVICE,&query,&set_value)==kAudioHardwareIllegalOperationError&&fixture.writes==before);
+    set_value.reply_received=0;set_value.transport_error=1;
+    assert(rk3_native_set_direct_monitor(DEVICE,&query,&set_value)==kAudioHardwareIllegalOperationError&&fixture.writes==before);
+    assert(!rk3_usb_command_for_generation(&fixture.session,(const uint8_t[]){0x0e,0},2,9,100));
+    monitor_finish(&fixture);
+}
+static void direct_monitor_lifetime_test(void) {
+    const int32_t errors[]={kIOReturnNoDevice,kIOReturnNotAttached,kIOReturnNotOpen,(int32_t)UINT32_C(0xe000404e)};
+    for(size_t i=0;i<sizeof(errors)/sizeof(*errors);++i) {
+        MonitorFixture fixture;RK3HostInterface functions;monitor_start(&fixture,&functions);
+        fixture.write_error=errors[i];RK3NativeMonitorQuery query={1,0,9};RK3NativeMonitorValue value={.value=42};
+        assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareNotRunningError&&value.value==42);
+        assert(fixture.writes==1&&fixture.session.transport_failed&&!fixture.session.pending_write);
+        monitor_finish(&fixture);
+    }
+    for(unsigned interrupt=1;interrupt<=4;++interrupt) {
+        MonitorFixture fixture;RK3HostInterface functions;monitor_start(&fixture,&functions);
+        fixture.interrupt=interrupt;RK3NativeMonitorValue value={.value=42};
+        assert(rk3_usb_direct_monitor_get(&fixture.session,9,&value,2000)!=0&&value.value==42);
+        assert(fixture.writes==1&&!fixture.session.pending_write);monitor_finish(&fixture);
+    }
+    MonitorFixture fixture;RK3HostInterface functions;monitor_start(&fixture,&functions);
+    fixture.reply=false;RK3NativeMonitorValue value={.value=42};
+    assert(rk3_usb_direct_monitor_get(&fixture.session,9,&value,20)==ETIMEDOUT&&value.value==42);
+    monitor_finish(&fixture);assert(fixture.writes==1);
+    monitor_start(&fixture,&functions);fixture.defer=true;
+    assert(rk3_usb_direct_monitor_set(&fixture.session,9,0x1234,1000)==0);
+    assert(fixture.session.pending_write&&fixture.writes==1&&fixture.deferred_buffer==fixture.session.write_buffer);
+    const uint8_t expected[]={0x0e,0x34};
+    assert(memcmp(fixture.deferred_buffer,expected,sizeof(expected))==0);
+    assert(rk3_usb_direct_monitor_set(&fixture.session,9,0x56,10)==ETIMEDOUT);
+    assert(fixture.writes==1&&memcmp(fixture.deferred_buffer,expected,sizeof(expected))==0);
+    CFRunLoopPerformBlock(fixture.session.run_loop,kCFRunLoopDefaultMode,^{fixture.deferred_callback(fixture.deferred_context,0,fixture.deferred_length);});
+    CFRunLoopWakeUp(fixture.session.run_loop);monitor_finish(&fixture);
+    assert(fixture.writes==1&&!fixture.session.pending_write);
+}
 static unsigned gain_notifications;
 static AudioServerPlugInHostInterface gain_host;
 static OSStatus gain_changed(AudioServerPlugInHostRef owner,AudioObjectID object_id,UInt32 count,const AudioObjectPropertyAddress *addresses){
@@ -1215,7 +1366,7 @@ static void gain_generation_borrow_test(void){
     }
 }
 int main(void) {
-    gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
+    gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();direct_monitor_property_test();direct_monitor_lifetime_test();
     puts("NativeUSB: NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
     return 0;
 }

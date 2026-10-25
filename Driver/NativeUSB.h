@@ -105,6 +105,15 @@ bool rk3_usb_set_audio_panic_handler(rk3_usb_session *session,
  * Optional changed is false on failure or an identical-bit successful set. */
 int32_t rk3_usb_input_gain_get(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t *bits);
 int32_t rk3_usb_input_gain_set(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t bits,bool *changed);
+/* Non-RT, serialized through the existing worker queue. Original NI setters
+ * ignore nonfatal write failure; queries ignore that failure then wait1s for
+ * reply12, returning valueff/received0 on no reply. Actual lost ownership,
+ * cancellation/deadline/stale lease remain errors and leave GET output intact.
+ * A GET caller needs time for the write plus the original1s reply interval. */
+int32_t rk3_usb_direct_monitor_get(rk3_usb_session *,uint64_t generation,
+    RK3NativeMonitorValue *,uint32_t timeout_ms);
+int32_t rk3_usb_direct_monitor_set(rk3_usb_session *,uint64_t generation,
+    uint32_t value,uint32_t timeout_ms);
 /* Non-RT stream-property update. Desired activity survives reconnect and is
  * applied before publishing each engine. It pins the engine and invokes only
  * the ISO atomic setter; no USB transfer is issued. */

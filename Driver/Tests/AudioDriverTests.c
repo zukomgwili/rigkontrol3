@@ -35,6 +35,13 @@ int32_t rk3_usb_input_gain_set(rk3_usb_session *s,uint64_t generation,uint32_t c
     if(!rk3_input_gain_set(&mock_gain,2,2,channel,bits))return EINVAL;
     *changed=previous!=bits;return 0;
 }
+int32_t rk3_usb_direct_monitor_get(rk3_usb_session *s,uint64_t generation,RK3NativeMonitorValue *value,uint32_t timeout) {
+    (void)s;(void)timeout;if(!mock_connected)return ENODEV;if(generation!=mock_generation)return ESTALE;
+    *value=(RK3NativeMonitorValue){.version=1,.value=0x7f,.generation=generation,.reply_received=1};return 0;
+}
+int32_t rk3_usb_direct_monitor_set(rk3_usb_session *s,uint64_t generation,uint32_t value,uint32_t timeout) {
+    (void)s;(void)value;(void)timeout;return !mock_connected?ENODEV:generation!=mock_generation?ESTALE:0;
+}
 bool rk3_usb_reports(rk3_usb_session *s,const RK3NativeReportQuery *q,RK3NativeReports *r){
     (void)s;if(q->version!=1)return false;memset(r,0,sizeof(*r));r->version=1;return true;
 }
@@ -115,9 +122,9 @@ static void properties(void){
     RK3NativeInfo current={0};
     assert(rk3_native_copy_info(DEVICE,&current)==0&&current.version==1&&current.generation==7);
     a.mSelector=kAudioObjectPropertyCustomPropertyInfoList;
-    AudioServerPlugInCustomPropertyInfo metadata[4];
+    AudioServerPlugInCustomPropertyInfo metadata[5];
     assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(metadata),&written,metadata)==0);
-    for(unsigned i=0;i<4;++i)assert(metadata[i].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
+    for(unsigned i=0;i<5;++i)assert(metadata[i].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
     assert(metadata[0].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone);
     assert(metadata[1].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
     RK3NativeReportQuery query={1,0,0};RK3NativeReports reports;
