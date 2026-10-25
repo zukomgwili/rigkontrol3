@@ -1,6 +1,7 @@
 /* Loads the native audio bundle in this diagnostic process and exercises its
  * real host interface. Does not install a driver or emit audible output. */
 #include "../Driver/NativeControl.h"
+#include "../Driver/AudioTiming.h"
 #include <CoreAudio/AudioServerPlugIn.h>
 #include <CoreAudio/CoreAudio.h>
 #include <CoreFoundation/CFPlugInCOM.h>
@@ -69,9 +70,18 @@ int main(int argc,char **argv){
     float input[512],silence[512]={0};uint64_t calls=0;long double energy=0;
     Float64 first_frame=0,last_frame=0;UInt64 timestamp=0,seed=0;
     error=(*driver)->GetZeroTimeStamp(driver,device,42,&first_frame,&timestamp,&seed);
-    AudioServerPlugInIOCycleInfo cycle={0};deadline=now()+1;
+    AudioServerPlugInIOCycleInfo cycle={0};mach_timebase_info_data_t timebase;mach_timebase_info(&timebase);
+    cycle.mInputTime.mFlags=kAudioTimeStampSampleTimeValid;
+    cycle.mOutputTime.mFlags=kAudioTimeStampSampleTimeValid;deadline=now()+1;
     while(!error&&now()<deadline){
         error=(*driver)->GetZeroTimeStamp(driver,device,42,&last_frame,&timestamp,&seed);
+        if(!error){
+            uint64_t tick=mach_absolute_time();
+            long double elapsed=tick>=timestamp?(long double)(tick-timestamp)*timebase.numer/timebase.denom/1e9L:0;
+            Float64 current=last_frame+(Float64)(elapsed*RK3_AUDIO_SAMPLE_RATE);
+            cycle.mInputTime.mSampleTime=floor(current)-RK3_AUDIO_SAMPLE_OFFSET_FRAMES-RK3_AUDIO_INPUT_LATENCY_FRAMES;
+            cycle.mOutputTime.mSampleTime=floor(current)+RK3_AUDIO_SAMPLE_OFFSET_FRAMES+RK3_AUDIO_OUTPUT_LATENCY_FRAMES;
+        }
         if(!error)error=(*driver)->DoIOOperation(driver,device,3,42,kAudioServerPlugInIOOperationReadInput,256,&cycle,input,NULL);
         if(!error)error=(*driver)->DoIOOperation(driver,device,4,42,kAudioServerPlugInIOOperationWriteMix,256,&cycle,silence,NULL);
         if(error)break;

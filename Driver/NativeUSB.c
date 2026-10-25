@@ -1,5 +1,6 @@
 #include "NativeUSB.h"
 #include "NativeAudioISO.h"
+#include "NativeHostUSB.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOCFPlugIn.h>
 #include <IOKit/IOKitLib.h>
@@ -43,6 +44,17 @@ struct rk3_usb_session {
     CFRunLoopRef run_loop;
     Request *head, *tail;
     Request *active_request; /* worker-owned reference, valid through completion */
+    Request *stop_head, *stop_tail; /* worker-owned pending stops; never block EP1 */
+    size_t deferred_stops; /* mutex protects admission accounting */
+    double stop_deadline;
+    pthread_t worker_thread;
+    bool worker_thread_known;
+    rk3_usb_audio_panic_handler panic_handler; /* mutex, including callback lease */
+    void *panic_context;
+    unsigned panic_callbacks;
+    bool panic_seen, panic_pending; /* worker only; cleared on a new successful start */
+    double panic_deadline;
+    int32_t panic_error;
     size_t queued;
     rk3_usb_status status;
     uint64_t generation;
@@ -50,10 +62,11 @@ struct rk3_usb_session {
     size_t history_count, history_head;
     uint64_t sequence;
     IOUSBDeviceInterface300 **device;
-    IOUSBInterfaceInterface300 **interface;
-    CFRunLoopSourceRef source;
+    RK3HostInterface *interface;
     bool opened, changed_alt, pending, stopping_io, transport_failed;
     bool pending_write;
+    bool command_recovering, recovery_clears_output, recovery_rearms_input, command_suspended, recovery_timed_out;
+    double command_recovery_deadline;
     IOReturn write_result;
     size_t write_length;
     bool info_received;
@@ -65,6 +78,7 @@ struct rk3_usb_session {
     uint8_t write_buffer[64];
     _Atomic(rk3_native_audio_iso *) audio;
     atomic_uint_fast64_t clock_generation;
+    atomic_bool output_active;
     bool want_audio;
     RetiredAudio *retired;
     size_t retired_count;
@@ -82,6 +96,83 @@ static void set_error(rk3_usb_session *session, int32_t code, const char *text) 
     snprintf(session->status.error, sizeof(session->status.error), "%s", text);
     session->status.state = RK3_USB_FAILED;
     pthread_mutex_unlock(&session->mutex);
+}
+
+/* An ISO engine can fail while command/DIN/controller USB is still healthy.
+ * Do not publish FAILED: CoreMIDI treats that flag as shared-device removal. */
+static bool device_lost(int32_t error) {
+    return error == kIOReturnNoDevice || error == kIOReturnNotAttached || error == kIOReturnNotOpen ||
+        (uint32_t)error == UINT32_C(0xe000404e); /* old invalid-interface status */
+}
+
+static int32_t audio_failure(rk3_native_audio_iso *audio) {
+    int32_t error = rk3_native_audio_iso_error(audio);
+    if (error != 0) return error;
+    uint32_t delay = 0; int32_t reason = 0;
+    return rk3_native_audio_iso_panic(audio, &delay, &reason) && reason != 0 ? reason : ETIMEDOUT;
+}
+
+static void command_warning(rk3_usb_session *session, int32_t code, const char *text) {
+    pthread_mutex_lock(&session->mutex);
+    if (!session->transport_failed) {
+        session->status.error_code = code;
+        snprintf(session->status.error, sizeof(session->status.error), "%s", text);
+    }
+    pthread_mutex_unlock(&session->mutex);
+}
+
+static void set_audio_error(rk3_usb_session *session, int32_t code, const char *text) {
+    pthread_mutex_lock(&session->mutex);
+    if (!session->transport_failed) {
+        session->status.error_code = code;
+        snprintf(session->status.error, sizeof(session->status.error), "%s", text);
+        session->status.state = RK3_USB_STOPPING;
+    }
+    pthread_mutex_unlock(&session->mutex);
+}
+
+/* Setter and publication share this non-RT gate. A reconnect cannot overwrite
+ * a newer desired output activity update after its setter has returned. */
+static void publish_audio(rk3_usb_session *session, rk3_native_audio_iso *audio) {
+    pthread_mutex_lock(&session->mutex);
+    rk3_native_audio_iso_set_output_active(audio, atomic_load(&session->output_active));
+    atomic_store(&session->audio, audio);
+    pthread_mutex_unlock(&session->mutex);
+}
+
+static void service_audio(rk3_usb_session *session) {
+    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    if (audio == NULL) return;
+    rk3_native_audio_iso_service(audio);
+    int32_t diagnostic = rk3_native_audio_iso_stream_error(audio);
+    if (diagnostic != 0) {
+        pthread_mutex_lock(&session->mutex);
+        if (session->status.error_code == 0) {
+            session->status.error_code = diagnostic;
+            snprintf(session->status.error, sizeof(session->status.error), "Audio transfer diagnostic");
+        }
+        pthread_mutex_unlock(&session->mutex);
+    }
+}
+
+static void check_connection_presence(rk3_usb_session *session) {
+    if (session->interface != NULL && session->opened && !session->stopping_io &&
+        !session->transport_failed && !rk3_host_connected(session->interface)) {
+        session->transport_failed = true;
+        set_error(session, kIOReturnNoDevice, "RK3 interface termination reported by host interest");
+    }
+}
+
+static void audio_panic_tick(rk3_usb_session *session, double now);
+static void service_command_recovery(rk3_usb_session *session, double now);
+static void pump_callbacks(rk3_usb_session *session, double interval) {
+    (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode, interval, true);
+    check_connection_presence(session);
+    service_command_recovery(session, seconds_now());
+    service_audio(session);
+    /* A command ACK wait must not defer the recovered panic timer until the
+     * entire command deadline expires. The handler only enqueues host work. */
+    audio_panic_tick(session, seconds_now());
 }
 
 static void release_session(rk3_usb_session *session) {
@@ -144,7 +235,7 @@ static int32_t submit(rk3_usb_session *session, RequestKind kind,
     double deadline = seconds_now() + (double)timeout_ms / 1000.0;
     request->deadline = deadline;
     pthread_mutex_lock(&session->mutex);
-    if (atomic_load(&session->closing) || session->queued == COMMAND_QUEUE) {
+    if (atomic_load(&session->closing) || session->queued + session->deferred_stops >= COMMAND_QUEUE) {
         pthread_mutex_unlock(&session->mutex);
         pthread_cond_destroy(&request->condition); free(request);
         return ECANCELED;
@@ -247,44 +338,59 @@ static bool advertised_configuration(IOUSBDeviceInterface300 **device, UInt8 val
     return false;
 }
 
-static IOUSBInterfaceInterface300 **find_interface(IOUSBDeviceInterface300 **device) {
+static io_service_t find_interface(IOUSBDeviceInterface300 **device) {
     IOUSBFindInterfaceRequest request = { kIOUSBFindInterfaceDontCare, kIOUSBFindInterfaceDontCare,
                                         kIOUSBFindInterfaceDontCare, kIOUSBFindInterfaceDontCare };
     io_iterator_t iterator = IO_OBJECT_NULL;
-    if ((*device)->CreateInterfaceIterator(device, &request, &iterator) != kIOReturnSuccess) return NULL;
-    IOUSBInterfaceInterface300 **selected = NULL;
+    if ((*device)->CreateInterfaceIterator(device, &request, &iterator) != kIOReturnSuccess) return IO_OBJECT_NULL;
+    io_service_t selected = IO_OBJECT_NULL;
     io_service_t service;
     while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
-        IOCFPlugInInterface **plugin = NULL;
-        IOUSBInterfaceInterface300 **interface = NULL;
-        SInt32 score = 0;
-        IOReturn result = IOCreatePlugInInterfaceForService(service, kIOUSBInterfaceUserClientTypeID,
-            kIOCFPlugInInterfaceID, &plugin, &score);
-        IOObjectRelease(service);
-        if (result != kIOReturnSuccess || plugin == NULL) continue;
-        HRESULT status = (*plugin)->QueryInterface(plugin,
-            CFUUIDGetUUIDBytes(kIOUSBInterfaceInterfaceID300), (LPVOID *)&interface);
-        (*plugin)->Release(plugin);
-        if (status != S_OK || interface == NULL) continue;
-        UInt8 number = 255;
-        if ((*interface)->GetInterfaceNumber(interface, &number) == kIOReturnSuccess && number == 0 && selected == NULL)
-            selected = interface;
-        else (*interface)->Release(interface);
+        CFTypeRef value = IORegistryEntryCreateCFProperty(service, CFSTR(kUSBInterfaceNumber), NULL, 0);
+        int number = -1;
+        bool matches = value != NULL && CFGetTypeID(value) == CFNumberGetTypeID() &&
+            CFNumberGetValue((CFNumberRef)value, kCFNumberIntType, &number) && number == 0;
+        if (value != NULL) CFRelease(value);
+        if (matches && selected == IO_OBJECT_NULL) selected = service;
+        else IOObjectRelease(service);
     }
     IOObjectRelease(iterator);
     return selected;
 }
 
 static bool arm_reader(rk3_usb_session *session);
+static void begin_command_recovery(rk3_usb_session *session, bool clear_output, bool rearm_input);
 
-static void report_complete(void *context, IOReturn result, void *argument) {
+static void report_complete(void *context, int32_t result, size_t length) {
     rk3_usb_session *session = context;
     session->pending = false;
     if (session->stopping_io) return;
-    uintptr_t length = (uintptr_t)argument;
-    if (result != kIOReturnSuccess || length > sizeof(session->read_buffer)) {
+    if (result != kIOReturnSuccess) {
+        if (device_lost(result)) {
+            session->transport_failed = true;
+            set_error(session, result, "Command interface unavailable");
+        } else if (result == kIOReturnAborted) {
+            /* NI returns without rearm. A modern clear can abort our pending
+             * read; its separate gate rearms only after that callback retires. */
+            if (!session->command_recovering) session->command_suspended = true;
+        } else if (result == kIOReturnNotResponding) {
+            session->command_recovering = false; session->command_suspended = true;
+            command_warning(session, result, "EP1 not responding; both command pipes aborted, reader suspended");
+            (void)rk3_host_abort(session->interface, session->command_in);
+            (void)rk3_host_abort(session->interface, session->command_out);
+        } else if ((uint32_t)result == UINT32_C(0xe000404f)) {
+            command_warning(session, result, "EP1 input stalled; clearing input endpoint");
+            if (!session->command_recovering) begin_command_recovery(session, false, true);
+        } else {
+            command_warning(session, result, "EP1 input error; NI reader rearm");
+            if (!session->command_recovering && !session->command_suspended &&
+                !atomic_load(&session->closing)) (void)arm_reader(session);
+        }
+        return;
+    }
+    if (length > sizeof(session->read_buffer)) {
         session->transport_failed = true;
-        set_error(session, result != kIOReturnSuccess ? result : EOVERFLOW, "EP1 receive failed");
+        set_error(session, EOVERFLOW, "EP1 report exceeds its fixed buffer");
         return;
     }
     pthread_mutex_lock(&session->mutex);
@@ -315,30 +421,99 @@ static void report_complete(void *context, IOReturn result, void *argument) {
         session->digital_known = true;
         pthread_mutex_unlock(&session->mutex);
     }
-    if (!atomic_load(&session->closing) && !arm_reader(session)) session->transport_failed = true;
+    if (!session->command_recovering && !session->command_suspended &&
+        !atomic_load(&session->closing)) (void)arm_reader(session);
 }
 
 static bool arm_reader(rk3_usb_session *session) {
-    if (session->pending || session->stopping_io) return false;
+    if (session->pending || session->stopping_io || session->command_recovering || session->command_suspended) return false;
     session->pending = true;
-    IOReturn result = (*session->interface)->ReadPipeAsync(session->interface, session->command_in,
-        session->read_buffer, sizeof(session->read_buffer), report_complete, session);
+    IOReturn result = rk3_host_bulk_read(session->interface, session->command_in,
+        session->read_buffer, sizeof(session->read_buffer), 0, report_complete, session);
     if (result != kIOReturnSuccess) {
         session->pending = false;
-        set_error(session, result, "Cannot arm persistent EP1 reader");
+        session->command_suspended = true;
+        if (device_lost(result)) {
+            session->transport_failed = true;
+            set_error(session, result, "Command interface unavailable while arming reader");
+        } else command_warning(session, result, "EP1 read submission failed; reader suspended");
         return false;
     }
     return true;
 }
 
-static void command_write_complete(void *context, IOReturn result, void *argument) {
+/* NI commandReplyDispatch@0x221c and sendCommand@0x26c9/0x26db use
+ * ClearPipeStall(false). IOUSBHost's public clearStall has no controller-only
+ * variant: it resets the endpoint's halt/data toggle and aborts pending I/O.
+ * This endpoint-local substitution retains the shared connection, and its
+ * abort/drain gate prevents a late old callback from sharing a new read buffer.
+ * Never replay a failed command/MIDI packet. */
+static void begin_command_recovery(rk3_usb_session *session, bool clear_output, bool rearm_input) {
+    if (session->stopping_io || atomic_load(&session->closing) || session->transport_failed) return;
+    int32_t input_error = 0, output_error = 0;
+    if (session->command_recovering) {
+        if (!clear_output || session->recovery_clears_output) return;
+        /* A concurrent write failure can extend an IN-only recovery. IN has
+         * already been cleared; clear OUT once without repeating the first. */
+        session->recovery_clears_output = true;
+        session->recovery_rearms_input |= rearm_input;
+        output_error = rk3_host_clear_stall(session->interface, session->command_out);
+    } else {
+        session->command_recovering = true;
+        session->recovery_clears_output = clear_output;
+        session->recovery_rearms_input = rearm_input;
+        session->recovery_timed_out = false;
+        session->command_recovery_deadline = seconds_now() + (double)DRAIN_MS / 1000.0;
+        input_error = rk3_host_clear_stall(session->interface, session->command_in);
+        output_error = clear_output ? rk3_host_clear_stall(session->interface, session->command_out) : 0;
+    }
+    int32_t error = input_error != 0 ? input_error : output_error;
+    if (error != 0) {
+        session->command_recovering = false; session->command_suspended = true;
+        if (device_lost(error)) {
+            session->transport_failed = true;
+            set_error(session, error, "Command interface unavailable during endpoint clear");
+        } else command_warning(session, error, "EP1 endpoint clear failed; reader suspended");
+    }
+}
+
+static void service_command_recovery(rk3_usb_session *session, double now) {
+    if (!session->command_recovering || session->stopping_io || session->transport_failed ||
+        atomic_load(&session->closing)) return;
+    if (session->pending || (session->recovery_clears_output && session->pending_write)) {
+        if (!session->recovery_timed_out && now >= session->command_recovery_deadline) {
+            session->recovery_timed_out = true;
+            command_warning(session, ETIMEDOUT, "EP1 clear still awaiting callbacks; command storage retained");
+        }
+        return;
+    }
+    bool delayed = session->recovery_timed_out, rearm = session->recovery_rearms_input;
+    session->command_recovering = session->recovery_clears_output = session->recovery_rearms_input = false;
+    if (delayed) command_warning(session, ETIMEDOUT, "EP1 clear drained after deadline; command storage retired");
+    if (rearm) {session->command_suspended = false;(void)arm_reader(session);}
+}
+
+static bool command_write_failure(rk3_usb_session *session, int32_t error) {
+    if (device_lost(error)) {
+        session->transport_failed = true;
+        set_error(session, error, "Command interface unavailable during write");
+    } else {
+        command_warning(session, error, "EP1 command write failed; packet not replayed");
+        if ((uint32_t)error == UINT32_C(0xe000404f) ||
+            (uint32_t)error == UINT32_C(0xe0004051) || error == kIOReturnTimeout)
+            begin_command_recovery(session, true, session->pending && !session->command_suspended);
+    }
+    return false;
+}
+
+static void command_write_complete(void *context, int32_t result, size_t actual) {
     rk3_usb_session *session = context;
     if (!session->pending_write) {
         session->transport_failed = true;
         set_error(session, EPROTO, "Unexpected command write completion"); return;
     }
     session->write_result = result;
-    if (result == kIOReturnSuccess && (uintptr_t)argument != session->write_length)
+    if (result == kIOReturnSuccess && actual != session->write_length)
         session->write_result = kIOReturnUnderrun;
     session->pending_write = false;
 }
@@ -355,7 +530,7 @@ static bool active_request_cancelled(rk3_usb_session *session) {
 static bool command_worker(void *context, const uint8_t *bytes, size_t length, uint32_t timeout_ms) {
     rk3_usb_session *session = context;
     if (session->interface == NULL || !session->opened || session->transport_failed ||
-        session->pending_write || length == 0 || length > 64 || atomic_load(&session->closing)) return false;
+        session->pending_write || session->command_recovering || length == 0 || length > 64 || atomic_load(&session->closing)) return false;
     double deadline = seconds_now() + (double)timeout_ms / 1000.0;
     if (session->active_request != NULL) {
         pthread_mutex_lock(&session->mutex);
@@ -380,31 +555,31 @@ static bool command_worker(void *context, const uint8_t *bytes, size_t length, u
     session->pending_write = true;
     double write_deadline = seconds_now() + (double)write_timeout / 1000.0;
     if (write_deadline > deadline) write_deadline = deadline;
-    IOReturn result = (*session->interface)->WritePipeAsyncTO(session->interface, session->command_out,
-        session->write_buffer, (UInt32)length, write_timeout, write_timeout, command_write_complete, session);
+    IOReturn result = rk3_host_bulk_write(session->interface, session->command_out,
+        session->write_buffer, length, write_timeout, command_write_complete, session);
     if (result != kIOReturnSuccess) {
         session->pending_write = false;
-        session->transport_failed = true;
-        set_error(session, result, "Cannot submit asynchronous EP1 command write"); return false;
+        return command_write_failure(session, result);
     }
     while (session->pending_write) {
-        if (active_request_cancelled(session) || session->transport_failed || seconds_now() >= write_deadline) {
-            session->transport_failed = true;
-            set_error(session, ETIMEDOUT, "Asynchronous EP1 command write timed out or was cancelled");
-            (void)(*session->interface)->AbortPipe(session->interface, session->command_out);
-            return false; /* Session-owned buffer remains valid until its callback drains. */
+        bool cancelled = active_request_cancelled(session);
+        if (cancelled || session->transport_failed || seconds_now() >= write_deadline) {
+            if (session->transport_failed) return false;
+            command_warning(session, cancelled ? ECANCELED : ETIMEDOUT,
+                "EP1 write cancelled/timed out; packet not replayed, storage retained");
+            if (cancelled) (void)rk3_host_abort(session->interface, session->command_out);
+            else begin_command_recovery(session, true, session->pending && !session->command_suspended);
+            return false; /* Keep the session buffer until its callback retires. */
         }
         /* Firmware may wait for another command read before accepting OUT.
          * Pump this same run loop so persistent EP1-IN can complete/rearm. */
-        (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.005, true);
+        pump_callbacks(session, 0.005);
     }
-    if (session->write_result != kIOReturnSuccess) {
-        session->transport_failed = true;
-        set_error(session, session->write_result, "Asynchronous EP1 command write failed"); return false;
-    }
+    if (session->write_result != kIOReturnSuccess)
+        return command_write_failure(session, session->write_result);
     if (active_request_cancelled(session) || seconds_now() >= write_deadline) {
-        session->transport_failed = true;
-        set_error(session, ETIMEDOUT, "EP1 write completion exceeded its request deadline"); return false;
+        command_warning(session, ETIMEDOUT, "EP1 write completed after caller deadline; packet not replayed");
+        return false;
     }
     while ((bytes[0] == RK3_COMMAND_INFO && !session->info_received) ||
            (bytes[0] == RK3_COMMAND_AUDIO_PARAMS && session->ack_result < 0) ||
@@ -416,9 +591,12 @@ static bool command_worker(void *context, const uint8_t *bytes, size_t length, u
             pthread_mutex_unlock(&session->mutex);
         }
         if (cancelled || session->transport_failed || atomic_load(&session->closing) || seconds_now() >= deadline) {
-            set_error(session, ETIMEDOUT, "Device command reply timed out"); return false;
+            if (bytes[0] == RK3_COMMAND_AUDIO_PARAMS && !session->transport_failed)
+                set_audio_error(session, ETIMEDOUT, "Audio parameter reply timed out; command transport remains connected");
+            else set_error(session, ETIMEDOUT, "Device command reply timed out");
+            return false;
         }
-        (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.01, true);
+        pump_callbacks(session, 0.01);
     }
     /* NI performAudioEngineStart ignores setAudioParams' stop-sentinel
      * result, then requires success for the real format. Hardware returns
@@ -426,7 +604,7 @@ static bool command_worker(void *context, const uint8_t *bytes, size_t length, u
     bool stop_sentinel = length == RK3_AUDIO_PARAMS_BYTES &&
         bytes[0] == RK3_COMMAND_AUDIO_PARAMS && bytes[1] == 255;
     if (bytes[0] == RK3_COMMAND_AUDIO_PARAMS && !stop_sentinel && session->ack_result != 1) {
-        set_error(session, EPROTO, "Device rejected audio parameters"); return false;
+        set_audio_error(session, EPROTO, "Device rejected audio parameters"); return false;
     }
     pthread_mutex_lock(&session->mutex);
     ++session->status.commands_completed;
@@ -460,14 +638,17 @@ static bool wait_audio_clock(rk3_usb_session *session, rk3_native_audio_iso *aud
             pthread_mutex_unlock(&session->mutex);
         }
         int32_t error = rk3_native_audio_iso_error(audio);
+        uint32_t panic_delay = 0; int32_t panic_reason = 0;
+        bool panic = rk3_native_audio_iso_panic(audio, &panic_delay, &panic_reason);
         if (cancelled || atomic_load(&session->closing) || session->transport_failed ||
-            error != 0 || !rk3_native_audio_iso_running(audio) || seconds_now() >= deadline) {
-            set_error(session, error != 0 ? error : ETIMEDOUT, "No valid completed-device audio clock before startup deadline");
+            error != 0 || panic || !rk3_native_audio_iso_running(audio) || seconds_now() >= deadline) {
+            set_audio_error(session, error != 0 ? error : panic && panic_reason != 0 ? panic_reason : ETIMEDOUT,
+                "No valid completed-device audio clock before startup deadline");
             return false;
         }
         rk3_native_audio_clock clock;
         if (rk3_native_audio_iso_clock(audio, &clock)) return true;
-        (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.01, true);
+        pump_callbacks(session, 0.01);
     }
 }
 
@@ -499,19 +680,18 @@ static bool reset_command_pipes(rk3_usb_session *session) {
      * IOUSBPipe::ClearPipeStall(true). Apple's user-space equivalent also
      * resynchronizes endpoint halt/toggle state on the device. Warm-open
      * differential hardware testing confirmed these two clears are needed. */
-    IOReturn result = (*session->interface)->ClearPipeStallBothEnds(session->interface, session->command_in);
+    IOReturn result = rk3_host_clear_stall(session->interface, session->command_in);
     if (result != kIOReturnSuccess) { set_error(session, result, "Cannot reset command input pipe"); return false; }
-    result = (*session->interface)->ClearPipeStallBothEnds(session->interface, session->command_out);
+    result = rk3_host_clear_stall(session->interface, session->command_out);
     if (result != kIOReturnSuccess) { set_error(session, result, "Cannot reset command output pipe"); return false; }
     return true;
 }
 
 static bool start_command_io(rk3_usb_session *session) {
     if (!reset_command_pipes(session)) return false;
-    IOReturn result = (*session->interface)->CreateInterfaceAsyncEventSource(session->interface, &session->source);
-    if (result != kIOReturnSuccess || session->source == NULL) { set_error(session, result, "Cannot create USB callback source"); return false; }
-    CFRunLoopAddSource(session->run_loop, session->source, kCFRunLoopDefaultMode);
     session->stopping_io = false;
+    session->command_recovering = session->recovery_clears_output = session->recovery_rearms_input = session->command_suspended = false;
+    session->recovery_timed_out = false;
     session->transport_failed = false;
     if (!arm_reader(session)) return false;
     uint8_t command = RK3_COMMAND_INFO;
@@ -522,31 +702,32 @@ static bool connect_device(rk3_usb_session *session) {
     session->device = find_device();
     if (session->device == NULL) { set_error(session, ENODEV, "No unambiguous accessible RK3 device"); return false; }
     if (!configure_device(session)) return false;
-    session->interface = find_interface(session->device);
-    if (session->interface == NULL) { set_error(session, ENODEV, "Interface0 is unavailable"); return false; }
-    IOReturn result = (*session->interface)->GetAlternateSetting(session->interface, &session->original_alt);
-    if (result != kIOReturnSuccess) { set_error(session, result, "Cannot read alternate setting"); return false; }
-    result = (*session->interface)->USBInterfaceOpen(session->interface);
-    if (result != kIOReturnSuccess) { set_error(session, result, "Interface0 is in use or unavailable"); return false; }
+    io_service_t service = find_interface(session->device);
+    if (service == IO_OBJECT_NULL) { set_error(session, ENODEV, "Interface0 is unavailable"); return false; }
+    int32_t open_error = 0;
+    /* configure_device has closed the parent before this sole child claimant. */
+    session->interface = rk3_host_open(service, session->run_loop, &open_error);
+    IOObjectRelease(service);
+    if (session->interface == NULL) { set_error(session, open_error, "Cannot open RK3 host interface"); return false; }
     session->opened = true;
+    IOReturn result = rk3_host_get_alt(session->interface, &session->original_alt);
+    if (result != kIOReturnSuccess) { set_error(session, result, "Cannot read alternate setting"); return false; }
     if (session->original_alt != 1) {
-        result = (*session->interface)->SetAlternateInterface(session->interface, 1);
+        result = rk3_host_set_alt(session->interface, 1);
         if (result != kIOReturnSuccess) { set_error(session, result, "Cannot select alternate1"); return false; }
         session->changed_alt = true;
     }
     UInt8 count = 0;
-    result = (*session->interface)->GetNumEndpoints(session->interface, &count);
+    result = rk3_host_num_pipes(session->interface, &count);
     if (result != kIOReturnSuccess) { set_error(session, result, "Cannot enumerate USB endpoints"); return false; }
     for (unsigned int pipe = 1; pipe <= count; ++pipe) {
-        UInt8 direction = 0, number = 0, type = 0, interval = 0;
-        UInt16 maximum = 0;
-        result = (*session->interface)->GetPipeProperties(session->interface, (UInt8)pipe,
-            &direction, &number, &type, &maximum, &interval);
+        RK3HostPipeProperties properties;
+        result = rk3_host_pipe_properties(session->interface, (UInt8)pipe, &properties);
         if (result != kIOReturnSuccess) { set_error(session, result, "Cannot inspect USB pipe"); return false; }
-        if (number == 1 && type == kUSBBulk && direction == kUSBIn) session->command_in = (UInt8)pipe;
-        if (number == 1 && type == kUSBBulk && direction == kUSBOut) session->command_out = (UInt8)pipe;
-        if (number == 2 && type == kUSBIsoc && direction == kUSBIn) session->iso_in = (UInt8)pipe;
-        if (number == 6 && type == kUSBIsoc && direction == kUSBOut) session->iso_out = (UInt8)pipe;
+        if (properties.number == 1 && properties.transfer_type == kUSBBulk && properties.direction == kUSBIn) session->command_in = (UInt8)pipe;
+        if (properties.number == 1 && properties.transfer_type == kUSBBulk && properties.direction == kUSBOut) session->command_out = (UInt8)pipe;
+        if (properties.number == 2 && properties.transfer_type == kUSBIsoc && properties.direction == kUSBIn) session->iso_in = (UInt8)pipe;
+        if (properties.number == 6 && properties.transfer_type == kUSBIsoc && properties.direction == kUSBOut) session->iso_out = (UInt8)pipe;
     }
     if (!session->command_in || !session->command_out || !session->iso_in || !session->iso_out) { set_error(session, EPROTO, "Expected command/audio endpoints absent"); return false; }
     if (!start_command_io(session)) return false;
@@ -580,13 +761,17 @@ static bool connect_device(rk3_usb_session *session) {
     /* Old engines are unpublished before reconnect. Publish the new engine
      * only after its generation so clock readers cannot assign an old lease
      * to a newly published engine. Readers also recheck pointer+generation. */
-    atomic_store(&session->audio, audio);
+    publish_audio(session, audio);
+    session->panic_seen = session->panic_pending = false;
     if (session->want_audio) {
         pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
         int32_t started = rk3_native_audio_iso_start(audio);
         if (started != 0 || !wait_audio_clock(session, audio)) {
             rk3_native_audio_iso_stop(audio);
-            set_error(session, started != 0 ? started : ETIMEDOUT, "Audio restart after reconnect has no valid clock"); return false;
+            int32_t failure = started != 0 ? started : audio_failure(audio);
+            if (device_lost(failure)) { session->transport_failed = true; set_error(session, failure, "USB interface removed during audio start"); }
+            else set_audio_error(session, failure, "Audio restart after reconnect has no valid clock");
+            return !session->transport_failed;
         }
         pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_RUNNING; pthread_mutex_unlock(&session->mutex);
     }
@@ -594,63 +779,205 @@ static bool connect_device(rk3_usb_session *session) {
 }
 
 static bool io_pending(rk3_usb_session *session, rk3_native_audio_iso *audio) {
-    return session->pending || session->pending_write || (audio != NULL && !rk3_native_audio_iso_is_quiescent(audio));
+    return session->pending || session->pending_write ||
+        (session->interface != NULL && rk3_host_pending(session->interface) != 0) ||
+        (audio != NULL && !rk3_native_audio_iso_is_quiescent(audio));
 }
 
 static void disconnect_device(rk3_usb_session *session) {
     rk3_native_audio_iso *audio = atomic_exchange(&session->audio, NULL);
+    session->panic_pending = false; session->panic_seen = true;
     session->stopping_io = true;
+    session->command_recovering = false; session->command_suspended = true;
     if (audio != NULL) rk3_native_audio_iso_stop(audio);
-    if (session->pending && session->opened) (void)(*session->interface)->AbortPipe(session->interface, session->command_in);
-    if (session->pending_write && session->opened) (void)(*session->interface)->AbortPipe(session->interface, session->command_out);
+    if (session->pending && session->opened) (void)rk3_host_abort(session->interface, session->command_in);
+    if (session->pending_write && session->opened) (void)rk3_host_abort(session->interface, session->command_out);
     double deadline = seconds_now() + (double)DRAIN_MS / 1000.0;
     while (io_pending(session, audio) && seconds_now() < deadline)
-        (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.02, true);
-    if (io_pending(session, audio) && session->opened) {
-        IOReturn result = (*session->interface)->USBInterfaceClose(session->interface);
-        if (result == kIOReturnSuccess) session->opened = false;
-        else set_error(session, result, "USB close during cancellation failed");
-    }
+        pump_callbacks(session, 0.02);
     /* Cancellation retains the worker/session/audio buffers indefinitely if
      * necessary. Never free outstanding kernel I/O or exit coreaudiod. */
     while (io_pending(session, audio)) {
         set_error(session, ETIMEDOUT, "Waiting for USB cancellation callbacks; storage retained");
-        (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, true);
-    }
-    if (session->interface != NULL && (session->changed_alt || audio != NULL) && !session->opened) {
-        IOReturn result = (*session->interface)->USBInterfaceOpen(session->interface);
-        if (result == kIOReturnSuccess) session->opened = true;
-        else set_error(session, result, "Cannot reopen to restore original alternate");
+        pump_callbacks(session, 0.05);
     }
     /* Detach pinned USB buffers while the borrowed interface is still open.
      * Retired CPU queues remain alive for a racing real-time pointer load. */
-    if (audio != NULL && !rk3_native_audio_iso_release_usb(audio))
-        set_error(session, EBUSY, "Cannot detach native audio USB buffers");
+    while (audio != NULL && !rk3_native_audio_iso_release_usb(audio)) {
+        set_error(session, EBUSY, "Waiting for mapped audio buffers; interface retained");
+        pump_callbacks(session, 0.05);
+    }
     if (session->interface != NULL && session->opened && session->changed_alt) {
-        IOReturn result = (*session->interface)->SetAlternateInterface(session->interface, session->original_alt);
+        IOReturn result = rk3_host_set_alt(session->interface, session->original_alt);
         if (result != kIOReturnSuccess) set_error(session, result, "Cannot restore original USB alternate");
     }
     if (session->interface != NULL && session->opened) {
-        IOReturn result = (*session->interface)->USBInterfaceClose(session->interface);
+        IOReturn result;
+        while ((result = rk3_host_close(session->interface)) == kIOReturnBusy) {
+            set_error(session, result, "Waiting for host mappings before USB close");
+            pump_callbacks(session, 0.05);
+        }
         if (result != kIOReturnSuccess) set_error(session, result, "USB interface close failed");
     }
-    if (session->source != NULL) {
-        CFRunLoopRemoveSource(session->run_loop, session->source, kCFRunLoopDefaultMode);
-        CFRelease(session->source);
-    }
-    if (session->interface != NULL) (*session->interface)->Release(session->interface);
+    if (session->interface != NULL) rk3_host_release(session->interface);
     if (session->device != NULL) (*session->device)->Release(session->device);
-    session->source = NULL; session->interface = NULL; session->device = NULL;
+    session->interface = NULL; session->device = NULL;
     session->opened = session->changed_alt = session->pending = false;
     session->pending_write = false;
     session->command_in = session->command_out = session->iso_in = session->iso_out = 0;
     reclaim_retired(session);
 }
 
+/* Preserve NI's panic timer's scope: notify the AUDIO host without resetting
+ * EP1, histories, assignments or the USB connection-generation lease. ISO
+ * classifies the exact recovered triggers and supplies their 0/100ms delay. */
+static void audio_panic_tick(rk3_usb_session *session, double now) {
+    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    if (audio == NULL || session->stopping_io || session->transport_failed) return;
+    int32_t error = rk3_native_audio_iso_error(audio);
+    if (device_lost(error)) {
+        session->transport_failed = true;
+        set_error(session, error, "USB interface removed during audio I/O");
+        return;
+    }
+    uint32_t delay = 0; int32_t panic_error = 0;
+    if (session->want_audio && !session->panic_seen &&
+        rk3_native_audio_iso_panic(audio, &delay, &panic_error)) {
+        session->panic_seen = session->panic_pending = true;
+        session->panic_deadline = now + (double)delay / 1000.0;
+        session->panic_error = panic_error;
+        set_audio_error(session, panic_error, "NI audio panic awaiting host pause/resume");
+    } else if (error != 0 && !rk3_native_audio_iso_running(audio) &&
+               !session->panic_pending && !session->panic_seen) {
+        set_audio_error(session, error, "Native audio engine unavailable; USB controls remain connected");
+    }
+    if (!session->panic_pending || !session->want_audio || now < session->panic_deadline) return;
+    pthread_mutex_lock(&session->mutex);
+    rk3_usb_audio_panic_handler handler = session->panic_handler;
+    void *callback_context = session->panic_context;
+    bool notify = handler != NULL && !atomic_load(&session->closing);
+    if (notify) ++session->panic_callbacks;
+    pthread_mutex_unlock(&session->mutex);
+    if (!notify) return;
+    session->panic_pending = false; /* stable ISO signal is notified once per start */
+    handler(callback_context, session->generation, session->panic_error);
+    pthread_mutex_lock(&session->mutex);
+    --session->panic_callbacks; pthread_cond_broadcast(&session->wake);
+    pthread_mutex_unlock(&session->mutex);
+}
+
+static void defer_stop(rk3_usb_session *session, Request *request, double now) {
+    request->next = NULL;
+    pthread_mutex_lock(&session->mutex);
+    if (session->stop_tail != NULL) session->stop_tail->next = request;
+    else { session->stop_head = request; session->stop_deadline = now + (double)DRAIN_MS / 1000.0; }
+    session->stop_tail = request; ++session->deferred_stops;
+    pthread_mutex_unlock(&session->mutex);
+}
+
+static void complete_stops(rk3_usb_session *session, bool connected, double now) {
+    if (session->stop_head == NULL) return;
+    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    bool drained = rk3_native_audio_iso_is_quiescent(audio);
+    if (!drained && now < session->stop_deadline) return;
+    if (!drained) set_audio_error(session, ETIMEDOUT, "ISO stop is still draining; storage retained");
+    pthread_mutex_lock(&session->mutex);
+    Request *request = session->stop_head;
+    session->stop_head = session->stop_tail = NULL; session->deferred_stops = 0;
+    if (drained && connected && !session->transport_failed) session->status.state = RK3_USB_READY;
+    while (request != NULL) {
+        Request *next = request->next;
+        complete_locked(request, drained ? 0 : ETIMEDOUT); request = next;
+    }
+    pthread_mutex_unlock(&session->mutex);
+}
+
+/* One request per outer turn: deferred stops never prevent subsequent MIDI or
+ * LED commands from using the healthy shared command transport. */
+static void process_one_request(rk3_usb_session *session, bool connected) {
+    Request *request = NULL;
+    pthread_mutex_lock(&session->mutex);
+    Request **link = &session->head;
+    Request *previous = NULL;
+    if (session->command_recovering || session->pending_write) {
+        /* Only later, not-yet-submitted packets wait behind endpoint cleanup.
+         * Audio Stop can bypass them, so shared EP1 cancellation cannot deadlock
+         * the HAL's pause lifecycle. The failed packet is never requeued. */
+        while (*link != NULL && (*link)->kind != REQUEST_STOP) {
+            previous = *link; link = &(*link)->next;
+        }
+    }
+    if (*link != NULL) {
+        request = *link; *link = request->next;
+        if (session->tail == request) session->tail = previous;
+        --session->queued;
+    }
+    bool cancelled = request != NULL && request->cancelled;
+    pthread_mutex_unlock(&session->mutex);
+    if (request != NULL) {
+        session->active_request = request;
+        int32_t result = cancelled ? ETIMEDOUT : connected ? 0 : ENODEV;
+        rk3_native_audio_iso *audio = atomic_load_explicit(&session->audio, memory_order_acquire);
+        bool deferred = false;
+        if (request->kind == REQUEST_STOP) {
+            /* A stop revokes automatic restart even when the device is absent. */
+            session->want_audio = false;
+            session->panic_pending = false; session->panic_seen = true;
+            result = 0;
+        }
+        if (result == 0 && request->kind == REQUEST_COMMAND) {
+            if (request->generation == 0 || request->generation != session->generation) result = ESTALE;
+            else if (!command_worker(session, request->bytes, request->length, REPLY_TIMEOUT_MS)) result = EIO;
+        } else if (result == 0 && request->kind == REQUEST_START) {
+            pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
+            result = audio == NULL ? ENODEV : session->stop_head != NULL ? kIOReturnBusy :
+                rk3_native_audio_iso_running(audio) ? 0 :
+                !rk3_native_audio_iso_is_quiescent(audio) ? kIOReturnBusy : rk3_native_audio_iso_start(audio);
+            if (result == 0 && !wait_audio_clock(session, audio)) result = audio_failure(audio);
+            pthread_mutex_lock(&session->mutex);
+            bool expired = request->cancelled || seconds_now() >= request->deadline;
+            pthread_mutex_unlock(&session->mutex);
+            if (expired) {
+                if (audio != NULL) rk3_native_audio_iso_stop(audio);
+                session->want_audio = false;
+                result = ETIMEDOUT;
+            }
+            if (result != 0) {
+                if (audio != NULL) rk3_native_audio_iso_stop(audio);
+                if (device_lost(result)) {
+                    session->transport_failed = true;
+                    set_error(session, result, "USB interface removed during audio start");
+                }
+            }
+            if (result == 0) {
+                session->want_audio = true;
+                session->panic_seen = session->panic_pending = false;
+            }
+            pthread_mutex_lock(&session->mutex);
+            if (!session->transport_failed) session->status.state = result == 0 ? RK3_USB_RUNNING : RK3_USB_STOPPING;
+            if (result == 0) { session->status.error_code = 0; session->status.error[0] = '\0'; }
+            else { session->status.error_code = result; snprintf(session->status.error, sizeof(session->status.error), "Native ISO audio startup failed"); }
+            pthread_mutex_unlock(&session->mutex);
+        } else if (result == 0 && request->kind == REQUEST_STOP) {
+            session->want_audio = false;
+            if (connected) { pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STOPPING; pthread_mutex_unlock(&session->mutex); }
+            if (audio != NULL) rk3_native_audio_iso_stop(audio);
+            if (audio != NULL && !rk3_native_audio_iso_is_quiescent(audio)) {
+                defer_stop(session, request, seconds_now()); deferred = true;
+            } else if (connected && !session->transport_failed) {
+                pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_READY; pthread_mutex_unlock(&session->mutex);
+            }
+        }
+        session->active_request = NULL;
+        if (!deferred) { pthread_mutex_lock(&session->mutex); complete_locked(request, result); pthread_mutex_unlock(&session->mutex); }
+    }
+}
+
 static void *worker_main(void *context) {
     rk3_usb_session *session = context;
     pthread_mutex_lock(&session->mutex);
     session->run_loop = CFRunLoopGetCurrent(); CFRetain(session->run_loop);
+    session->worker_thread = pthread_self(); session->worker_thread_known = true;
     pthread_mutex_unlock(&session->mutex);
     bool connected = false;
     double next_connect = 0;
@@ -665,75 +992,16 @@ static void *worker_main(void *context) {
             if (!connected) disconnect_device(session);
             next_connect = seconds_now() + (double)CONNECT_RETRY_MS / 1000.0;
         }
-        Request *request = NULL;
-        pthread_mutex_lock(&session->mutex);
-        if (session->head != NULL) {
-            request = session->head; session->head = request->next;
-            if (session->head == NULL) session->tail = NULL;
-            --session->queued;
-        }
-        bool cancelled = request != NULL && request->cancelled;
-        pthread_mutex_unlock(&session->mutex);
-        if (request != NULL) {
-            session->active_request = request;
-            int32_t result = cancelled ? ETIMEDOUT : connected ? 0 : ENODEV;
-            rk3_native_audio_iso *audio = atomic_load_explicit(&session->audio, memory_order_acquire);
-            if (request->kind == REQUEST_STOP) {
-                /* A stop revokes automatic restart even when the device is absent. */
-                session->want_audio = false;
-                result = 0;
-            }
-            if (result == 0 && request->kind == REQUEST_COMMAND) {
-                if (request->generation == 0 || request->generation != session->generation) result = ESTALE;
-                else if (!command_worker(session, request->bytes, request->length, REPLY_TIMEOUT_MS)) result = EIO;
-            } else if (result == 0 && request->kind == REQUEST_START) {
-                pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
-                result = audio == NULL ? ENODEV : rk3_native_audio_iso_running(audio) ? 0 : rk3_native_audio_iso_start(audio);
-                if (result == 0 && !wait_audio_clock(session, audio)) result = ETIMEDOUT;
-                pthread_mutex_lock(&session->mutex);
-                bool expired = request->cancelled || seconds_now() >= request->deadline;
-                pthread_mutex_unlock(&session->mutex);
-                if (expired) {
-                    if (audio != NULL) rk3_native_audio_iso_stop(audio);
-                    session->want_audio = false;
-                    session->transport_failed = true;
-                    result = ETIMEDOUT;
-                }
-                if (result != 0) {
-                    if (audio != NULL) rk3_native_audio_iso_stop(audio);
-                    session->transport_failed = true;
-                }
-                if (result == 0) session->want_audio = true;
-                pthread_mutex_lock(&session->mutex);
-                session->status.state = result == 0 ? RK3_USB_RUNNING : RK3_USB_FAILED;
-                if (result == 0) { session->status.error_code = 0; session->status.error[0] = '\0'; }
-                else { session->status.error_code = result; snprintf(session->status.error, sizeof(session->status.error), "Native ISO audio startup failed"); }
-                pthread_mutex_unlock(&session->mutex);
-            } else if (result == 0 && request->kind == REQUEST_STOP) {
-                session->want_audio = false;
-                if (connected) { pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STOPPING; pthread_mutex_unlock(&session->mutex); }
-                if (audio != NULL) rk3_native_audio_iso_stop(audio);
-                double deadline = seconds_now() + (double)DRAIN_MS / 1000.0;
-                while (audio != NULL && !rk3_native_audio_iso_is_quiescent(audio) && seconds_now() < deadline)
-                    (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.01, true);
-                if (audio != NULL && !rk3_native_audio_iso_is_quiescent(audio)) {
-                    result = ETIMEDOUT; session->transport_failed = true;
-                    set_error(session, result, "ISO audio stop did not drain");
-                } else if (connected) {
-                    pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_READY; pthread_mutex_unlock(&session->mutex);
-                }
-            }
-            session->active_request = NULL;
-            pthread_mutex_lock(&session->mutex); complete_locked(request, result); pthread_mutex_unlock(&session->mutex);
-        }
-        rk3_native_audio_iso *current_audio = atomic_load(&session->audio);
-        if (connected && current_audio != NULL && rk3_native_audio_iso_error(current_audio) != 0) {
-            set_error(session, rk3_native_audio_iso_error(current_audio), "Asynchronous ISO audio failure");
-            session->transport_failed = true;
-        }
+        check_connection_presence(session);
+        service_command_recovery(session, seconds_now());
+        process_one_request(session, connected && !session->transport_failed);
+        service_command_recovery(session, seconds_now());
+        service_audio(session);
+        if (connected) audio_panic_tick(session, seconds_now());
+        complete_stops(session, connected, seconds_now());
         if (connected && session->transport_failed) { disconnect_device(session); connected = false; next_connect = seconds_now() + 1; }
         reclaim_retired(session);
-        if (connected) (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.01, true);
+        if (connected) pump_callbacks(session, 0.01);
         else {
             struct timespec relative = { 0, 100000000 };
             pthread_mutex_lock(&session->mutex);
@@ -748,6 +1016,11 @@ static void *worker_main(void *context) {
         Request *request = session->head; session->head = request->next;
         complete_locked(request, ECANCELED);
     }
+    while (session->stop_head != NULL) {
+        Request *request = session->stop_head; session->stop_head = request->next;
+        complete_locked(request, ECANCELED);
+    }
+    session->stop_tail = NULL; session->deferred_stops = 0;
     CFRunLoopRef run_loop = session->run_loop;
     session->run_loop = NULL;
     session->status.state = RK3_USB_CLOSED;
@@ -767,6 +1040,7 @@ rk3_usb_session *rk3_usb_open(char *error, size_t error_size) {
     if (result != 0) { pthread_mutex_destroy(&session->mutex); free(session); return NULL; }
     atomic_init(&session->references, 2); atomic_init(&session->closing, false); atomic_init(&session->audio, NULL);
     atomic_init(&session->clock_generation, 0);
+    atomic_init(&session->output_active, true);
     atomic_init(&session->rt_readers, 0);
     session->status.state = RK3_USB_OPENING;
     pthread_t thread;
@@ -885,23 +1159,53 @@ bool rk3_usb_write_midi(rk3_usb_session *session, uint8_t port, const uint8_t *b
     return rk3_usb_command(session, command, length + 3, timeout_ms);
 }
 
+void rk3_usb_set_output_active(rk3_usb_session *session, bool active) {
+    if (session == NULL) return;
+    atomic_fetch_add(&session->rt_readers, 1);
+    pthread_mutex_lock(&session->mutex);
+    atomic_store(&session->output_active, active);
+    rk3_native_audio_iso *audio = atomic_load(&session->audio);
+    if (audio != NULL) rk3_native_audio_iso_set_output_active(audio, active);
+    pthread_mutex_unlock(&session->mutex);
+    atomic_fetch_sub(&session->rt_readers, 1);
+}
+
+bool rk3_usb_set_audio_panic_handler(rk3_usb_session *session,
+    rk3_usb_audio_panic_handler handler, void *context) {
+    if (session == NULL) return false;
+    pthread_mutex_lock(&session->mutex);
+    if ((handler != NULL && atomic_load(&session->closing)) ||
+        (session->panic_callbacks != 0 && session->worker_thread_known &&
+         pthread_equal(pthread_self(), session->worker_thread))) {
+        pthread_mutex_unlock(&session->mutex); return false;
+    }
+    session->panic_handler = NULL;
+    while (session->panic_callbacks != 0) pthread_cond_wait(&session->wake, &session->mutex);
+    session->panic_context = context; session->panic_handler = handler;
+    wake_worker_locked(session);
+    pthread_mutex_unlock(&session->mutex);
+    return true;
+}
+
 int32_t rk3_usb_audio_start(rk3_usb_session *session, uint32_t timeout_ms) { return submit(session, REQUEST_START, NULL, 0, 0, timeout_ms); }
 int32_t rk3_usb_audio_stop(rk3_usb_session *session, uint32_t timeout_ms) { return submit(session, REQUEST_STOP, NULL, 0, 0, timeout_ms); }
 
-size_t rk3_usb_render(rk3_usb_session *session, const float *interleaved, size_t frames) {
+size_t rk3_usb_render_at(rk3_usb_session *session, const float *interleaved,
+    uint64_t first_sample_frame, size_t frames) {
     if (session == NULL || interleaved == NULL) return 0;
     atomic_fetch_add(&session->rt_readers, 1);
     rk3_native_audio_iso *audio = atomic_load(&session->audio);
-    size_t accepted = audio != NULL ? rk3_native_audio_iso_render(audio, interleaved, frames) : 0;
+    size_t accepted = audio != NULL ? rk3_native_audio_iso_render_at(audio, interleaved, first_sample_frame, frames) : 0;
     atomic_fetch_sub(&session->rt_readers, 1);
     return accepted;
 }
 
-size_t rk3_usb_capture(rk3_usb_session *session, float *interleaved, size_t frames) {
+size_t rk3_usb_capture_at(rk3_usb_session *session, float *interleaved,
+    uint64_t first_sample_frame, size_t frames) {
     if (interleaved == NULL || frames > SIZE_MAX / (2 * sizeof(float))) return 0;
     if (session != NULL) atomic_fetch_add(&session->rt_readers, 1);
     rk3_native_audio_iso *audio = session != NULL ? atomic_load(&session->audio) : NULL;
-    size_t captured = audio != NULL ? rk3_native_audio_iso_capture(audio, interleaved, frames) : 0;
+    size_t captured = audio != NULL ? rk3_native_audio_iso_capture_at(audio, interleaved, first_sample_frame, frames) : 0;
     if (session != NULL) atomic_fetch_sub(&session->rt_readers, 1);
     if (captured < frames) memset(interleaved + 2 * captured, 0, (frames - captured) * 2 * sizeof(float));
     return captured;
@@ -917,8 +1221,11 @@ bool rk3_usb_clock(rk3_usb_session *session, rk3_usb_clock_snapshot *clock) {
         audio != atomic_load(&session->audio) || generation != atomic_load(&session->clock_generation)) {
         atomic_fetch_sub(&session->rt_readers, 1); return false;
     }
-    *clock = (rk3_usb_clock_snapshot){ value.sample_frame, value.host_time,
-        (generation << 32) | (value.seed & UINT32_MAX) };
+    *clock = (rk3_usb_clock_snapshot){
+        .sample_frame = value.sample_frame, .host_time = value.host_time,
+        .seed = (generation << 32) | (value.seed & UINT32_MAX),
+        .zero_sample_frame = value.zero_sample_frame, .zero_host_time = value.zero_host_time
+    };
     atomic_fetch_sub(&session->rt_readers, 1);
     return true;
 }

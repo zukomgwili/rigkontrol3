@@ -72,8 +72,12 @@ mapping implementation is loaded.
   Start, including when the USB generation stayed unchanged. The owner validates the lease while
   serializing the actual hardware write.
 - Successful Send means **accepted for delivery**, not a hardware completion.
-  A later write/property failure takes the source/destination offline until the
-  owner reports a different transport generation (or the driver is restarted).
+  A later command-write failure is recorded and that queued entry is dropped
+  without replay; subsequent input and output remain available. This follows
+  NI Send/MIDIWrite, which do not publish endpoints offline for a single failed
+  send. Actual provider removal/discovery still controls offline state. Invalid
+  report/IPC schemas and input delivery failures retain separate fail-closed
+  handling.
   CoreMIDI Flush is a successful no-op because no future timestamp scheduling is
   provided; the bounded immediate delivery backlog may still be in flight.
 - Timers and the worker retain the COM object. Stop first disables I/O, invalidates
@@ -102,7 +106,7 @@ CoreAudio transport and MIDI delivery. It checks COM negotiation/reference
 counts, cross-packet output chunking, all-or-nothing queue pressure, wrap,
 contention, endpoint/offline errors, generation leases/stale-work rejection,
 DIN/controller separation, input timestamps, activation baselines, history
-loss recovery, malformed records, complete-message reconstruction, Stop/Start entrant cancellation, listener reactivation races, and USB failure/offline behavior. It never
+loss recovery, malformed records, complete-message reconstruction, Stop/Start entrant cancellation, listener reactivation races, transient output failures without replay/offline latching, and actual USB removal/offline behavior. It never
 calls Start or real AudioObject transport functions. Its mock transport requires
 the actual CFData/pointer-size API, verifies serialized report queries and command
 leases, and rejects wrong CF types, short data, wrong outer sizes, NULL objects
@@ -124,7 +128,7 @@ main bundle and pre-register its factories.
 
 Compile/link the bundle with `Driver/MIDIEvent.c`, `Driver/Controller.c`, and `Driver/MIDI/MIDIStream.c`, the `Driver` include directory,
 CoreMIDI, CoreAudio and CoreFoundation frameworks, `-bundle`, `-arch arm64`, and
-minimum macOS 13. Strict C11 builds and ASan/UBSan mock tests pass. The built
+minimum macOS 13 for the MIDI-only component. The paired audio owner requires macOS 26.4+. Strict C11 builds and ASan/UBSan mock tests pass. The built
 bundle's real factory smoke test also passes. Installation and actual MIDIServer
 Start/hotplug/DIN I/O validation are separate hardware checks.
 

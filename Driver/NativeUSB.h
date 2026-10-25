@@ -57,6 +57,8 @@ typedef struct {
     uint64_t sample_frame;
     uint64_t host_time;
     uint64_t seed;
+    uint64_t zero_sample_frame;
+    uint64_t zero_host_time; /* exact NI input-ring wrap anchor */
 } rk3_usb_clock_snapshot;
 bool rk3_usb_clock(rk3_usb_session *session, rk3_usb_clock_snapshot *clock);
 
@@ -68,7 +70,14 @@ bool rk3_usb_clock(rk3_usb_session *session, rk3_usb_clock_snapshot *clock);
  * Exposes NI MIDI command7 and only the exact nine-byte controller LED frame
  * [05,00,40,40,00,mask,toe(0|1),00,00], with the same generation lease.
  * Audio command9/info command1 belong to the worker; arbitrary writes and
- * automatic report commands remain unavailable. */
+ * automatic report commands remain unavailable.
+ * EP1 follows NI's no-replay rule: write stall/transaction-timeout clears IN
+ * then OUT once and returns failure. IOUSBHost has no controller-only false
+ * clear variant, so its public endpoint-local clear is the necessary binding
+ * substitution; pending abort callbacks drain before exactly one IN rearm.
+ * Read Aborted does not rearm except through that gate. NotResponding aborts
+ * both command pipes and suspends IN; it does not prove physical removal.
+ * USB generation/history remain intact; NoDevice/invalid interface reconnects. */
 bool rk3_usb_command(rk3_usb_session *session, const uint8_t *bytes,
                      size_t length, uint32_t timeout_ms);
 bool rk3_usb_command_for_generation(rk3_usb_session *session, const uint8_t *bytes,
@@ -77,15 +86,31 @@ bool rk3_usb_write_midi(rk3_usb_session *session, uint8_t port,
                         const uint8_t *bytes, size_t length, uint32_t timeout_ms);
 /* First hardware format: 48000 Hz, stereo Float32 host PCM, NI wire mode2.
  * Start returns zero only after the real USB audio startup completes.
- * Data functions are bounded/nonblocking; they return actual frames queued
- * or captured; unavailable capture frames are zero-filled. A zero return
+ * Data functions are bounded/nonblocking; they return actual addressed frames
+ * written or captured; unavailable capture frames are zero-filled. A zero return
  * means no data/capacity, never synthetic success. */
 /* Return zero on success, an IOReturn/errno-compatible nonzero error otherwise. */
+/* NI panic maps pause/resume onto a host-coordinated configuration change.
+ * Called once on the serial USB worker at the recovered 0/100ms deadline;
+ * callback must enqueue host work and return, never synchronously wait for USB.
+ * Registration is non-RT. Replacing/unregistering waits for an active callback
+ * to return. False rejects registration while closing or self-unregistration
+ * from inside the worker callback, so caller-owned context is never freed early.
+ * Audio-only recovery retains USB generation, EP1 and controller history. */
+typedef void (*rk3_usb_audio_panic_handler)(void *context, uint64_t generation, int32_t error);
+bool rk3_usb_set_audio_panic_handler(rk3_usb_session *session,
+    rk3_usb_audio_panic_handler handler, void *context);
+/* Non-RT stream-property update. Desired activity survives reconnect and is
+ * applied before publishing each engine. It pins the engine and invokes only
+ * the ISO atomic setter; no USB transfer is issued. */
+void rk3_usb_set_output_active(rk3_usb_session *session, bool active);
 int32_t rk3_usb_audio_start(rk3_usb_session *session, uint32_t timeout_ms);
 int32_t rk3_usb_audio_stop(rk3_usb_session *session, uint32_t timeout_ms);
-size_t rk3_usb_render(rk3_usb_session *session, const float *interleaved,
-                      size_t frames);
-size_t rk3_usb_capture(rk3_usb_session *session, float *interleaved,
-                       size_t frames);
+/* HAL uses host target sample positions. These bounded paths make no USB call,
+ * allocate no memory and take no mutex; the ISO layer owns primary-frame polling. */
+size_t rk3_usb_render_at(rk3_usb_session *session, const float *interleaved,
+    uint64_t first_sample_frame, size_t frames);
+size_t rk3_usb_capture_at(rk3_usb_session *session, float *interleaved,
+    uint64_t first_sample_frame, size_t frames);
 
 #endif

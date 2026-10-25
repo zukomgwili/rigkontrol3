@@ -7,6 +7,7 @@
 #include <CoreMIDI/MIDIServices.h>
 #include <CoreMIDI/MIDISetup.h>
 #include <mach/mach_time.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -87,6 +88,7 @@ typedef struct {
     atomic_uint_fast64_t generation;
     atomic_uint_fast64_t lifecycle_epoch;
     atomic_uint_fast64_t listener_epoch;
+    atomic_uint output_failures; /* saturating diagnostic; output worker is the sole writer */
     atomic_uint failed_device;
     atomic_uint_fast64_t failed_generation;
     atomic_flag output_producer;
@@ -620,8 +622,14 @@ static void *output_worker(void *context) {
         RK3NativeCommandLease lease = {RK3_CONTROL_VERSION,0,entry.generation};
         OSStatus result = rk3_native_send_command(entry.audio_device,&lease,&entry.command);
         if (result != noErr) {
-            fprintf(stderr,"RK3 MIDI hardware write failed: %d\n",(int)result);
-            record_io_failure(driver,entry.audio_device,entry.generation,entry.lifecycle_epoch);
+            /* NI MIDI Send0x2720 does not mark endpoints offline. Its kernel
+             * MIDIWrite0x2990 ignores sendCommand's USB result; user-client
+             * MIDIWrite0x9450 returns success while the device exists. Drop this
+             * failed entry without replay and let provider discovery decide
+             * physical presence. Input-contract failure latches are separate. */
+            unsigned failures=atomic_load_explicit(&driver->output_failures,memory_order_relaxed);
+            if(failures!=UINT_MAX)atomic_store_explicit(&driver->output_failures,failures+1,memory_order_relaxed);
+            if(failures==0)fprintf(stderr,"RK3 MIDI output command failed (entry dropped): %d\n",(int)result);
         }
     }
     release_ref(driver);
@@ -872,6 +880,7 @@ void *RK3MIDIDriverFactory(CFAllocatorRef allocator, CFUUIDRef type) {
     driver->interface = &interface_table;
     atomic_init(&driver->references,1);
     atomic_init(&driver->online,false);
+    atomic_init(&driver->output_failures,0);
     atomic_init(&driver->source_enabled,false);
     atomic_init(&driver->controller_enabled,false);atomic_init(&driver->controller_listener_epoch,0);
     driver->controller_enable_epoch=UINT64_MAX;

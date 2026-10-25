@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 static volatile sig_atomic_t stop_requested;
 static void stop_signal(int number){(void)number;stop_requested=1;}
 static double now(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec+t.tv_nsec/1e9;}
@@ -16,6 +17,9 @@ int main(int argc,char **argv){
     bool audio=false;
     if(argc==2&&strcmp(argv[1],"--audio")==0)audio=true;
     else if(argc!=1){fprintf(stderr,"Usage: %s [--audio]\nDefault only validates native session info/reports. Audio sends silence for five seconds.\n",argv[0]);return 2;}
+    if(access("/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver",F_OK)==0){
+        fprintf(stderr,"Installed native driver present; use rk3-audio-client through CoreAudio instead of claiming USB directly.\n");return 2;
+    }
     signal(SIGINT,stop_signal);signal(SIGTERM,stop_signal);
     char error[192]={0};rk3_usb_session *session=rk3_usb_open(error,sizeof(error));
     if(!session){fprintf(stderr,"Open: %s\n",error);return 1;}
@@ -42,12 +46,13 @@ int main(int argc,char **argv){
     float silence[512]={0},captured[512];uint64_t frames_in=0,frames_out=0,clock_first=0,clock_last=0;
     long double energy=0;float peak=0;uint64_t clock_seed=0;
     deadline=now()+5;
+    rk3_usb_clock_snapshot clock={0};
     while(now()<deadline&&!stop_requested){
-        size_t sent=rk3_usb_render(session,silence,48);
-        size_t received=rk3_usb_capture(session,captured,256);
+        if(!rk3_usb_clock(session,&clock)){stop_requested=1;break;}
+        size_t sent=rk3_usb_render_at(session,silence,clock.sample_frame+136,48);
+        size_t received=rk3_usb_capture_at(session,captured,clock.sample_frame>=256?clock.sample_frame-256:0,256);
         frames_in+=received;frames_out+=sent;
         for(size_t i=0;i<received*2;++i){float value=captured[i];if(!isfinite(value)){fprintf(stderr,"Nonfinite captured sample\n");stop_requested=1;break;}energy+=(long double)value*value;if(fabsf(value)>peak)peak=fabsf(value);}
-        rk3_usb_clock_snapshot clock;
         if(rk3_usb_clock(session,&clock)){
             if(!clock_seed){clock_first=clock.sample_frame;clock_seed=clock.seed;}
             if(clock.seed!=clock_seed||clock.sample_frame<clock_last){fprintf(stderr,"Unexpected clock reset/backwards position\n");stop_requested=1;break;}

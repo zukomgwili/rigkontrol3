@@ -1,480 +1,521 @@
+/* ARM/current-macOS binding for NI's shared rings and input-led calendar.
+ * Original NI 2.8.0: prepareMemory59d0, clip6ab0, convert6e90,
+ * queueOut7620, readHandler7a80, writeHandler7ec0, timestamp8100/b790.
+ * Mapped output stays live after enqueue. There is no render/capture FIFO. */
 #include "NativeAudioISO.h"
 #include "AudioCodec.h"
+#include "AudioRing.h"
 #include "AudioSchedule.h"
-
+#include <IOKit/usb/USBSpec.h>
 #include <mach/mach_time.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-_Static_assert(ATOMIC_LLONG_LOCK_FREE == 2,"Audio requires lock-free 64-bit counters");
-enum { QUEUE_FRAMES = 16384, PACKED_BYTES = 98304, TRANSFER_BYTES = 4096 };
-
-typedef struct {
-    atomic_uint_fast64_t head, tail;
-    float samples[QUEUE_FRAMES * 2];
-} StereoQueue;
+_Static_assert(ATOMIC_LLONG_LOCK_FREE==2,"ARM capture requires lock-free stereo snapshots");
+enum {INPUT_SLOTS=64,OUTPUT_SLOTS=128,MICROFRAMES=8,TRANSFER_BYTES=4096};
+typedef struct {uint64_t usb_frame;uint32_t offset,total;} ZeroEvent;
 typedef struct {
     struct rk3_native_audio_iso *engine;
     unsigned slot;
     bool pending;
+    int32_t result;
 } Transfer;
-
 struct rk3_native_audio_iso {
-    IOUSBInterfaceInterface300 **interface;
-    uint8_t input_pipe, output_pipe;
+    RK3HostInterface *interface;
+    uint8_t input_pipe,output_pipe;
     rk3_native_audio_command command;
     void *command_context;
-    uint8_t *input_data, *output_data;
-    IOUSBLowLatencyIsocFrame *input_frames, *output_frames;
-    Transfer inputs[64], outputs[128];
-    size_t pending_count;
-    bool usb_released;
-    unsigned read_slot, read_microframe;
-    NIAudioSchedule schedule;
-    NIAudioEncoder encoder;
+    RK3HostBuffer *input_buffer,*wire_buffer;
+    RK3HostIsoList *input_list,*output_list;
+    uint8_t *input_data;
+    uint8_t output_pcm[NI_AUDIO_RING_PACKED_BYTES],input_pcm[NI_AUDIO_RING_PACKED_BYTES];
+    NIAudioRing output_ring;
     NIAudioDecoder decoder;
-    uint8_t output_pcm[PACKED_BYTES], input_pcm[PACKED_BYTES];
-    uint64_t capture_next_frame, wire_bytes_scheduled, expected_input_frame;
-    uint64_t output_sample_end[128];
-    unsigned output_microframes[128];
-    StereoQueue render_queue, capture_queue;
-    atomic_flag render_busy, capture_busy;
-    atomic_bool running, pcm_ready;
-    atomic_int_least32_t error;
-    atomic_uint active_calls;
-    atomic_uint_fast64_t clock_sequence, clock_frame, clock_host, clock_seed;
+    NIAudioSchedule schedule;
+    Transfer inputs[INPUT_SLOTS],outputs[OUTPUT_SLOTS];
+    unsigned ready_inputs[INPUT_SLOTS],ready_head,ready_count;
+    uint64_t input_epoch[INPUT_SLOTS],consumed_epoch[INPUT_SLOTS];
+    unsigned read_slot,read_microframe;
+    uint64_t published_frames,wire_bytes;
+    ZeroEvent zero_events[8];unsigned zero_head,zero_count;
+    bool initial_timestamp_queued;
+    uint64_t output_sample[OUTPUT_SLOTS],output_usb_frame[OUTPUT_SLOTS];
+    uint32_t output_bytes[OUTPUT_SLOTS];
+    size_t pending_count;
+    bool usb_released,servicing,anchor_valid;
+    uint64_t anchor_frame,anchor_ns,interval_scaled,measurement_frame,measurement_ns,last_anchor_tick;
+    mach_timebase_info_data_t timebase;
+    atomic_uint_fast64_t capture_samples[NI_AUDIO_RING_FRAME_COUNT];
+    atomic_flag processing,render_busy;
+    atomic_bool running,pcm_ready,panic_pending,output_active,output_written;
+    atomic_uint active_calls,panic_delay;
+    atomic_int_least32_t fatal_error,panic_error,last_output_error;
+    atomic_uint_fast64_t clock_sequence,clock_frame,clock_host,clock_seed,zero_frame,zero_host;
 };
-
-static size_t queue_write(StereoQueue *queue,const float *samples,size_t frames) {
-    uint64_t head=atomic_load_explicit(&queue->head,memory_order_relaxed);
-    uint64_t tail=atomic_load_explicit(&queue->tail,memory_order_acquire);
-    uint64_t available=QUEUE_FRAMES-(head-tail);
-    if (frames > available) frames=(size_t)available;
-    for(size_t index=0;index<frames;++index) {
-        size_t target=(size_t)((head+index)%QUEUE_FRAMES)*2;
-        queue->samples[target]=samples[index*2];
-        queue->samples[target+1]=samples[index*2+1];
-    }
-    atomic_store_explicit(&queue->head,head+frames,memory_order_release);
-    return frames;
+static bool accepted(int32_t status) {return status==0||(uint32_t)status==UINT32_C(0xe00002e7);}
+static bool device_gone(int32_t status) {return status==kIOReturnNoDevice||status==kIOReturnNotOpen;}
+static void note_stream_error(rk3_native_audio_iso *e,int32_t error) {
+    int_least32_t empty=0;
+    if(error)(void)atomic_compare_exchange_strong(&e->last_output_error,&empty,error);
 }
-
-static size_t queue_read(StereoQueue *queue,float *samples,size_t frames) {
-    uint64_t tail=atomic_load_explicit(&queue->tail,memory_order_relaxed);
-    uint64_t head=atomic_load_explicit(&queue->head,memory_order_acquire);
-    uint64_t available=head-tail;
-    if(frames > available) frames=(size_t)available;
-    for(size_t index=0;index<frames;++index) {
-        size_t source=(size_t)((tail+index)%QUEUE_FRAMES)*2;
-        samples[index*2]=queue->samples[source];
-        samples[index*2+1]=queue->samples[source+1];
+static void request_panic(rk3_native_audio_iso *e,uint32_t delay,int32_t error) {
+    note_stream_error(e,error);
+    if(device_gone(error)) {
+        atomic_store(&e->fatal_error,error);atomic_store(&e->running,false);atomic_store(&e->pcm_ready,false);return;
     }
-    atomic_store_explicit(&queue->tail,tail+frames,memory_order_release);
-    return frames;
-}
-
-static void fail_engine(rk3_native_audio_iso *engine,int32_t error) {
-    int_least32_t expected=0;
-    (void)atomic_compare_exchange_strong(&engine->error,&expected,error);
-    atomic_store(&engine->pcm_ready,false);
-    bool was_running=atomic_exchange(&engine->running,false);
-    if(was_running) {
-        (void)(*engine->interface)->AbortPipe(engine->interface,engine->input_pipe);
-        (void)(*engine->interface)->AbortPipe(engine->interface,engine->output_pipe);
+    /* Fields are published before pending. A primary decoder and worker can
+     * request this concurrently; the first reason remains authoritative. */
+    int_least32_t empty=0;
+    if(atomic_compare_exchange_strong(&e->panic_error,&empty,error?error:kIOReturnIOError)) {
+        atomic_store(&e->panic_delay,delay);
+        atomic_store_explicit(&e->panic_pending,true,memory_order_release);
     }
 }
-
-static bool accepted_status(IOReturn status) {
-    return status == kIOReturnSuccess || (uint32_t)status == UINT32_C(0xe00002e7);
+static uint64_t ticks_to_ns(const rk3_native_audio_iso *e,uint64_t ticks) {
+    long double n=(long double)ticks*e->timebase.numer/e->timebase.denom;
+    return n>=0x1p64L?UINT64_MAX:(uint64_t)n;
 }
-
-static void reset_frames(IOUSBLowLatencyIsocFrame *frames,const uint16_t *requests) {
-    for(unsigned index=0;index<8;++index) {
-        frames[index].frStatus=(IOReturn)kUSBLowLatencyIsochTransferKey;
-        frames[index].frReqCount=requests == NULL ? 512 : requests[index];
-        frames[index].frActCount=0;
-        memset(&frames[index].frTimeStamp,0,sizeof(frames[index].frTimeStamp));
+static uint64_t ns_to_ticks(const rk3_native_audio_iso *e,uint64_t ns) {
+    long double n=(long double)ns*e->timebase.denom/e->timebase.numer;
+    return n>=0x1p64L?UINT64_MAX:(uint64_t)n;
+}
+/* NI's anchors are bus-frame/host-time pairs, not delayed transaction callback
+ * receipt timestamps. Only the worker calls this bounded frame-boundary probe. */
+static bool refresh_anchor(rk3_native_audio_iso *e,bool force) {
+    uint64_t now=mach_absolute_time();
+    if(!force&&e->anchor_valid&&ticks_to_ns(e,now-e->last_anchor_tick)<128000000) return true;
+    uint64_t frame=0,host=0;
+    int32_t result=rk3_host_bus_frame(e->interface,&frame,&host);
+    if(result) {request_panic(e,0,result);return false;}
+    uint64_t first=frame,limit=now+ns_to_ticks(e,1100000);
+    while(frame==first&&mach_absolute_time()<limit) {
+        result=rk3_host_bus_frame(e->interface,&frame,&host);
+        if(result) {request_panic(e,0,result);return false;}
+    }
+    uint64_t ns=ticks_to_ns(e,host);
+    if(!host||ns==UINT64_MAX) return false;
+    if(e->measurement_ns&&frame>e->measurement_frame&&ns>=e->measurement_ns) {
+        uint64_t elapsed=ns-e->measurement_ns,frames=frame-e->measurement_frame;
+        if(elapsed<=UINT64_MAX/10000) {
+            uint64_t measured=elapsed*10000/frames;
+            if(measured>=10000&&measured<UINT64_C(100000000000))
+                e->interval_scaled=(measured+e->interval_scaled*1023+512)>>10;
+        }
+    }
+    e->measurement_frame=frame;e->measurement_ns=ns;
+    e->anchor_frame=frame;e->anchor_ns=ns;e->anchor_valid=true;e->last_anchor_tick=now;
+    return true;
+}
+/* NI updateFrequency=0 publishes the complete eight-microframe IRP at
+ * primary interrupt time. Modern per-transaction publication must not expose a
+ * partial denominator to takeSimpleTimeStamp's byte-fraction calculation. */
+static bool input_batch_ready(rk3_native_audio_iso *e,unsigned slot) {
+    for(unsigned m=0;m<8;++m) {
+        RK3HostIsoFrame f;
+        if(!rk3_host_iso_list_snapshot(e->input_list,slot*8+m,&f)||f.status==RK3_HOST_ISO_PENDING)return false;
+        if(f.actual>512){request_panic(e,0,kIOReturnOverrun);return false;}
+    }
+    return true;
+}
+static void queue_zero_locked(rk3_native_audio_iso *e,unsigned slot,unsigned micro,unsigned byte_offset) {
+    uint32_t prefix=0,total=0;
+    for(unsigned m=0;m<8;++m) {
+        RK3HostIsoFrame f;
+        if(!rk3_host_iso_list_snapshot(e->input_list,slot*8+m,&f)||f.actual>512){request_panic(e,0,kIOReturnBadArgument);return;}
+        total+=f.actual;if(m<micro)prefix+=f.actual;
+    }
+    if(prefix+byte_offset>total||e->zero_count==8){request_panic(e,0,kIOReturnOverrun);return;}
+    e->zero_events[(e->zero_head+e->zero_count)%8]=(ZeroEvent){e->schedule.input_frame[slot],prefix+byte_offset,total};
+    ++e->zero_count;
+}
+/* Clock publication remains on the serial worker. RT primary processing only
+ * records the exact event coordinates; it does no USB/time-anchor work. */
+static void publish_zero_events(rk3_native_audio_iso *e) {
+    for(unsigned attempt=0;attempt<8;++attempt) {
+        if(atomic_flag_test_and_set_explicit(&e->processing,memory_order_acquire))return;
+        if(!e->zero_count){atomic_flag_clear_explicit(&e->processing,memory_order_release);return;}
+        ZeroEvent event=e->zero_events[e->zero_head];e->zero_head=(e->zero_head+1)%8;--e->zero_count;
+        atomic_flag_clear_explicit(&e->processing,memory_order_release);
+        if(!refresh_anchor(e,false))return;
+        uint64_t ns=0;
+        if(ni_audio_timestamp_nanoseconds(e->anchor_frame,e->anchor_ns,e->interval_scaled,
+            event.usb_frame,event.offset,event.total,&ns)!=NI_AUDIO_SCHEDULE_OK){request_panic(e,0,kIOReturnBadArgument);return;}
+        uint64_t ticks=ns_to_ticks(e,ns),previous=atomic_load(&e->zero_host);
+        if(previous&&ticks<previous)continue; /* recovered takeSimpleTimeStamp guard */
+        uint64_t frame=previous?atomic_load(&e->zero_frame)+NI_AUDIO_RING_FRAME_COUNT:0;
+        if(previous&&frame<atomic_load(&e->zero_frame)){request_panic(e,0,kIOReturnOverrun);return;}
+        atomic_fetch_add_explicit(&e->clock_sequence,1,memory_order_acq_rel);
+        atomic_store_explicit(&e->zero_frame,frame,memory_order_relaxed);
+        atomic_store_explicit(&e->zero_host,ticks,memory_order_relaxed);
+        atomic_fetch_add_explicit(&e->clock_sequence,1,memory_order_release);
     }
 }
-
-static void read_complete(void *context,IOReturn result,void *argument);
-static void write_complete(void *context,IOReturn result,void *argument);
-
-static bool submit_input(rk3_native_audio_iso *engine,unsigned slot,uint64_t frame) {
-    Transfer *transfer=&engine->inputs[slot];
-    reset_frames(engine->input_frames+slot*8,NULL);
-    transfer->pending=true;
-    ++engine->pending_count;
-    IOReturn result=(*engine->interface)->LowLatencyReadIsochPipeAsync(engine->interface,
-        engine->input_pipe,engine->input_data+slot*TRANSFER_BYTES,frame,8,0,
-        engine->input_frames+slot*8,read_complete,transfer);
-    if(result != kIOReturnSuccess) {
-        transfer->pending=false;
-        --engine->pending_count;
-        fail_engine(engine,result);
+static uint64_t packed_stereo(const uint8_t *p) {
+    uint64_t value=0;for(unsigned i=0;i<6;++i)value=(value<<8)|p[i];return value;
+}
+static void publish_capture(rk3_native_audio_iso *e) {
+    while(e->published_frames<e->decoder.completed_frames) {
+        size_t frame=(size_t)(e->published_frames%NI_AUDIO_RING_FRAME_COUNT);
+        atomic_store_explicit(&e->capture_samples[frame],packed_stereo(e->input_pcm+frame*6),memory_order_release);
+        ++e->published_frames;
+    }
+    /* Preserve the actual partially updated packed frame too. NI conversion
+     * reads the sample-position ring, not only a dequeued completed-frame list. */
+    size_t frame=(size_t)(e->decoder.completed_frames%NI_AUDIO_RING_FRAME_COUNT);
+    atomic_store_explicit(&e->capture_samples[frame],packed_stereo(e->input_pcm+frame*6),memory_order_release);
+}
+/* processing serializes decoder/cursors against list reset, not USB calls.
+ * RT callers try it once and can always read the last coherent stereo ring. */
+static void consume_input_locked(rk3_native_audio_iso *e) {
+    if(e->schedule.priming) return;
+    uint8_t *rings[]={e->input_pcm};
+    for(unsigned visited=0;visited<INPUT_SLOTS*MICROFRAMES;++visited) {
+        unsigned slot=e->read_slot,micro=e->read_microframe;
+        if(micro==0&&(e->consumed_epoch[slot]==e->input_epoch[slot]||!input_batch_ready(e,slot)))return;
+        RK3HostIsoFrame f;
+        if(!rk3_host_iso_list_snapshot(e->input_list,slot*8+micro,&f)) {request_panic(e,0,kIOReturnBadArgument);return;}
+        if(f.status==RK3_HOST_ISO_PENDING) return;
+        if(f.actual>512) {request_panic(e,0,kIOReturnOverrun);return;}
+        if(accepted(f.status)&&f.actual) {
+            if(!e->initial_timestamp_queued){queue_zero_locked(e,slot,micro,0);e->initial_timestamp_queued=true;}
+            const uint8_t *wire=e->input_data+slot*TRANSFER_BYTES+micro*512;
+            for(unsigned byte=0;byte<f.actual;++byte) {
+                uint64_t wraps=e->decoder.ring_wraps;
+                if(ni_audio_decode(&e->decoder,wire+byte,1,rings,NI_AUDIO_RING_PACKED_BYTES)!=NI_AUDIO_OK){request_panic(e,0,kIOReturnBadArgument);return;}
+                /* Mode2@0x82b0 timestamps after consuming the wrap check plane,
+                 * before the following payload byte, hence byte+1. */
+                if(e->decoder.ring_wraps!=wraps)queue_zero_locked(e,slot,micro,byte+1);
+            }
+            publish_capture(e);
+            if(e->decoder.errors)request_panic(e,0,kIOReturnIOError);
+        }
+        if(++e->read_microframe==8) {
+            e->consumed_epoch[slot]=e->input_epoch[slot];e->read_microframe=0;e->read_slot=(slot+1)%INPUT_SLOTS;
+        }
+    }
+}
+static bool prepare_input_locked(rk3_native_audio_iso *e,unsigned slot) {
+    for(unsigned m=0;m<8;++m) {
+        int32_t result=rk3_host_iso_list_set(e->input_list,slot*8+m,512,slot*TRANSFER_BYTES+m*512,false);
+        if(result) {request_panic(e,0,result);return false;}
+    }
+    ++e->input_epoch[slot];return true;
+}
+static void read_complete(void *,int32_t,RK3HostIsoList *,size_t,size_t);
+static void write_complete(void *,int32_t,RK3HostIsoList *,size_t,size_t);
+static int32_t submit_input(rk3_native_audio_iso *e,unsigned slot,uint64_t frame) {
+    /* NI queueIn0x6657/0x666a rejects stopped/panic before queue ownership. */
+    if(!atomic_load(&e->running)||atomic_load(&e->panic_pending))return kIOReturnError;
+    Transfer *t=&e->inputs[slot];t->pending=true;++e->pending_count;
+    int32_t result=0;
+    for(unsigned attempt=0;attempt<6;++attempt) {
+        result=rk3_host_iso_enqueue(e->interface,e->input_pipe,e->input_buffer,e->input_list,
+            slot*8,8,frame,read_complete,t);
+        if(!result)return 0;
+        note_stream_error(e,result);
+        if(result==kIOReturnIsoTooOld)break; /* original queueIn does not retry a past frame */
+    }
+    t->pending=false;--e->pending_count;
+    /* queueIn0x673f increments its -6 counter; zero branches0x6743->0x6757
+     * directly to return. Only IsoTooOld0x6768 arms the100ms panic timer.
+     * Other exhausted rejections remain diagnostics, not an invented restart.
+     * Actual removal is handled by the current platform's fatal lifecycle. */
+    if(result==kIOReturnIsoTooOld||device_gone(result))
+        request_panic(e,result==kIOReturnIsoTooOld?100:0,result);
+    return result;
+}
+static void clear_inactive_output(rk3_native_audio_iso *e) {
+    if(atomic_load(&e->output_active)||!atomic_load_explicit(&e->pcm_ready,memory_order_acquire))return;
+    if(atomic_flag_test_and_set_explicit(&e->render_busy,memory_order_acquire))return;
+    if(atomic_load(&e->output_written)||e->output_ring.stream_written) {
+        (void)ni_audio_ring_clear_stream_original(&e->output_ring);
+        e->output_ring.stream_written=false;atomic_store(&e->output_written,false);
+    }
+    atomic_flag_clear_explicit(&e->render_busy,memory_order_release);
+}
+static bool submit_output(rk3_native_audio_iso *e,const NIAudioOutputPlan *p) {
+    unsigned slot=p->output_slot;
+    /* NI queueOutIrp0x7620 submits all eight microframes even when every
+     * requested count is zero. Keep the mapped backing and slot lifetime:
+     * completion still publishes the saved output sample position. */
+    size_t offset=p->segment_offset[0];
+    for(unsigned m=0;m<8;++m) {
+        uint32_t n=p->requested[m];
+        int32_t result=rk3_host_iso_list_set(e->output_list,slot*8+m,n,(uint32_t)offset,
+            offset+n>NI_AUDIO_RING_WIRE_BYTES);
+        if(result) {request_panic(e,0,result);return false;}
+        offset=(offset+n)%NI_AUDIO_RING_WIRE_BYTES;
+    }
+    /* The same mapped ring is passed every time. The host later writes future
+     * sample positions directly into it, matching NI's descriptor ranges. */
+    e->output_sample[slot]=e->wire_bytes/8;e->wire_bytes+=p->total_bytes;
+    e->output_usb_frame[slot]=p->output_frame;e->output_bytes[slot]=p->total_bytes;
+    Transfer *t=&e->outputs[slot];t->pending=true;++e->pending_count;
+    int32_t result=rk3_host_iso_enqueue(e->interface,e->output_pipe,e->wire_buffer,e->output_list,
+        slot*8,8,p->output_frame,write_complete,t);
+    if(result) {
+        t->pending=false;--e->pending_count;note_stream_error(e,result);
+        if(device_gone(result)) request_panic(e,0,result);
+        /* NI queueOut leaves the reserved slot busy after a failed submission.
+         * It does not directly schedule panic; subsequent exhaustion does. */
         return false;
     }
     return true;
 }
-
-static void prepare_output_pcm(rk3_native_audio_iso *engine,size_t wire_bytes,bool priming_ended) {
-    size_t remaining=engine->encoder.staged_size-engine->encoder.staged_position;
-    if(wire_bytes <= remaining) return;
-    size_t frames=(wire_bytes-remaining+7)/8;
-    size_t first=engine->encoder.frame;
-    if(remaining != 0) first=(first+1)%QUEUE_FRAMES;
-    for(size_t index=0;index<frames;++index) {
-        float sample[2]={0,0};
-        if(!engine->schedule.priming && !priming_ended) (void)queue_read(&engine->render_queue,sample,1);
-        size_t position=((first+index)%QUEUE_FRAMES)*6;
-        (void)ni_audio_pcm24_write(sample[0],NI_AUDIO_BIG_ENDIAN,engine->output_pcm+position);
-        (void)ni_audio_pcm24_write(sample[1],NI_AUDIO_BIG_ENDIAN,engine->output_pcm+position+3);
-    }
-}
-
-static bool submit_output(rk3_native_audio_iso *engine,const NIAudioOutputPlan *plan) {
-    unsigned slot=plan->output_slot;
-    unsigned count=8;
-    while(count > 0 && plan->requested[count-1] == 0) --count;
-    engine->output_microframes[slot]=count;
-    /* Current IOUSBHost rejects some empty transactions at the end of its
-     * exact-length data descriptor. Keep interior gaps and the NI calendar;
-     * only omit trailing empty transactions from this API submission. */
-    if(count == 0) {
-        uint32_t position;
-        if(ni_audio_schedule_output_completed(&engine->schedule,slot,&position) != NI_AUDIO_SCHEDULE_OK) {
-            fail_engine(engine,kIOReturnInternalError);return false;
+void rk3_native_audio_iso_service(rk3_native_audio_iso *e) {
+    if(!e||e->servicing||!atomic_load(&e->running)) return;
+    e->servicing=true;
+    clear_inactive_output(e);
+    publish_zero_events(e);
+    while(e->ready_count&&!atomic_load(&e->panic_pending)&&atomic_load(&e->running)) {
+        if(atomic_flag_test_and_set_explicit(&e->processing,memory_order_acquire)) break;
+        unsigned slot=e->ready_inputs[e->ready_head];
+        consume_input_locked(e);
+        if(atomic_load(&e->panic_pending)||!atomic_load(&e->running)) {
+            atomic_flag_clear_explicit(&e->processing,memory_order_release);break;
         }
-        return true;
-    }
-    prepare_output_pcm(engine,plan->total_bytes,plan->priming_ended);
-    const uint8_t *rings[]={engine->output_pcm};
-    if(ni_audio_encode(&engine->encoder,rings,PACKED_BYTES,
-                      engine->output_data+slot*TRANSFER_BYTES,plan->total_bytes) != NI_AUDIO_OK) {
-        fail_engine(engine,kIOReturnBadArgument);return false;
-    }
-    reset_frames(engine->output_frames+slot*8,plan->requested);
-    Transfer *transfer=&engine->outputs[slot];
-    transfer->pending=true;
-    ++engine->pending_count;
-    engine->wire_bytes_scheduled+=plan->total_bytes;
-    engine->output_sample_end[slot]=engine->wire_bytes_scheduled/8;
-    IOReturn result=(*engine->interface)->LowLatencyWriteIsochPipeAsync(engine->interface,
-        engine->output_pipe,engine->output_data+slot*TRANSFER_BYTES,plan->output_frame,count,1,
-        engine->output_frames+slot*8,write_complete,transfer);
-    if(result != kIOReturnSuccess) {
-        transfer->pending=false;
-        --engine->pending_count;
-        fail_engine(engine,result);return false;
-    }
-    return true;
-}
-
-static void consume_ready_input(rk3_native_audio_iso *engine) {
-    if(engine->schedule.priming) return;
-    uint8_t *rings[]={engine->input_pcm};
-    for(unsigned visited=0;visited<512;++visited) {
-        unsigned slot=engine->read_slot,microframe=engine->read_microframe;
-        volatile IOUSBLowLatencyIsocFrame *frame=engine->input_frames+slot*8+microframe;
-        IOReturn status=frame->frStatus;
-        if((uint32_t)status == (uint32_t)kUSBLowLatencyIsochTransferKey) return;
-        atomic_thread_fence(memory_order_acquire);
-        size_t count=frame->frActCount;
-        if(count > 512) {fail_engine(engine,kIOReturnOverrun);return;}
-        if(accepted_status(status) && count != 0) {
-            if(ni_audio_decode(&engine->decoder,
-                engine->input_data+slot*TRANSFER_BYTES+microframe*512,count,rings,PACKED_BYTES) != NI_AUDIO_OK) {
-                fail_engine(engine,kIOReturnBadArgument);return;
-            }
-            if(engine->decoder.errors != 0) {fail_engine(engine,kIOReturnIOError);return;}
-            while(engine->capture_next_frame < engine->decoder.completed_frames) {
-                size_t position=(size_t)(engine->capture_next_frame%QUEUE_FRAMES)*6;
-                float sample[2];
-                (void)ni_audio_pcm24_read(engine->input_pcm+position,NI_AUDIO_BIG_ENDIAN,&sample[0]);
-                (void)ni_audio_pcm24_read(engine->input_pcm+position+3,NI_AUDIO_BIG_ENDIAN,&sample[1]);
-                (void)queue_write(&engine->capture_queue,sample,1);
-                ++engine->capture_next_frame;
-            }
+        if(!e->schedule.priming&&e->consumed_epoch[slot]!=e->input_epoch[slot]) {
+            atomic_flag_clear_explicit(&e->processing,memory_order_release);break;
         }
-        if(++engine->read_microframe == 8) {
-            engine->read_microframe=0;
-            engine->read_slot=(engine->read_slot+1)%64;
+        NIAudioPacketResult frames[8];bool valid=true;
+        for(unsigned m=0;m<8;++m) {
+            RK3HostIsoFrame f;
+            if(!rk3_host_iso_list_snapshot(e->input_list,slot*8+m,&f)||f.actual>512) {valid=false;break;}
+            frames[m]=(NIAudioPacketResult){f.status,(uint16_t)f.actual};
         }
-    }
-}
-
-static void read_complete(void *context,IOReturn result,void *argument) {
-    Transfer *transfer=context;
-    rk3_native_audio_iso *engine=transfer->engine;
-    if(!transfer->pending) {fail_engine(engine,kIOReturnInternalError);return;}
-    transfer->pending=false;
-    --engine->pending_count;
-    if(!atomic_load(&engine->running)) return;
-    if(argument != engine->input_frames+transfer->slot*8 || !accepted_status(result)) {
-        fail_engine(engine,result == kIOReturnSuccess ? kIOReturnBadArgument : result);return;
-    }
-    /* The low-latency output calendar is tied to each received frame, while
-     * the encoder and render FIFO are sequential. Do not attach sequential PCM
-     * to a reversed calendar if the host delivers callbacks out of order. */
-    uint64_t received_frame=engine->schedule.input_frame[transfer->slot];
-    if(received_frame != engine->expected_input_frame || received_frame == UINT64_MAX) {
-        fail_engine(engine,kIOReturnIOError);return;
-    }
-    engine->expected_input_frame=received_frame+1;
-    consume_ready_input(engine);
-    if(!atomic_load(&engine->running)) return;
-    NIAudioPacketResult packets[8];
-    for(unsigned index=0;index<8;++index) {
-        IOUSBLowLatencyIsocFrame *frame=engine->input_frames+transfer->slot*8+index;
-        packets[index].status=frame->frStatus;
-        packets[index].actual_bytes=frame->frActCount;
-    }
-    NIAudioOutputPlan plan;
-    if(ni_audio_schedule_input_completed(&engine->schedule,transfer->slot,packets,&plan) != NI_AUDIO_SCHEDULE_OK) {
-        fail_engine(engine,kIOReturnNoResources);return;
-    }
-    /* Preserve NI's 64-slot input requeue, but do not inherit its 64 ms
-     * output lead. The current native stereo path uses a four-ms OUT calendar.
-     * A completed one-ms IN transfer leaves about three ms for submission. */
-    if(plan.received_frame > UINT64_MAX-RK3_AUDIO_OUTPUT_LEAD_MILLISECONDS) {
-        fail_engine(engine,kIOReturnBadArgument);return;
-    }
-    plan.output_frame=plan.received_frame+RK3_AUDIO_OUTPUT_LEAD_MILLISECONDS;
-    if(!submit_input(engine,transfer->slot,plan.requeued_input_frame)) return;
-    if(!submit_output(engine,&plan)) return;
-    if(plan.priming_ended) {
-        engine->read_slot=0;engine->read_microframe=0;
-        (void)ni_audio_decoder_set_priming(&engine->decoder,false);
-        consume_ready_input(engine);
-    }
-    /* NativeUSB waits for the public clock before returning Start to HAL.
-     * Earlier output completions are still used for clock accounting, but
-     * must not start the host while the 64-read priming pass rejects render.
-     * The first real capture batch establishes a fresh starting boundary. */
-    if(atomic_load(&engine->running) && !engine->schedule.priming && engine->capture_next_frame != 0)
-        atomic_store_explicit(&engine->pcm_ready,true,memory_order_release);
-}
-
-static void write_complete(void *context,IOReturn result,void *argument) {
-    Transfer *transfer=context;
-    rk3_native_audio_iso *engine=transfer->engine;
-    if(!transfer->pending) {fail_engine(engine,kIOReturnInternalError);return;}
-    transfer->pending=false;
-    --engine->pending_count;
-    uint32_t position;
-    (void)ni_audio_schedule_output_completed(&engine->schedule,transfer->slot,&position);
-    if(!atomic_load(&engine->running)) return;
-    if(argument != engine->output_frames+transfer->slot*8 || !accepted_status(result)) {
-        fail_engine(engine,result == kIOReturnSuccess ? kIOReturnBadArgument : result);return;
-    }
-    uint64_t sample=engine->output_sample_end[transfer->slot];
-    uint64_t host=0;
-    IOUSBLowLatencyIsocFrame *frames=engine->output_frames+transfer->slot*8;
-    for(unsigned index=0;index<engine->output_microframes[transfer->slot];++index) {
-        if(!accepted_status(frames[index].frStatus) || frames[index].frActCount != frames[index].frReqCount) {
-            fail_engine(engine,kIOReturnIOError);return;
+        NIAudioOutputPlan plan;
+        NIAudioScheduleResult planned=valid?ni_audio_schedule_input_completed(&e->schedule,slot,frames,&plan):NI_AUDIO_SCHEDULE_INVALID;
+        if(planned!=NI_AUDIO_SCHEDULE_OK) {
+            request_panic(e,planned==NI_AUDIO_SCHEDULE_NO_OUTPUT?100:0,
+                planned==NI_AUDIO_SCHEDULE_NO_OUTPUT?kIOReturnNoResources:kIOReturnBadArgument);
+            atomic_flag_clear_explicit(&e->processing,memory_order_release);break;
         }
-        uint64_t stamp=0;
-        _Static_assert(sizeof(stamp) == sizeof(frames[index].frTimeStamp),"USB timestamp size");
-        memcpy(&stamp,&frames[index].frTimeStamp,sizeof(stamp));
-        if(stamp != 0) host=stamp;
+        e->ready_head=(e->ready_head+1)%INPUT_SLOTS;--e->ready_count;
+        if(plan.priming_ended) {
+            /* Initial priming traffic is discarded even if its callback was
+             * delivered late. Do not decode an old epoch twice after a wrap. */
+            for(unsigned i=0;i<INPUT_SLOTS;++i)if(e->input_epoch[i]==1)e->consumed_epoch[i]=1;
+            e->read_slot=0;e->read_microframe=0;
+            (void)ni_audio_decoder_set_priming(&e->decoder,false);
+            (void)ni_audio_ring_set_priming(&e->output_ring,false);
+            atomic_store_explicit(&e->pcm_ready,true,memory_order_release);
+            consume_input_locked(e);
+        }
+        bool prepared=prepare_input_locked(e,slot);
+        atomic_flag_clear_explicit(&e->processing,memory_order_release);
+        if(!prepared) break;
+        (void)submit_input(e,slot,plan.requeued_input_frame);
+        if(atomic_load(&e->running)) (void)submit_output(e,&plan); /* original queueIn then queueOut */
     }
-    if(host == 0) host=mach_absolute_time();
-    if(sample < atomic_load(&engine->clock_frame)) return;
-    atomic_fetch_add_explicit(&engine->clock_sequence,1,memory_order_acq_rel);
-    atomic_store_explicit(&engine->clock_frame,sample,memory_order_relaxed);
-    atomic_store_explicit(&engine->clock_host,host,memory_order_relaxed);
-    atomic_fetch_add_explicit(&engine->clock_sequence,1,memory_order_release);
+    publish_zero_events(e);
+    e->servicing=false;
 }
-
-static bool allocate_buffer(rk3_native_audio_iso *engine,void **buffer,size_t size,uint32_t type) {
-    return (*engine->interface)->LowLatencyCreateBuffer(engine->interface,buffer,size,type) == kIOReturnSuccess;
+static void read_complete(void *context,int32_t result,RK3HostIsoList *list,size_t first,size_t count) {
+    Transfer *t=context;rk3_native_audio_iso *e=t->engine;
+    if(!t->pending) {request_panic(e,0,kIOReturnInternalError);return;}
+    t->pending=false;--e->pending_count;
+    if(!atomic_load(&e->running)||atomic_load(&e->panic_pending)) return;
+    if(list!=e->input_list||first!=t->slot*8||count!=8) {request_panic(e,0,kIOReturnBadArgument);return;}
+    if(device_gone(result)) {request_panic(e,0,result);return;}
+    /* NI consumes accepted individual frame results even after several
+     * recoverable request statuses. Abort callbacks retire without requeue. */
+    if(result==kIOReturnAborted) return;
+    if(e->ready_count==INPUT_SLOTS) {request_panic(e,100,kIOReturnNoResources);return;}
+    t->result=result;e->ready_inputs[(e->ready_head+e->ready_count)%INPUT_SLOTS]=t->slot;++e->ready_count;
+    rk3_native_audio_iso_service(e);
 }
-
-static IOReturn validate_audio_pipe(rk3_native_audio_iso *engine,uint8_t pipe,
-    uint8_t expected_direction,uint8_t expected_number) {
-    UInt8 direction=0,number=0,type=0,interval=0;UInt16 capacity=0;
-    IOReturn result=(*engine->interface)->GetPipeProperties(engine->interface,pipe,
-        &direction,&number,&type,&capacity,&interval);
-    if(result != kIOReturnSuccess) return result;
-    return direction == expected_direction && number == expected_number &&
-        type == kUSBIsoc && capacity == 512 && interval == 1 ?
-        kIOReturnSuccess : kIOReturnBadArgument;
-}
-
-rk3_native_audio_iso *rk3_native_audio_iso_create(IOUSBInterfaceInterface300 **interface,
-    uint8_t input_pipe,uint8_t output_pipe,rk3_native_audio_command command,void *context) {
-    if(interface == NULL || input_pipe == 0 || output_pipe == 0 || command == NULL) return NULL;
-    rk3_native_audio_iso *engine=calloc(1,sizeof(*engine));
-    if(engine == NULL) return NULL;
-    engine->interface=interface;engine->input_pipe=input_pipe;engine->output_pipe=output_pipe;
-    (*interface)->AddRef(interface);
-    engine->command=command;engine->command_context=context;
-    atomic_flag_clear(&engine->render_busy);atomic_flag_clear(&engine->capture_busy);
-    atomic_init(&engine->running,false);atomic_init(&engine->pcm_ready,false);atomic_init(&engine->error,0);atomic_init(&engine->active_calls,0);
-    atomic_init(&engine->clock_seed,mach_absolute_time());
-    atomic_init(&engine->clock_sequence,0);atomic_init(&engine->clock_frame,0);atomic_init(&engine->clock_host,0);
-    atomic_init(&engine->render_queue.head,0);atomic_init(&engine->render_queue.tail,0);
-    atomic_init(&engine->capture_queue.head,0);atomic_init(&engine->capture_queue.tail,0);
-    if(!allocate_buffer(engine,(void **)&engine->input_data,64*TRANSFER_BYTES,kUSBLowLatencyReadBuffer) ||
-       !allocate_buffer(engine,(void **)&engine->output_data,128*TRANSFER_BYTES,kUSBLowLatencyWriteBuffer) ||
-       !allocate_buffer(engine,(void **)&engine->input_frames,64*8*sizeof(*engine->input_frames),kUSBLowLatencyFrameListBuffer) ||
-       !allocate_buffer(engine,(void **)&engine->output_frames,128*8*sizeof(*engine->output_frames),kUSBLowLatencyFrameListBuffer)) {
-        (void)rk3_native_audio_iso_destroy(engine);return NULL;
+static void write_complete(void *context,int32_t result,RK3HostIsoList *list,size_t first,size_t count) {
+    Transfer *t=context;rk3_native_audio_iso *e=t->engine;
+    if(!t->pending) {request_panic(e,0,kIOReturnInternalError);return;}
+    t->pending=false;--e->pending_count;
+    uint32_t ring_position=0;
+    (void)ni_audio_schedule_output_completed(&e->schedule,t->slot,&ring_position);
+    if(!atomic_load(&e->running)||atomic_load(&e->panic_pending)) return;
+    if(list!=e->output_list||first!=t->slot*8||count!=8) {request_panic(e,0,kIOReturnBadArgument);return;}
+    if(device_gone(result)) {request_panic(e,0,result);return;}
+    if(!accepted(result))note_stream_error(e,result);
+    for(unsigned m=0;m<8;++m) {
+        RK3HostIsoFrame frame;
+        if(!rk3_host_iso_list_snapshot(e->output_list,t->slot*8+m,&frame)) {
+            note_stream_error(e,kIOReturnBadArgument);break;
+        }
+        if(frame.requested&&(!accepted(frame.status)||frame.actual!=frame.requested))
+            note_stream_error(e,accepted(frame.status)?kIOReturnUnderrun:frame.status);
     }
-    for(unsigned slot=0;slot<64;++slot) {engine->inputs[slot].engine=engine;engine->inputs[slot].slot=slot;}
-    for(unsigned slot=0;slot<128;++slot) {engine->outputs[slot].engine=engine;engine->outputs[slot].slot=slot;}
-    return engine;
+    clear_inactive_output(e);
+    publish_zero_events(e);
+    if(!refresh_anchor(e,false)||!e->anchor_valid) return;
+    uint64_t ns=0;
+    if(ni_audio_timestamp_nanoseconds(e->anchor_frame,e->anchor_ns,e->interval_scaled,
+        e->output_usb_frame[t->slot],0,e->output_bytes[t->slot],&ns)!=NI_AUDIO_SCHEDULE_OK) {request_panic(e,0,kIOReturnBadArgument);return;}
+    uint64_t sample=e->output_sample[t->slot];
+    uint64_t host_ticks=ns_to_ticks(e,ns);
+    if(sample<atomic_load(&e->clock_frame)||host_ticks<atomic_load(&e->clock_host))return;
+    atomic_fetch_add_explicit(&e->clock_sequence,1,memory_order_acq_rel);
+    atomic_store_explicit(&e->clock_frame,sample,memory_order_relaxed);
+    atomic_store_explicit(&e->clock_host,host_ticks,memory_order_relaxed);
+    atomic_fetch_add_explicit(&e->clock_sequence,1,memory_order_release);
 }
-
-int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *engine) {
-    if(engine == NULL) return kIOReturnBadArgument;
-    if(engine->usb_released) return kIOReturnNoDevice;
-    if(atomic_load(&engine->running)) return kIOReturnSuccess;
-    if(!rk3_native_audio_iso_is_quiescent(engine)) return kIOReturnBusy;
-    /* Retain the descriptor's existing bandwidth allocation. The current host
-     * rejects legacy SetPipePolicy even for its descriptor size; original NI
-     * code did not check that call's result. Validate the actual pipes instead. */
-    IOReturn result=validate_audio_pipe(engine,engine->input_pipe,kUSBIn,2);
-    if(result != kIOReturnSuccess) return result;
-    result=validate_audio_pipe(engine,engine->output_pipe,kUSBOut,6);
-    if(result != kIOReturnSuccess) return result;
+static int32_t validate_pipe(rk3_native_audio_iso *e,uint8_t pipe,uint8_t direction,uint8_t number) {
+    RK3HostPipeProperties p;int32_t result=rk3_host_pipe_properties(e->interface,pipe,&p);
+    if(result) return result;
+    return p.direction==direction&&p.number==number&&p.transfer_type==kUSBIsoc&&p.max_packet_size==512&&p.interval==1?0:kIOReturnBadArgument;
+}
+rk3_native_audio_iso *rk3_native_audio_iso_create(RK3HostInterface *interface,uint8_t in,uint8_t out,
+    rk3_native_audio_command command,void *context) {
+    if(!interface||!in||!out||!command||!rk3_host_primary_lists_supported()) return NULL;
+    rk3_native_audio_iso *e=calloc(1,sizeof(*e));if(!e)return NULL;
+    e->interface=interface;e->input_pipe=in;e->output_pipe=out;e->command=command;e->command_context=context;
+    rk3_host_retain(interface);(void)mach_timebase_info(&e->timebase);
+    atomic_flag_clear(&e->processing);atomic_flag_clear(&e->render_busy);
+    atomic_init(&e->running,false);atomic_init(&e->pcm_ready,false);atomic_init(&e->panic_pending,false);
+    atomic_init(&e->output_active,true);atomic_init(&e->output_written,false);
+    atomic_init(&e->panic_delay,0);atomic_init(&e->panic_error,0);atomic_init(&e->fatal_error,0);atomic_init(&e->last_output_error,0);
+    atomic_init(&e->active_calls,0);atomic_init(&e->clock_seed,0);
+    atomic_init(&e->clock_sequence,0);atomic_init(&e->clock_frame,0);atomic_init(&e->clock_host,0);
+    atomic_init(&e->zero_frame,0);atomic_init(&e->zero_host,0);
+    for(unsigned i=0;i<NI_AUDIO_RING_FRAME_COUNT;++i)atomic_init(&e->capture_samples[i],0);
+    int32_t error=0;
+    e->input_buffer=rk3_host_buffer_create(interface,INPUT_SLOTS*TRANSFER_BYTES,&error);
+    e->wire_buffer=rk3_host_buffer_create(interface,NI_AUDIO_RING_WIRE_BYTES,&error);
+    e->input_list=rk3_host_iso_list_create(interface,INPUT_SLOTS*8,&error);
+    e->output_list=rk3_host_iso_list_create(interface,OUTPUT_SLOTS*8,&error);
+    if(!e->input_buffer||!e->wire_buffer||!e->input_list||!e->output_list) {(void)rk3_native_audio_iso_destroy(e);return NULL;}
+    e->input_data=rk3_host_buffer_bytes(e->input_buffer);
+    if(ni_audio_ring_init(&e->output_ring,rk3_host_buffer_bytes(e->wire_buffer),NI_AUDIO_RING_WIRE_BYTES,
+        e->output_pcm,NI_AUDIO_RING_PACKED_BYTES)!=NI_AUDIO_RING_OK) {(void)rk3_native_audio_iso_destroy(e);return NULL;}
+    for(unsigned i=0;i<INPUT_SLOTS;++i)e->inputs[i]=(Transfer){e,i,false,0};
+    for(unsigned i=0;i<OUTPUT_SLOTS;++i)e->outputs[i]=(Transfer){e,i,false,0};
+    return e;
+}
+int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
+    if(!e||e->usb_released)return kIOReturnBadArgument;
+    if(atomic_load(&e->running))return 0;
+    if(!rk3_native_audio_iso_is_quiescent(e))return kIOReturnBusy;
+    int32_t result=validate_pipe(e,e->input_pipe,kUSBIn,2);
+    if(!result)result=validate_pipe(e,e->output_pipe,kUSBOut,6);
+    if(result)return result;
     const uint8_t stop[]={9,255,255,136,0,1},start[]={9,1,2,136,0,1};
-    if(!engine->command(engine->command_context,stop,sizeof(stop),1200)) return kIOReturnIOError;
-    UInt64 frame=0;AbsoluteTime stamp;
-    result=(*engine->interface)->GetBusFrameNumber(engine->interface,&frame,&stamp);
-    if(result != kIOReturnSuccess) return result;
-    if(ni_audio_schedule_init(&engine->schedule,frame,2,1) != NI_AUDIO_SCHEDULE_OK ||
-       ni_audio_encoder_init(&engine->encoder,NI_AUDIO_MODE_2,1,PACKED_BYTES) != NI_AUDIO_OK ||
-       ni_audio_decoder_init(&engine->decoder,NI_AUDIO_MODE_2,1,PACKED_BYTES,true) != NI_AUDIO_OK) return kIOReturnBadArgument;
-    memset(engine->output_pcm,0,PACKED_BYTES);memset(engine->input_pcm,0,PACKED_BYTES);
-    memset(engine->input_data,0,64*TRANSFER_BYTES);memset(engine->output_data,0,128*TRANSFER_BYTES);
-    engine->read_slot=0;engine->read_microframe=0;engine->capture_next_frame=0;engine->wire_bytes_scheduled=0;
-    atomic_store(&engine->render_queue.head,0);atomic_store(&engine->render_queue.tail,0);
-    atomic_store(&engine->capture_queue.head,0);atomic_store(&engine->capture_queue.tail,0);
-    atomic_store(&engine->error,0);atomic_fetch_add(&engine->clock_seed,1);
-    atomic_store(&engine->clock_host,0);atomic_store(&engine->clock_frame,0);
-    atomic_store(&engine->pcm_ready,false);
-    atomic_store(&engine->running,true);
-    for(unsigned slot=0;slot<64;++slot) {
+    /* performStart0x5fd6 ignores the rate-ff STOP result; only the real-rate
+     * setAudioParams result at0x63bc is tested. The bounded command adapter
+     * retains its own pending write storage even if this attempt fails. */
+    (void)e->command(e->command_context,stop,sizeof(stop),1200);
+    /* Original start aborts and resets both AUDIO pipes. These optional clears
+     * are attempted like NI; the modern ISO pipe may not support halt state. */
+    (void)rk3_host_abort(e->interface,e->input_pipe);(void)rk3_host_abort(e->interface,e->output_pipe);
+    (void)rk3_host_clear_stall(e->interface,e->input_pipe);(void)rk3_host_clear_stall(e->interface,e->output_pipe);
+    uint64_t frame=0,host=0;result=rk3_host_bus_frame(e->interface,&frame,&host);if(result)return result;
+    if(ni_audio_schedule_init(&e->schedule,frame,2,1)!=NI_AUDIO_SCHEDULE_OK||
+       ni_audio_ring_reset(&e->output_ring)!=NI_AUDIO_RING_OK||
+       ni_audio_decoder_init(&e->decoder,NI_AUDIO_MODE_2,1,NI_AUDIO_RING_PACKED_BYTES,true)!=NI_AUDIO_OK)return kIOReturnBadArgument;
+    memset(e->input_data,0,INPUT_SLOTS*TRANSFER_BYTES);memset(e->input_pcm,0,sizeof(e->input_pcm));
+    memset(e->input_epoch,0,sizeof(e->input_epoch));memset(e->consumed_epoch,0,sizeof(e->consumed_epoch));
+    e->ready_head=0;e->ready_count=0;e->zero_head=0;e->zero_count=0;e->initial_timestamp_queued=false;e->read_slot=0;e->read_microframe=0;e->published_frames=0;e->wire_bytes=0;
+    e->anchor_valid=false;e->measurement_ns=0;e->interval_scaled=UINT64_C(10000000000);
+    for(unsigned i=0;i<NI_AUDIO_RING_FRAME_COUNT;++i)atomic_store(&e->capture_samples[i],0);
+    atomic_store(&e->fatal_error,0);atomic_store(&e->panic_error,0);atomic_store(&e->last_output_error,0);
+    atomic_store(&e->panic_delay,0);atomic_store(&e->panic_pending,false);atomic_store(&e->pcm_ready,false);
+    atomic_store(&e->clock_frame,0);atomic_store(&e->clock_host,0);atomic_store(&e->zero_frame,0);atomic_store(&e->zero_host,0);atomic_fetch_add(&e->clock_seed,1);
+    if(!refresh_anchor(e,true))return kIOReturnIOError;
+    atomic_store(&e->running,true);
+    for(unsigned i=0;i<INPUT_SLOTS;++i) {
+        if(!atomic_load(&e->running))return atomic_load(&e->fatal_error)?atomic_load(&e->fatal_error):kIOReturnAborted;
+        /* Initial queueIn results are only logged at0x6356..0x638b; the
+         * loop continues through64 at0x639a. Its panic guard precedes the
+         * global calendar increment, so later guarded calls are no-ops. */
+        if(atomic_load(&e->panic_pending))continue;
         uint64_t scheduled=0;
-        if(ni_audio_schedule_begin_input(&engine->schedule,slot,&scheduled) != NI_AUDIO_SCHEDULE_OK) {
-            fail_engine(engine,kIOReturnIOError);return atomic_load(&engine->error);
-        }
-        if(slot == 0) engine->expected_input_frame=scheduled;
-        if(!submit_input(engine,slot,scheduled)) {
-            fail_engine(engine,kIOReturnIOError);return atomic_load(&engine->error);
-        }
+        if(ni_audio_schedule_begin_input(&e->schedule,i,&scheduled)!=NI_AUDIO_SCHEDULE_OK){request_panic(e,0,kIOReturnBadArgument);return kIOReturnBadArgument;}
+        if(!prepare_input_locked(e,i))
+            return atomic_load(&e->fatal_error)?atomic_load(&e->fatal_error):atomic_load(&e->panic_error);
+        result=submit_input(e,i,scheduled);
+        if(device_gone(result))return result;
+        /* Nonfatal initial rejection remains a diagnostic; real format setup
+         * still follows. NativeUSB separately requires a real completed clock. */
     }
+    /* Original0x63bc performs one format attempt, then0x63c5 initializes-3:
+     *0x63d0..0x640c gives four further attempts with200ms delays. Existing
+     * recoverable panic does not suppress them. Actual stopped/fatal lifetime
+     * remains a modern binding guard; NativeUSB separately checks cancellation. */
     for(unsigned attempt=0;attempt<5;++attempt) {
-        if(engine->command(engine->command_context,start,sizeof(start),1200))
-            return atomic_load(&engine->running) ? 0 : atomic_load(&engine->error);
-        if(!atomic_load(&engine->running)) return atomic_load(&engine->error);
-        if(attempt != 4) {
-            struct timespec now;
-            if(clock_gettime(CLOCK_MONOTONIC,&now) != 0) {
-                fail_engine(engine,kIOReturnIOError);return kIOReturnIOError;
-            }
-            double deadline=(double)now.tv_sec+(double)now.tv_nsec/1e9+0.2;
-            while(atomic_load(&engine->running)) {
+        if(e->command(e->command_context,start,sizeof(start),1200))return 0;
+        if(!atomic_load(&e->running))break;
+        if(attempt!=4) {
+            uint64_t deadline=mach_absolute_time()+ns_to_ticks(e,200000000);
+            while(mach_absolute_time()<deadline&&atomic_load(&e->running))
                 (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode,0.01,true);
-                if(clock_gettime(CLOCK_MONOTONIC,&now) != 0 ||
-                   (double)now.tv_sec+(double)now.tv_nsec/1e9 >= deadline) break;
-            }
         }
     }
-    fail_engine(engine,kIOReturnIOError);return kIOReturnIOError;
+    /*0x640e/0x6410 returns the format rejection via0x644a without arming a
+     * new panic timer. Any earlier TooOld reason remains authoritative. */
+    return kIOReturnIOError;
 }
-
-void rk3_native_audio_iso_stop(rk3_native_audio_iso *engine) {
-    if(engine == NULL) return;
-    atomic_store(&engine->pcm_ready,false);
-    atomic_store(&engine->running,false);
-    if(engine->usb_released) return;
-    (void)(*engine->interface)->AbortPipe(engine->interface,engine->input_pipe);
-    (void)(*engine->interface)->AbortPipe(engine->interface,engine->output_pipe);
+void rk3_native_audio_iso_stop(rk3_native_audio_iso *e) {
+    if(!e)return;atomic_store(&e->running,false);atomic_store(&e->pcm_ready,false);
+    if(!e->usb_released){(void)rk3_host_abort(e->interface,e->input_pipe);(void)rk3_host_abort(e->interface,e->output_pipe);}
 }
-
-size_t rk3_native_audio_iso_pending(const rk3_native_audio_iso *engine) {return engine == NULL ? 0 : engine->pending_count;}
-bool rk3_native_audio_iso_is_quiescent(const rk3_native_audio_iso *engine) {
-    return engine == NULL || (engine->pending_count == 0 && atomic_load(&engine->active_calls) == 0);
+size_t rk3_native_audio_iso_pending(const rk3_native_audio_iso *e){return e?e->pending_count:0;}
+bool rk3_native_audio_iso_is_quiescent(const rk3_native_audio_iso *e){return !e||(!e->pending_count&&!atomic_load(&e->active_calls));}
+bool rk3_native_audio_iso_release_usb(rk3_native_audio_iso *e) {
+    if(!e||e->usb_released)return true;
+    if(atomic_load(&e->running)||!rk3_native_audio_iso_is_quiescent(e))return false;
+    rk3_host_iso_list_release(e->input_list);rk3_host_iso_list_release(e->output_list);
+    rk3_host_buffer_release(e->input_buffer);rk3_host_buffer_release(e->wire_buffer);
+    e->input_list=NULL;e->output_list=NULL;e->input_buffer=NULL;e->wire_buffer=NULL;e->input_data=NULL;
+    e->usb_released=true;return true;
 }
-
-bool rk3_native_audio_iso_release_usb(rk3_native_audio_iso *engine) {
-    if(engine == NULL || engine->usb_released) return true;
-    if(atomic_load(&engine->running) || engine->pending_count != 0) return false;
-    void **buffers[]={(void **)&engine->input_data,(void **)&engine->output_data,
-                      (void **)&engine->input_frames,(void **)&engine->output_frames};
-    for(unsigned index=0;index<4;++index) {
-        if(*buffers[index] != NULL) {
-            IOReturn result=(*engine->interface)->LowLatencyDestroyBuffer(engine->interface,*buffers[index]);
-            if(result != kIOReturnSuccess) {
-                int_least32_t expected=0;
-                (void)atomic_compare_exchange_strong(&engine->error,&expected,result);
-            }
-            *buffers[index]=NULL;
+bool rk3_native_audio_iso_destroy(rk3_native_audio_iso *e) {
+    if(!e)return true;
+    if(atomic_load(&e->running)||!rk3_native_audio_iso_is_quiescent(e)||!rk3_native_audio_iso_release_usb(e))return false;
+    rk3_host_release(e->interface);free(e);return true;
+}
+int32_t rk3_native_audio_iso_error(const rk3_native_audio_iso *e){return e?atomic_load(&e->fatal_error):kIOReturnBadArgument;}
+int32_t rk3_native_audio_iso_stream_error(const rk3_native_audio_iso *e){return e?atomic_load(&e->last_output_error):kIOReturnBadArgument;}
+bool rk3_native_audio_iso_running(const rk3_native_audio_iso *e){return e&&atomic_load(&e->running);}
+void rk3_native_audio_iso_set_output_active(rk3_native_audio_iso *e,bool active){if(e)atomic_store(&e->output_active,active);}
+bool rk3_native_audio_iso_panic(const rk3_native_audio_iso *e,uint32_t *delay,int32_t *error) {
+    if(!e||!atomic_load_explicit(&e->panic_pending,memory_order_acquire))return false;
+    if(delay)*delay=atomic_load(&e->panic_delay);if(error)*error=atomic_load(&e->panic_error);return true;
+}
+size_t rk3_native_audio_iso_render_at(rk3_native_audio_iso *e,const float *samples,uint64_t first,size_t frames) {
+    if(!e||(!samples&&frames)||frames>NI_AUDIO_RING_FRAME_COUNT)return 0;
+    atomic_fetch_add(&e->active_calls,1);size_t written=0;
+    if(atomic_load(&e->running)) {
+        if(atomic_load(&e->output_active))atomic_store(&e->output_written,true);
+        if(!atomic_load(&e->output_active)||!atomic_load_explicit(&e->pcm_ready,memory_order_acquire))written=frames; /* original priming clip no-op */
+        else if(!atomic_flag_test_and_set_explicit(&e->render_busy,memory_order_acquire)) {
+            NIAudioRingResult result=ni_audio_ring_write_f32_at(&e->output_ring,first,samples,frames);
+            if(result>=0)written=frames;
+            atomic_flag_clear_explicit(&e->render_busy,memory_order_release);
         }
     }
-    engine->usb_released=true;
-    return true;
+    atomic_fetch_sub(&e->active_calls,1);return written;
 }
-
-bool rk3_native_audio_iso_destroy(rk3_native_audio_iso *engine) {
-    if(engine == NULL) return true;
-    if(atomic_load(&engine->running) || !rk3_native_audio_iso_is_quiescent(engine)) return false;
-    if(!rk3_native_audio_iso_release_usb(engine)) return false;
-    (*engine->interface)->Release(engine->interface);
-    free(engine);return true;
-}
-
-int32_t rk3_native_audio_iso_error(const rk3_native_audio_iso *engine) {return engine == NULL ? kIOReturnBadArgument : atomic_load(&engine->error);}
-bool rk3_native_audio_iso_running(const rk3_native_audio_iso *engine) {return engine != NULL && atomic_load(&engine->running);}
-
-size_t rk3_native_audio_iso_render(rk3_native_audio_iso *engine,const float *samples,size_t frames) {
-    if(engine == NULL || samples == NULL) return 0;
-    atomic_fetch_add(&engine->active_calls,1);
-    size_t accepted=0;
-    if(atomic_load(&engine->running) && atomic_load_explicit(&engine->pcm_ready,memory_order_acquire) && !atomic_flag_test_and_set_explicit(&engine->render_busy,memory_order_acquire)) {
-        accepted=queue_write(&engine->render_queue,samples,frames);
-        atomic_flag_clear_explicit(&engine->render_busy,memory_order_release);
-    }
-    atomic_fetch_sub(&engine->active_calls,1);return accepted;
-}
-
-size_t rk3_native_audio_iso_capture(rk3_native_audio_iso *engine,float *samples,size_t frames) {
-    if(engine == NULL || samples == NULL) return 0;
-    atomic_fetch_add(&engine->active_calls,1);
-    size_t captured=0;
-    if(atomic_load(&engine->running) && atomic_load_explicit(&engine->pcm_ready,memory_order_acquire) && !atomic_flag_test_and_set_explicit(&engine->capture_busy,memory_order_acquire)) {
-        /* Only this consumer owns tail. Keep a late host close to current
-         * input, without producer-side tail mutation or an unbounded RT loop. */
-        if(frames != 0) {
-            uint64_t tail=atomic_load_explicit(&engine->capture_queue.tail,memory_order_relaxed);
-            uint64_t head=atomic_load_explicit(&engine->capture_queue.head,memory_order_acquire);
-            size_t keep=frames < QUEUE_FRAMES-RK3_AUDIO_INPUT_LATENCY_FRAMES ?
-                frames+RK3_AUDIO_INPUT_LATENCY_FRAMES : QUEUE_FRAMES;
-            if(head-tail > keep)
-                atomic_store_explicit(&engine->capture_queue.tail,head-keep,memory_order_release);
-            captured=queue_read(&engine->capture_queue,samples,frames);
+size_t rk3_native_audio_iso_capture_at(rk3_native_audio_iso *e,float *samples,uint64_t first,size_t frames) {
+    if(!e||(!samples&&frames)||frames>NI_AUDIO_RING_FRAME_COUNT)return 0;
+    atomic_fetch_add(&e->active_calls,1);size_t captured=0;
+    if(atomic_load(&e->running)) {
+        if(!atomic_flag_test_and_set_explicit(&e->processing,memory_order_acquire)) {
+            consume_input_locked(e);atomic_flag_clear_explicit(&e->processing,memory_order_release);
         }
-        atomic_flag_clear_explicit(&engine->capture_busy,memory_order_release);
-    }
-    atomic_fetch_sub(&engine->active_calls,1);return captured;
-}
-
-bool rk3_native_audio_iso_clock(rk3_native_audio_iso *engine,rk3_native_audio_clock *snapshot) {
-    if(engine == NULL || snapshot == NULL) return false;
-    atomic_fetch_add(&engine->active_calls,1);
-    bool valid=false;
-    for(unsigned attempt=0;attempt<3 && atomic_load(&engine->running) && atomic_load_explicit(&engine->pcm_ready,memory_order_acquire);++attempt) {
-        uint64_t sequence=atomic_load_explicit(&engine->clock_sequence,memory_order_acquire);
-        if((sequence&1) != 0) continue;
-        rk3_native_audio_clock result={atomic_load(&engine->clock_frame),atomic_load(&engine->clock_host),atomic_load(&engine->clock_seed)};
-        if(sequence == atomic_load_explicit(&engine->clock_sequence,memory_order_acquire) && result.host_time != 0) {
-            *snapshot=result;valid=true;break;
+        for(size_t i=0;i<frames;++i) {
+            uint64_t value=atomic_load_explicit(&e->capture_samples[(first%NI_AUDIO_RING_FRAME_COUNT+i)%NI_AUDIO_RING_FRAME_COUNT],memory_order_acquire);
+            int32_t left=(int32_t)((value>>24)&0xffffff),right=(int32_t)(value&0xffffff);
+            if(left&0x800000)left-=0x1000000;if(right&0x800000)right-=0x1000000;
+            samples[i*2]=(float)left/8388608.0f;samples[i*2+1]=(float)right/8388608.0f;
         }
+        captured=frames;
     }
-    atomic_fetch_sub(&engine->active_calls,1);return valid;
+    atomic_fetch_sub(&e->active_calls,1);return captured;
+}
+bool rk3_native_audio_iso_clock(rk3_native_audio_iso *e,rk3_native_audio_clock *clock) {
+    if(!e||!clock)return false;atomic_fetch_add(&e->active_calls,1);bool valid=false;
+    for(unsigned attempt=0;attempt<3&&atomic_load(&e->running)&&atomic_load_explicit(&e->pcm_ready,memory_order_acquire);++attempt) {
+        uint64_t seq=atomic_load_explicit(&e->clock_sequence,memory_order_acquire);if(seq&1)continue;
+        rk3_native_audio_clock value={atomic_load(&e->clock_frame),atomic_load(&e->clock_host),atomic_load(&e->clock_seed),atomic_load(&e->zero_frame),atomic_load(&e->zero_host)};
+        if(seq==atomic_load_explicit(&e->clock_sequence,memory_order_acquire)&&value.host_time&&value.zero_host_time){*clock=value;valid=true;break;}
+    }
+    atomic_fetch_sub(&e->active_calls,1);return valid;
 }

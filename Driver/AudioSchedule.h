@@ -64,8 +64,12 @@ NIAudioScheduleResult ni_audio_input_buffer_offset(unsigned input_slot,
  * once per input slot before submission; it preincrements and saves that frame.
  * Repeated begin on the same slot is rejected: use input_completed to requeue.
  * Plans reserve an output slot and advance state before the caller submits I/O.
- * Failed transport submissions must stop/reset the stream; do not keep queuing.
- * All state is confined to the USB session's serial queue. */
+ * A rejected OUT submission leaves its reserved slot busy, as in NI queueOut;
+ * subsequent exhaustion, rather than the rejection itself, requests restart.
+ * Zero-count OUT requests keep the same reservation/completion lifecycle.
+ * The serial USB worker mutates this state. An RT primary-input decoder may
+ * read priming/input-frame fields only under the caller's shared processing
+ * guard, which also serializes input list reset/reuse and scheduler updates. */
 NIAudioScheduleResult ni_audio_schedule_init(NIAudioSchedule *state,
                                                uint64_t current_usb_frame,
                                                unsigned mode, unsigned groups);

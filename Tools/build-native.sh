@@ -17,12 +17,12 @@ if [ "$mode" = sanitize ]; then
 else
     flags="$flags -O2"
 fi
-for unit in DeviceProtocol MIDIEvent AudioCodec AudioSchedule Controller; do
+for unit in DeviceProtocol MIDIEvent AudioCodec AudioSchedule AudioRing Controller; do
     xcrun clang $flags -I"$root/Driver" -c "$root/Driver/$unit.c" -o "$out/$unit.o"
 done
-xcrun ar rcs "$out/librk3-native.a" "$out/DeviceProtocol.o" "$out/MIDIEvent.o" "$out/AudioCodec.o" "$out/AudioSchedule.o" "$out/Controller.o"
+xcrun ar rcs "$out/librk3-native.a" "$out/DeviceProtocol.o" "$out/MIDIEvent.o" "$out/AudioCodec.o" "$out/AudioSchedule.o" "$out/AudioRing.o" "$out/Controller.o"
 if [ "$mode" != build ]; then
-    for unit in DeviceProtocol MIDIEvent AudioCodec AudioSchedule Controller; do
+    for unit in DeviceProtocol MIDIEvent AudioCodec AudioSchedule AudioRing Controller; do
         xcrun clang $flags -I"$root/Driver" "$root/Driver/Tests/${unit}Tests.c" \
             "$out/librk3-native.a" -o "$out/${unit}Tests"
         "$out/${unit}Tests"
@@ -45,7 +45,7 @@ if [ "$mode" != build ]; then
                 NativeUSB) set -- ;;
             esac
             xcrun clang $flags -I"$root/Driver" "$root/Driver/Tests/${unit}Tests.c" "$@" \
-                "$root/Driver/DeviceProtocol.c" "$root/Driver/AudioCodec.c" "$root/Driver/AudioSchedule.c" \
+                "$root/Driver/DeviceProtocol.c" "$root/Driver/AudioCodec.c" "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" \
                 -framework IOKit -framework CoreFoundation -o "$out/${unit}Tests"
             "$out/${unit}Tests"
         fi
@@ -60,10 +60,16 @@ if [ "$mode" != build ]; then
         -framework CoreMIDI -framework CoreAudio -framework CoreFoundation -o "$out/MIDIDriverTests"
     "$out/MIDIDriverTests"
 fi
+xcrun clang $flags -fobjc-arc -fblocks -I"$root/Driver" -c "$root/Driver/NativeHostUSB.m" -o "$out/NativeHostUSB.o"
+if [ "$mode" != build ]; then
+    xcrun clang $flags -fobjc-arc -fblocks -I"$root/Driver" "$root/Driver/Tests/NativeHostUSBTests.m" \
+        -framework IOUSBHost -framework Foundation -framework IOKit -framework CoreFoundation -o "$out/NativeHostUSBTests"
+    "$out/NativeHostUSBTests"
+fi
 xcrun clang $flags -I"$root/Driver" "$root/Tools/rk3-native-test.c" \
     "$root/Driver/NativeUSB.c" "$root/Driver/NativeAudioISO.c" "$root/Driver/AudioCodec.c" \
-    "$root/Driver/AudioSchedule.c" "$root/Driver/DeviceProtocol.c" \
-    -framework IOKit -framework CoreFoundation -o "$out/rk3-native-test"
+    "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" "$root/Driver/DeviceProtocol.c" "$out/NativeHostUSB.o" \
+    -framework IOUSBHost -framework Foundation -framework IOKit -framework CoreFoundation -o "$out/rk3-native-test"
 for unit in rk3-calibrate rk3-midi-monitor rk3-midi-feedback; do
     xcrun clang $flags -I"$root/Driver" "$root/Tools/$unit.c" \
         -framework CoreAudio -framework CoreMIDI -framework CoreFoundation -o "$out/$unit"

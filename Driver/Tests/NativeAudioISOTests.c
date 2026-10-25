@@ -1,291 +1,565 @@
 #include "NativeAudioISO.h"
+#include "NativeHostUSB.h"
+#include "AudioRing.h"
+
 #include <assert.h>
 #include <mach/mach_time.h>
+#include <pthread.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
-/* A fake IOUSBLib interface exercises callbacks and ownership without USB I/O. */
+/* Hardware-free host binding. The bus advances independently of callback
+ * delivery, and queued output retains the external ring instead of copying. */
+struct RK3HostInterface { unsigned references; };
+struct RK3HostBuffer { uint8_t *bytes; size_t size; };
 typedef struct {
-    void *data,*context;
-    IOUSBLowLatencyIsocFrame *frames;
-    IOAsyncCallback1 callback;
+    RK3HostIsoFrame frame;
+    uint32_t offset;
+    bool wrap;
+} MockEntry;
+struct RK3HostIsoList { MockEntry *entries; size_t count; };
+typedef struct {
+    RK3HostBuffer *buffer;
+    RK3HostIsoList *list;
+    size_t first,count;
     uint64_t scheduled_frame;
-    unsigned microframes;
-    bool pending;
+    RK3HostIsoCompletion completion;
+    void *context;
+    bool pending,aborted;
 } MockTransfer;
 static struct {
+    RK3HostInterface interface;
     MockTransfer reads[64],writes[128];
-    unsigned read_count,write_count,allocations,destroys,commands,retains,releases;
-    unsigned policy_calls,property_calls,bad_property;
-    bool fail_command,fail_write;
-    uint8_t command_bytes[2][6];
+    unsigned read_count,write_count,read_submissions,write_submissions;
+    unsigned buffers,buffer_releases,lists,list_releases,commands,retains,releases;
+    unsigned aborts[3],clears[3],pipe_queries,read_failures_remaining,reads_at_format,format_failures_remaining;
+    uint64_t bus_frame,anchor_host;
+    int32_t fail_read,fail_write;
+    bool persistent_read_failure,persistent_write_failure,fail_command,fail_stop,defer_abort,primary_supported;
+    uint8_t commands_bytes[2][6];
+    MockTransfer *last_write;
 } mock;
-static ULONG retain_interface(void *self) {(void)self;++mock.retains;return 1;}
-static ULONG release_interface(void *self) {(void)self;++mock.releases;return 0;}
+static atomic_bool block_snapshot,snapshot_entered,release_snapshot;
 
-static IOReturn create_buffer(void *self,void **buffer,IOByteCount size,UInt32 type) {
-    (void)self;
-    assert(type <= kUSBLowLatencyFrameListBuffer);
-    *buffer=calloc(1,(size_t)size);assert(*buffer != NULL);++mock.allocations;
-    return kIOReturnSuccess;
+static uint64_t ticks_for_ns(uint64_t nanoseconds) {
+    mach_timebase_info_data_t scale;assert(mach_timebase_info(&scale) == 0);
+    return nanoseconds*scale.denom/scale.numer;
 }
-static IOReturn destroy_buffer(void *self,void *buffer) {(void)self;free(buffer);++mock.destroys;return 0;}
-static IOReturn set_policy(void *self,UInt8 pipe,UInt16 size,UInt8 interval) {
-    (void)self;assert((pipe == 1 || pipe == 2) && size == 136 && interval == 1);
-    ++mock.policy_calls;return 0;
+static uint64_t host_for_frame(uint64_t frame) {
+    assert(frame >= 1000);return mock.anchor_host+ticks_for_ns((frame-1000)*UINT64_C(1000000));
 }
-static IOReturn pipe_properties(void *self,UInt8 pipe,UInt8 *direction,UInt8 *number,
-    UInt8 *type,UInt16 *size,UInt8 *interval) {
-    (void)self;assert(pipe == 1 || pipe == 2);++mock.property_calls;
-    *direction=pipe == 1 ? kUSBIn : kUSBOut;*number=pipe == 1 ? 2 : 6;
-    *type=kUSBIsoc;*size=512;*interval=1;
-    unsigned defect=mock.bad_property;
-    if(pipe == 2) defect=defect > 5 ? defect-5 : 0;
-    else if(defect > 5) defect=0;
-    if(defect == 1) *direction^=1;
-    if(defect == 2) *number=3;
-    if(defect == 3) *type=kUSBBulk;
-    if(defect == 4) *size=256;
-    if(defect == 5) *interval=2;
-    return 0;
+void rk3_host_retain(RK3HostInterface *interface) { assert(interface == &mock.interface);++interface->references;++mock.retains; }
+void rk3_host_release(RK3HostInterface *interface) { assert(interface == &mock.interface && interface->references > 0);--interface->references;++mock.releases; }
+int32_t rk3_host_pipe_properties(RK3HostInterface *interface, uint8_t pipe, RK3HostPipeProperties *properties) {
+    assert(interface == &mock.interface && (pipe == 1 || pipe == 2));++mock.pipe_queries;
+    *properties=(RK3HostPipeProperties){pipe == 1 ? 1 : 0,pipe == 1 ? 2 : 6,1,1,512};return 0;
 }
-static IOReturn get_frame(void *self,UInt64 *frame,AbsoluteTime *stamp) {
-    (void)self;*frame=1000;memset(stamp,0,sizeof(*stamp));return 0;
+int32_t rk3_host_clear_stall(RK3HostInterface *interface, uint8_t pipe) {
+    assert(interface == &mock.interface && pipe >= 1 && pipe <= 2);++mock.clears[pipe];return 0;
 }
-static bool send_command(void *context,const uint8_t *bytes,size_t length,uint32_t timeout) {
-    (void)context;assert(length == 6 && bytes[0] == 9 && timeout == 1200);
-    if(mock.commands < 2) memcpy(mock.command_bytes[mock.commands],bytes,6);
-    ++mock.commands;return !mock.fail_command;
+int32_t rk3_host_bus_frame(RK3HostInterface *interface, uint64_t *frame, uint64_t *host_time) {
+    assert(interface == &mock.interface);*frame=mock.bus_frame;*host_time=host_for_frame(mock.bus_frame);return 0;
 }
-static MockTransfer *find_transfer(MockTransfer *transfers,unsigned capacity,
-                                  IOUSBLowLatencyIsocFrame *frames,unsigned *count) {
-    for(unsigned index=0;index<*count;++index) if(transfers[index].frames == frames) return transfers+index;
+bool rk3_host_primary_lists_supported(void) {return mock.primary_supported;}
+RK3HostBuffer *rk3_host_buffer_create(RK3HostInterface *interface, size_t size, int32_t *error) {
+    assert(interface == &mock.interface);RK3HostBuffer *buffer=calloc(1,sizeof(*buffer));assert(buffer);
+    buffer->bytes=calloc(1,size);assert(buffer->bytes);buffer->size=size;++mock.buffers;*error=0;return buffer;
+}
+void *rk3_host_buffer_bytes(RK3HostBuffer *buffer) {return buffer->bytes;}
+size_t rk3_host_buffer_size(const RK3HostBuffer *buffer) {return buffer->size;}
+void rk3_host_buffer_release(RK3HostBuffer *buffer) {
+    if(!buffer)return;
+    for(unsigned i=0;i<mock.read_count;++i)assert(!mock.reads[i].pending || mock.reads[i].buffer != buffer);
+    for(unsigned i=0;i<mock.write_count;++i)assert(!mock.writes[i].pending || mock.writes[i].buffer != buffer);
+    free(buffer->bytes);free(buffer);++mock.buffer_releases;
+}
+RK3HostIsoList *rk3_host_iso_list_create(RK3HostInterface *interface, size_t count, int32_t *error) {
+    assert(interface == &mock.interface);RK3HostIsoList *list=calloc(1,sizeof(*list));assert(list);
+    list->entries=calloc(count,sizeof(*list->entries));assert(list->entries);list->count=count;++mock.lists;*error=0;return list;
+}
+size_t rk3_host_iso_list_count(const RK3HostIsoList *list) {return list->count;}
+void rk3_host_iso_list_release(RK3HostIsoList *list) {
+    if(!list)return;
+    for(unsigned i=0;i<mock.read_count;++i)assert(!mock.reads[i].pending || mock.reads[i].list != list);
+    for(unsigned i=0;i<mock.write_count;++i)assert(!mock.writes[i].pending || mock.writes[i].list != list);
+    free(list->entries);free(list);++mock.list_releases;
+}
+int32_t rk3_host_iso_list_set(RK3HostIsoList *list, size_t index, uint32_t requested, uint32_t offset, bool wrap) {
+    assert(index < list->count && requested <= 512);
+    list->entries[index]=(MockEntry){{RK3_HOST_ISO_PENDING,requested,0,0},offset,wrap};return 0;
+}
+bool rk3_host_iso_list_snapshot(const RK3HostIsoList *list, size_t index, RK3HostIsoFrame *frame) {
+    if(index >= list->count)return false;
+    if(atomic_load(&block_snapshot)) {
+        atomic_store(&snapshot_entered,true);
+        while(!atomic_load(&release_snapshot)){struct timespec delay={0,1000000};nanosleep(&delay,NULL);}
+    }
+    *frame=list->entries[index].frame;return true;
+}
+static MockTransfer *find_transfer(MockTransfer *transfers, unsigned capacity, unsigned *count,
+    RK3HostIsoList *list, size_t first) {
+    for(unsigned i=0;i<*count;++i)if(transfers[i].list == list && transfers[i].first == first)return transfers+i;
     assert(*count < capacity);return transfers+(*count)++;
 }
-static IOReturn read_iso(void *self,UInt8 pipe,void *data,UInt64 frame,UInt32 count,
-    UInt32 frequency,IOUSBLowLatencyIsocFrame *frames,IOAsyncCallback1 callback,void *context) {
-    (void)self;assert(pipe == 1 && count == 8 && frequency == 0);
-    MockTransfer *transfer=find_transfer(mock.reads,64,frames,&mock.read_count);
+int32_t rk3_host_iso_enqueue(RK3HostInterface *interface, uint8_t pipe,
+    RK3HostBuffer *buffer, RK3HostIsoList *list, size_t first, size_t count,
+    uint64_t frame, RK3HostIsoCompletion completion, void *context) {
+    assert(interface == &mock.interface && (pipe == 1 || pipe == 2));
+    assert(count > 0 && count <= 8 && first+count <= list->count);
+    int32_t *failure=pipe == 1 ? &mock.fail_read : &mock.fail_write;
+    if(pipe == 1)++mock.read_submissions;else ++mock.write_submissions;
+    if(pipe==1&&mock.read_failures_remaining){--mock.read_failures_remaining;return kIOReturnNoResources;}
+    if(*failure){int32_t result=*failure;if(pipe==1 ? !mock.persistent_read_failure : !mock.persistent_write_failure)*failure=0;return result;}
+    if(frame < mock.bus_frame)return kIOReturnIsoTooOld;
+    for(size_t i=0;i<count;++i){
+        MockEntry *entry=list->entries+first+i;
+        assert(entry->offset < buffer->size);
+        assert(entry->wrap || (size_t)entry->offset+entry->frame.requested <= buffer->size);
+        assert(entry->frame.status == RK3_HOST_ISO_PENDING);
+    }
+    MockTransfer *transfer=pipe == 1 ? find_transfer(mock.reads,64,&mock.read_count,list,first) :
+        find_transfer(mock.writes,128,&mock.write_count,list,first);
     assert(!transfer->pending);
-    for(unsigned index=0;index<8;++index) assert(frames[index].frReqCount == 512);
-    *transfer=(MockTransfer){data,context,frames,callback,frame,count,true};return 0;
+    *transfer=(MockTransfer){buffer,list,first,count,frame,completion,context,true,false};
+    if(pipe == 2)mock.last_write=transfer;
+    return 0;
 }
-static IOReturn write_iso(void *self,UInt8 pipe,void *data,UInt64 frame,UInt32 count,
-    UInt32 frequency,IOUSBLowLatencyIsocFrame *frames,IOAsyncCallback1 callback,void *context) {
-    (void)self;assert(pipe == 2 && count > 0 && count <= 8 && frequency == 1);
-    if(mock.fail_write) return kIOReturnIOError;
-    unsigned trailing=0;
-    while(trailing < count && frames[count-trailing-1].frReqCount == 0) ++trailing;
-    /* Reproduce the observed current-host rejection at the real API seam. */
-    if(trailing >= 2) return kIOReturnBadArgument;
-    MockTransfer *transfer=find_transfer(mock.writes,128,frames,&mock.write_count);
-    assert(!transfer->pending);
-    *transfer=(MockTransfer){data,context,frames,callback,frame,count,true};return 0;
+size_t rk3_host_pending(const RK3HostInterface *interface) {
+    assert(interface == &mock.interface);size_t pending=0;
+    for(unsigned i=0;i<mock.read_count;++i)pending+=mock.reads[i].pending;
+    for(unsigned i=0;i<mock.write_count;++i)pending+=mock.writes[i].pending;
+    return pending;
 }
-static IOReturn abort_pipe(void *self,UInt8 pipe) {
-    (void)self;
+static void deliver(MockTransfer *transfer, int32_t status) {
+    assert(transfer->pending);transfer->pending=false;
+    transfer->completion(transfer->context,status,transfer->list,transfer->first,transfer->count);
+}
+int32_t rk3_host_abort(RK3HostInterface *interface, uint8_t pipe) {
+    assert(interface == &mock.interface && (pipe == 1 || pipe == 2));++mock.aborts[pipe];
     MockTransfer *transfers=pipe == 1 ? mock.reads : mock.writes;
     unsigned count=pipe == 1 ? mock.read_count : mock.write_count;
-    for(unsigned index=0;index<count;++index) {
-        MockTransfer *transfer=transfers+index;
-        if(transfer->pending) {
-            transfer->pending=false;
-            transfer->callback(transfer->context,kIOReturnAborted,transfer->frames);
-        }
+    for(unsigned i=0;i<count;++i)if(transfers[i].pending){
+        transfers[i].aborted=true;
+        if(!mock.defer_abort)deliver(transfers+i,kIOReturnAborted);
     }
     return 0;
 }
-
-static void complete_input_counts(unsigned slot,const uint16_t counts[8],bool corrupt) {
-    MockTransfer *transfer=mock.reads+slot;assert(transfer->pending);
-    for(unsigned index=0;index<8;++index) {
-        transfer->frames[index].frStatus=0;transfer->frames[index].frActCount=counts[index];
-        const uint8_t period[]={1,0x40,0,0,0,0x40,0,0};
-        uint8_t *packet=(uint8_t *)transfer->data+index*512;
-        assert(counts[index] <= 512 && counts[index]%8 == 0);
-        for(unsigned frame=0;frame<counts[index]/8;++frame) memcpy(packet+frame*8,period,8);
+static void drain_aborted(void) {
+    for(unsigned i=0;i<mock.read_count;++i)if(mock.reads[i].pending && mock.reads[i].aborted)deliver(mock.reads+i,kIOReturnAborted);
+    for(unsigned i=0;i<mock.write_count;++i)if(mock.writes[i].pending && mock.writes[i].aborted)deliver(mock.writes+i,kIOReturnAborted);
+}
+static bool command(void *context, const uint8_t *bytes, size_t length, uint32_t timeout) {
+    (void)context;assert(length == 6 && bytes[0] == 9 && timeout == 1200);
+    if(mock.commands < 2)memcpy(mock.commands_bytes[mock.commands],bytes,6);
+    ++mock.commands;
+    if(bytes[1]!=255) {
+        mock.reads_at_format=mock.read_submissions;
+        if(mock.format_failures_remaining){--mock.format_failures_remaining;return false;}
     }
-    if(corrupt) ((uint8_t *)transfer->data)[4]=7;
-    transfer->pending=false;
-    transfer->callback(transfer->context,0,transfer->frames);
+    return !mock.fail_command&&!(mock.fail_stop&&bytes[1]==255);
 }
-static void complete_input(unsigned slot,bool corrupt) {
-    const uint16_t counts[8]={48,48,48,48,48,48,48,48};
-    complete_input_counts(slot,counts,corrupt);
+static rk3_native_audio_iso *new_engine(void) {
+    memset(&mock,0,sizeof(mock));mock.interface.references=1;mock.bus_frame=1000;
+    mock.anchor_host=mach_absolute_time();mock.primary_supported=true;
+    atomic_store(&block_snapshot,false);atomic_store(&snapshot_entered,false);atomic_store(&release_snapshot,false);
+    rk3_native_audio_iso *engine=rk3_native_audio_iso_create(&mock.interface,1,2,command,NULL);
+    assert(engine && rk3_native_audio_iso_is_quiescent(engine));return engine;
 }
-static void complete_output(unsigned slot) {
+static void destroy_engine(rk3_native_audio_iso *engine) {
+    rk3_native_audio_iso_stop(engine);drain_aborted();
+    assert(rk3_native_audio_iso_is_quiescent(engine));
+    assert(rk3_native_audio_iso_release_usb(engine));
+    assert(mock.buffers == mock.buffer_releases && mock.lists == mock.list_releases);
+    assert(rk3_native_audio_iso_destroy(engine));assert(mock.retains == mock.releases);
+}
+static uint8_t *entry_bytes(MockTransfer *transfer, size_t microframe) {
+    MockEntry *entry=transfer->list->entries+transfer->first+microframe;
+    assert(entry->offset < transfer->buffer->size);return transfer->buffer->bytes+entry->offset;
+}
+static void hardware_input(unsigned slot, const uint16_t counts[8], bool corrupt) {
+    MockTransfer *transfer=mock.reads+slot;assert(transfer->pending && transfer->count == 8);
+    const uint8_t period[8]={1,0x40,0,0,0,0x40,0,0};
+    for(size_t i=0;i<8;++i){
+        MockEntry *entry=transfer->list->entries+transfer->first+i;
+        assert(counts[i] <= entry->frame.requested && counts[i]%8 == 0);
+        uint8_t *bytes=entry_bytes(transfer,i);
+        for(unsigned offset=0;offset<counts[i];offset+=8)memcpy(bytes+offset,period,8);
+        entry->frame.actual=counts[i];entry->frame.host_time=host_for_frame(transfer->scheduled_frame)+ticks_for_ns(i*125000);
+        entry->frame.status=0;
+    }
+    if(corrupt)entry_bytes(transfer,0)[4]=7;
+}
+static void input_primary(unsigned slot, bool corrupt) {
+    const uint16_t counts[8]={48,48,48,48,48,48,48,48};hardware_input(slot,counts,corrupt);
+}
+static void input_callback(unsigned slot, unsigned lag_ms) {
+    MockTransfer *transfer=mock.reads+slot;
+    uint64_t now=transfer->scheduled_frame+1+lag_ms;if(now > mock.bus_frame)mock.bus_frame=now;
+    deliver(transfer,0);
+}
+static void output_callback_with_short(unsigned slot, int short_microframe) {
     MockTransfer *transfer=mock.writes+slot;assert(transfer->pending);
-    for(unsigned index=0;index<transfer->microframes;++index) {
-        transfer->frames[index].frStatus=0;
-        transfer->frames[index].frActCount=transfer->frames[index].frReqCount;
-        uint64_t stamp=mach_absolute_time();
-        memcpy(&transfer->frames[index].frTimeStamp,&stamp,sizeof(stamp));
+    uint64_t now=transfer->scheduled_frame+1;if(now > mock.bus_frame)mock.bus_frame=now;
+    for(size_t i=0;i<transfer->count;++i){
+        MockEntry *entry=transfer->list->entries+transfer->first+i;
+        entry->frame.actual=entry->frame.requested;
+        if((int)i==short_microframe&&entry->frame.actual) --entry->frame.actual;
+        entry->frame.host_time=host_for_frame(transfer->scheduled_frame)+ticks_for_ns(i*125000);
+        entry->frame.status=0;
     }
-    transfer->pending=false;
-    transfer->callback(transfer->context,0,transfer->frames);
+    deliver(transfer,0);
 }
-
-static rk3_native_audio_iso *new_engine(IOUSBInterfaceInterface300 **interface) {
-    memset(&mock,0,sizeof(mock));
-    rk3_native_audio_iso *engine=rk3_native_audio_iso_create(interface,1,2,send_command,NULL);
-    assert(engine != NULL && mock.allocations == 4);
-    assert(rk3_native_audio_iso_is_quiescent(engine));return engine;
-}
-
-static void test_full_session(IOUSBInterfaceInterface300 **interface) {
-    rk3_native_audio_iso *engine=new_engine(interface);
+static void output_callback(unsigned slot) {output_callback_with_short(slot,-1);}
+static void prime(rk3_native_audio_iso *engine) {
     assert(rk3_native_audio_iso_start(engine) == 0);
-    const uint8_t stop[]={9,255,255,136,0,1},start[]={9,1,2,136,0,1};
-    assert(mock.commands == 2 && memcmp(mock.command_bytes[0],stop,6) == 0 && memcmp(mock.command_bytes[1],start,6) == 0);
     assert(mock.read_count == 64 && rk3_native_audio_iso_pending(engine) == 64);
     assert(mock.reads[0].scheduled_frame == 1101 && mock.reads[63].scheduled_frame == 1164);
-    assert(!rk3_native_audio_iso_destroy(engine));
-    assert(!rk3_native_audio_iso_release_usb(engine));
-    float render[192];for(unsigned index=0;index<192;++index) render[index]=0.5f;
-    assert(rk3_native_audio_iso_render(engine,render,96) == 0);
-    rk3_native_audio_clock clock;
-    for(unsigned slot=0;slot<64;++slot) {
-        complete_input(slot,false);
-        assert(mock.writes[slot].scheduled_frame == 1105+slot);
-        uint8_t *wire=mock.writes[slot].data;
-        assert(wire[0] == 0 && wire[1] == 0 && wire[2] == 1 && wire[3] == 0 && wire[6] == 0);
-        complete_output(slot);
-        assert(!rk3_native_audio_iso_clock(engine,&clock));
+    for(unsigned slot=0;slot<64;++slot){
+        input_primary(slot,false);input_callback(slot,0);
+        assert(mock.last_write && mock.last_write->scheduled_frame == 1165+slot);
     }
-    assert(rk3_native_audio_iso_pending(engine) == 64);
-    complete_input(0,false);
-    assert(mock.reads[0].scheduled_frame == 1229 && mock.writes[0].scheduled_frame == 1169);
-    uint8_t *wire=mock.writes[0].data;
-    assert(wire[0] == 0 && wire[1] == 0 && wire[2] == 1 && wire[3] == 0 && wire[7] == 0);
-    float captured[96];assert(rk3_native_audio_iso_capture(engine,captured,48) == 48);
-    assert(captured[0] == 0.0f && captured[1] == 0.5f);
-    for(unsigned index=2;index<96;++index) assert(captured[index] == 0.5f);
-    assert(rk3_native_audio_iso_capture(engine,captured,48) == 0);
-    assert(rk3_native_audio_iso_clock(engine,&clock));
-    assert(clock.sample_frame == 3072 && clock.host_time != 0 && clock.seed != 0);
-    assert(rk3_native_audio_iso_render(engine,render,96) == 96);
-    complete_output(0);
-    complete_input(1,false);
-    assert(mock.writes[1].scheduled_frame == 1170);
-    wire=mock.writes[1].data;
-    assert(wire[0] == 0 && wire[1] == 0 && wire[2] == 1 && wire[3] == 0x40 && wire[7] == 0x40);
-    complete_output(1);
-    assert(rk3_native_audio_iso_clock(engine,&clock) && clock.sample_frame == 3168);
-    rk3_native_audio_iso_stop(engine);
-    assert(rk3_native_audio_iso_pending(engine) == 0 && !rk3_native_audio_iso_running(engine));
-    assert(!rk3_native_audio_iso_clock(engine,&clock));
-    assert(rk3_native_audio_iso_render(engine,render,96) == 0);
-    assert(rk3_native_audio_iso_release_usb(engine) && mock.destroys == 4);
-    assert(rk3_native_audio_iso_release_usb(engine) && mock.destroys == 4);
-    assert(rk3_native_audio_iso_render(engine,render,96) == 0);
-    assert(rk3_native_audio_iso_start(engine) == kIOReturnNoDevice);
-    assert(rk3_native_audio_iso_destroy(engine) && mock.destroys == 4 && mock.releases == 1);
+    assert(mock.write_count == 64);
+    /* First non-priming data becomes visible to the host before IN callback. */
+    input_primary(0,false);
+    float initial[2];assert(rk3_native_audio_iso_capture_at(engine,initial,0,1)==1);
+    rk3_native_audio_iso_service(engine); /* worker publishes the exact initial zero event */
+    output_callback(0);
 }
-
-static void test_failures(IOUSBInterfaceInterface300 **interface) {
-    rk3_native_audio_iso *engine=new_engine(interface);mock.fail_command=true;
-    assert(rk3_native_audio_iso_start(engine) != 0 && mock.read_count == 0);
-    assert(rk3_native_audio_iso_destroy(engine));
-    engine=new_engine(interface);
-    assert(rk3_native_audio_iso_start(engine) == 0);mock.fail_write=true;
-    complete_input(0,false);
-    assert(!rk3_native_audio_iso_running(engine) && rk3_native_audio_iso_error(engine) != 0);
-    assert(rk3_native_audio_iso_is_quiescent(engine) && rk3_native_audio_iso_destroy(engine));
-    engine=new_engine(interface);
-    assert(rk3_native_audio_iso_start(engine) == 0);
-    for(unsigned slot=0;slot<64;++slot) {complete_input(slot,false);complete_output(slot);}
-    complete_input(0,true);
-    assert(!rk3_native_audio_iso_running(engine) && rk3_native_audio_iso_error(engine) != 0);
-    assert(rk3_native_audio_iso_is_quiescent(engine) && rk3_native_audio_iso_destroy(engine));
+static void test_lifted_calendar_and_deferred_dma(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);
+    const uint8_t stop[6]={9,255,255,136,0,1},start[6]={9,1,2,136,0,1};
+    assert(mock.commands == 2 && !memcmp(mock.commands_bytes[0],stop,6) && !memcmp(mock.commands_bytes[1],start,6));
+    assert(mock.aborts[1] && mock.aborts[2] && mock.clears[1] && mock.clears[2]);
+    RK3HostBuffer *wire=mock.writes[2].buffer;assert(wire->size == NI_AUDIO_RING_WIRE_BYTES);
+    for(unsigned i=0;i<64;++i)assert(mock.writes[i].buffer == wire);
+    /* OUT2 includes sample128 at wire offset1024; its future descriptor was
+     * already queued while silent. Later host rendering must update that view. */
+    uint8_t *future=wire->bytes+128*8;
+    const uint8_t silent[8]={0,0,1,0,0,0,0,0};assert(!memcmp(future,silent,8));
+    MockEntry *queued=mock.writes[2].list->entries+mock.writes[2].first+5;
+    assert(mock.writes[2].pending && queued->offset == 1008 && queued->frame.requested == 48);
+    assert(entry_bytes(&mock.writes[2],5)+16 == future);
+    unsigned submissions=mock.write_submissions;
+    float pcm[256];for(unsigned i=0;i<256;++i)pcm[i]=0.5f;
+    assert(rk3_native_audio_iso_render_at(engine,pcm,128,128) == 128);
+    const uint8_t audible[8]={0,0,1,0x40,0,0,0,0x40};assert(!memcmp(future,audible,8));
+    assert(mock.write_submissions == submissions);
+    rk3_native_audio_clock clock;assert(rk3_native_audio_iso_clock(engine,&clock));
+    uint64_t expected_host=host_for_frame(1166);
+    uint64_t clock_error=clock.host_time > expected_host ? clock.host_time-expected_host : expected_host-clock.host_time;
+    /* Absolute-time<->nanosecond conversion can round by a host tick; it must
+     * not substitute the last microframe timestamp or IRP-end sample index. */
+    assert(clock.sample_frame == 0 && clock_error <= 2 && clock.seed);
+    uint64_t zero_error=clock.zero_host_time > expected_host ? clock.zero_host_time-expected_host : expected_host-clock.zero_host_time;
+    assert(clock.zero_sample_frame==0&&zero_error<=2);
+    destroy_engine(engine);
 }
-
-static void test_empty_output_tails(IOUSBInterfaceInterface300 **interface) {
-    rk3_native_audio_iso *engine=new_engine(interface);
-    assert(rk3_native_audio_iso_start(engine) == 0);
-    for(unsigned slot=0;slot<64;++slot) {complete_input(slot,false);complete_output(slot);}
-    complete_input(0,false);complete_output(0);
-    const uint16_t first[8]={136,0,136,0,0,0,0,0},zero[8]={0};
-    complete_input_counts(1,first,false);
-    assert(rk3_native_audio_iso_running(engine) && mock.write_count == 64);
-    assert(mock.writes[1].microframes == 3 && mock.writes[1].scheduled_frame == 1170);
-    for(unsigned index=0;index<3;++index) assert(mock.writes[1].frames[index].frReqCount == first[index]);
-    for(unsigned index=0;index<272;++index)
-        assert(((uint8_t *)mock.writes[1].data)[index] == (index%8 == 2 ? 1 : 0));
-    complete_output(1); /* Unsubmitted tail descriptors retain the pending marker. */
-    rk3_native_audio_clock before,after;
-    assert(rk3_native_audio_iso_clock(engine,&before) && before.sample_frame == 3154);
-    complete_input_counts(2,zero,false);
-    assert(mock.write_count == 64 && !mock.writes[2].pending && rk3_native_audio_iso_pending(engine) == 64);
-    assert(rk3_native_audio_iso_clock(engine,&after) && after.sample_frame == before.sample_frame && after.host_time == before.host_time);
-    const uint16_t next[8]={0,136,0,136,0,0,0,0};
-    complete_input_counts(3,next,false);
-    assert(mock.write_count == 64 && mock.writes[3].microframes == 4);
-    assert(mock.writes[3].scheduled_frame == 1172 && mock.reads[3].scheduled_frame == 1232);
-    for(unsigned index=0;index<4;++index) assert(mock.writes[3].frames[index].frReqCount == next[index]);
-    complete_output(3);
-    assert(rk3_native_audio_iso_clock(engine,&after) && after.sample_frame == 3188);
-    assert(mock.policy_calls == 0 && mock.property_calls == 2);
-    rk3_native_audio_iso_stop(engine);assert(rk3_native_audio_iso_destroy(engine));
+static void test_capture_primary_and_repeatable_positions(void) {
+    rk3_native_audio_iso *engine=new_engine();assert(rk3_native_audio_iso_start(engine) == 0);
+    float pcm[96];for(unsigned i=0;i<96;++i)pcm[i]=0.75f;
+    unsigned before=mock.write_submissions;
+    assert(rk3_native_audio_iso_render_at(engine,pcm,0,48) == 48);
+    assert(mock.write_submissions == before);
+    memset(pcm,0xff,sizeof(pcm));assert(rk3_native_audio_iso_capture_at(engine,pcm,0,48) == 48);
+    for(unsigned i=0;i<96;++i)assert(pcm[i] == 0);
+    for(unsigned slot=0;slot<64;++slot){input_primary(slot,false);input_callback(slot,0);}
+    output_callback(0);
+    input_primary(0,false);
+    /* NI requested updateFrequency0: exposing only microframe0 on a newer
+     * per-transaction list must not publish capture with a partial denominator. */
+    for(unsigned micro=1;micro<8;++micro){
+        MockEntry *entry=mock.reads[0].list->entries+mock.reads[0].first+micro;
+        entry->frame.status=RK3_HOST_ISO_PENDING;entry->frame.actual=0;
+    }
+    assert(rk3_native_audio_iso_capture_at(engine,pcm,0,6)==6);
+    for(unsigned i=0;i<12;++i)assert(pcm[i]==0);
+    rk3_native_audio_clock unavailable;assert(!rk3_native_audio_iso_clock(engine,&unavailable));
+    input_primary(0,false); /* All primary statuses complete, callback withheld. */
+    float again[96];
+    assert(rk3_native_audio_iso_capture_at(engine,pcm,0,48) == 48);
+    assert(pcm[0] == 0 && pcm[1] == 0.5f);
+    for(unsigned i=2;i<96;++i)assert(pcm[i] == 0.5f);
+    assert(rk3_native_audio_iso_capture_at(engine,again,0,48) == 48);
+    assert(!memcmp(pcm,again,sizeof(pcm))); /* Reading does not dequeue or trim. */
+    assert(rk3_native_audio_iso_capture_at(engine,again,16,16) == 16);
+    for(unsigned i=0;i<32;++i)assert(again[i] == 0.5f);
+    destroy_engine(engine);
 }
-
-/* Exercise the actual production LowLatencyWrite submission calendar: retaining
- * 64 prequeued reads must not force each live output 64 ms into the future. */
-static void test_low_latency_startup(IOUSBInterfaceInterface300 **interface) {
-    rk3_native_audio_iso *engine=new_engine(interface);
-    assert(rk3_native_audio_iso_start(engine) == 0);
-    float samples[96];rk3_native_audio_clock clock;
-    for(unsigned slot=0;slot<64;++slot) {
+static void test_delayed_callbacks_against_advancing_bus(void) {
+    rk3_native_audio_iso *engine=new_engine();assert(rk3_native_audio_iso_start(engine) == 0);
+    for(unsigned slot=0;slot<64;++slot){
         uint64_t received=mock.reads[slot].scheduled_frame;
-        complete_input(slot,false);
-        assert(mock.writes[slot].scheduled_frame == received+RK3_AUDIO_OUTPUT_LEAD_MILLISECONDS);
-        complete_output(slot);
-        /* Early completed output must not let Start return and accumulate
-         * 60 ms of render while prepare_output_pcm is still priming. */
-        assert(!rk3_native_audio_iso_clock(engine,&clock));
-        assert(rk3_native_audio_iso_render(engine,samples,48) == 0);
-        assert(rk3_native_audio_iso_capture(engine,samples,48) == 0);
+        input_primary(slot,false);input_callback(slot,10);
+        assert(mock.last_write && mock.last_write->scheduled_frame == received+64);
+        assert(mock.last_write->scheduled_frame > mock.bus_frame);
     }
-    complete_input(0,false);complete_output(0);
-    assert(rk3_native_audio_iso_clock(engine,&clock));
-    /* Let capture accumulate for 20 ms as if the first HAL callback were late.
-     * The consumer owns its tail and discards old data before returning PCM. */
-    for(unsigned slot=1;slot<=20;++slot) {complete_input(slot,false);complete_output(slot);}
-    assert(rk3_native_audio_iso_capture(engine,samples,48) == 48);
-    assert(rk3_native_audio_iso_capture(engine,samples,48) == 48);
-    assert(rk3_native_audio_iso_capture(engine,samples,48) == 0);
-    rk3_native_audio_iso_stop(engine);
-    assert(rk3_native_audio_iso_destroy(engine));
+    uint32_t delay=0;int32_t error=0;
+    assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
+    assert(rk3_native_audio_iso_error(engine) == 0);
+    destroy_engine(engine);
 }
-
-static void test_out_of_order_input(IOUSBInterfaceInterface300 **interface) {
-    rk3_native_audio_iso *engine=new_engine(interface);
+static void complete_due_outputs(uint64_t input_frame) {
+    for(unsigned i=0;i<mock.write_count;++i)if(mock.writes[i].pending && mock.writes[i].scheduled_frame <= input_frame)output_callback(i);
+}
+static void test_microframe_ring_wrap(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);
+    bool found=false;
+    for(unsigned step=0;step<400 && !found;++step){
+        unsigned slot=step%64;uint64_t frame=mock.reads[slot].scheduled_frame;
+        complete_due_outputs(frame);input_primary(slot,false);input_callback(slot,0);
+        MockTransfer *out=mock.last_write;assert(out);
+        for(size_t i=0;i<out->count;++i){
+            MockEntry *entry=out->list->entries+out->first+i;
+            if((size_t)entry->offset+entry->frame.requested > out->buffer->size){
+                assert(entry->wrap && entry->frame.requested == 48);
+                assert(entry->offset == NI_AUDIO_RING_WIRE_BYTES-32);
+                found=true;
+            }
+        }
+    }
+    assert(found);destroy_engine(engine);
+}
+static void test_empty_output_request_lifecycle(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);
+    rk3_native_audio_clock before,after;assert(rk3_native_audio_iso_clock(engine,&before));
+    const uint16_t zero[8]={0};hardware_input(0,zero,false);
+    unsigned submissions=mock.write_submissions;size_t pending=rk3_native_audio_iso_pending(engine);
+    input_callback(0,0);
+    assert(mock.write_submissions==submissions+1&&rk3_native_audio_iso_pending(engine)==pending+1);
+    MockTransfer *empty=mock.last_write;
+    assert(empty&&empty->pending&&empty->count==8&&empty->buffer->size==NI_AUDIO_RING_WIRE_BYTES);
+    assert(empty->scheduled_frame==1229&&empty->first==0);
+    for(size_t micro=0;micro<8;++micro) {
+        MockEntry *entry=empty->list->entries+empty->first+micro;
+        assert(entry->frame.requested==0&&entry->offset==3072*8&&!entry->wrap);
+    }
+    assert(rk3_native_audio_iso_clock(engine,&after));
+    assert(after.sample_frame==before.sample_frame&&after.host_time==before.host_time);
+    output_callback(0); /* zero payload still owns its slot until completion */
+    assert(!empty->pending&&rk3_native_audio_iso_pending(engine)==pending);
+    assert(rk3_native_audio_iso_clock(engine,&after));
+    uint64_t expected=host_for_frame(empty->scheduled_frame+1);
+    uint64_t error=after.host_time>expected?after.host_time-expected:expected-after.host_time;
+    assert(after.sample_frame==3072&&error<=2);
+    assert(after.zero_sample_frame==before.zero_sample_frame&&after.zero_host_time==before.zero_host_time);
+    destroy_engine(engine);
+    /* Repeated empty input preserves NI's OUT slot ownership/exhaustion too;
+     * zero-count requests may not be silently treated as completed locally. */
+    engine=new_engine();assert(rk3_native_audio_iso_start(engine)==0);
+    for(unsigned step=0;step<128;++step) {
+        unsigned slot=step%64;hardware_input(slot,zero,false);input_callback(slot,0);
+        assert(mock.last_write&&mock.last_write->pending&&mock.last_write->count==8);
+    }
+    assert(mock.write_submissions==128&&rk3_native_audio_iso_pending(engine)==192);
+    uint32_t delay=0;int32_t reason=0;
+    assert(!rk3_native_audio_iso_panic(engine,&delay,&reason));
+    hardware_input(0,zero,false);input_callback(0,0);
+    assert(rk3_native_audio_iso_panic(engine,&delay,&reason)&&delay==100&&reason==kIOReturnNoResources);
+    destroy_engine(engine);
+}
+static void test_panic_classification(void) {
+    uint32_t delay=0;int32_t error=0;
+    rk3_native_audio_iso *engine=new_engine();assert(rk3_native_audio_iso_start(engine) == 0);
+    mock.fail_read=kIOReturnIsoTooOld;input_primary(0,false);input_callback(0,0);
+    assert(rk3_native_audio_iso_panic(engine,&delay,&error) && delay == 100 && error == kIOReturnIsoTooOld);
+    assert(rk3_native_audio_iso_panic(engine,&delay,&error) && delay == 100 && error == kIOReturnIsoTooOld);
+    rk3_native_audio_iso_stop(engine);drain_aborted();
     assert(rk3_native_audio_iso_start(engine) == 0);
-    complete_input(1,false); /* Reversed calendar must not reach the encoder. */
-    assert(!rk3_native_audio_iso_running(engine) && rk3_native_audio_iso_error(engine) != 0);
-    assert(mock.write_count == 0 && rk3_native_audio_iso_pending(engine) == 0);
-    assert(rk3_native_audio_iso_is_quiescent(engine) && rk3_native_audio_iso_destroy(engine));
-}
-
-static void test_pipe_geometry(IOUSBInterfaceInterface300 **interface) {
-    for(unsigned defect=1;defect<=10;++defect) {
-        rk3_native_audio_iso *engine=new_engine(interface);mock.bad_property=defect;
-        assert(rk3_native_audio_iso_start(engine) == kIOReturnBadArgument);
-        assert(mock.commands == 0 && mock.read_count == 0 && mock.policy_calls == 0);
-        assert(rk3_native_audio_iso_destroy(engine));
+    assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
+    destroy_engine(engine);
+    engine=new_engine();prime(engine);
+    input_primary(1,true);float corrupt_capture[96];
+    assert(rk3_native_audio_iso_capture_at(engine,corrupt_capture,0,48) == 48);
+    assert(rk3_native_audio_iso_panic(engine,&delay,&error) && delay == 0);
+    destroy_engine(engine);
+    engine=new_engine();assert(rk3_native_audio_iso_start(engine) == 0);
+    mock.fail_write=kIOReturnIsoTooOld;mock.persistent_write_failure=true;
+    for(unsigned step=0;step<128;++step){
+        input_primary(step%64,false);input_callback(step%64,0);
+        if(step==0){
+            assert(rk3_native_audio_iso_stream_error(engine)==kIOReturnIsoTooOld);
+            assert(rk3_native_audio_iso_error(engine)==0&&!rk3_native_audio_iso_panic(engine,&delay,&error));
+        }
     }
+    assert(mock.write_submissions == 128);
+    assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
+    input_primary(0,false);input_callback(0,0);
+    assert(rk3_native_audio_iso_panic(engine,&delay,&error) && delay == 100);
+    destroy_engine(engine);
+    engine=new_engine();assert(rk3_native_audio_iso_start(engine) == 0);
+    mock.fail_write=kIOReturnNoDevice;input_primary(0,false);input_callback(0,0);
+    assert(rk3_native_audio_iso_error(engine) == kIOReturnNoDevice);
+    assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
+    destroy_engine(engine);
+}
+static void test_input_retry_exhaustion_no_invented_panic(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);
+    rk3_native_audio_clock before,after;assert(rk3_native_audio_iso_clock(engine,&before));
+    unsigned reads=mock.read_submissions,writes=mock.write_submissions;
+    mock.fail_read=kIOReturnNoResources;mock.persistent_read_failure=true;
+    input_primary(0,false);input_callback(0,0);
+    assert(mock.read_submissions==reads+6&&!mock.reads[0].pending);
+    assert(mock.write_submissions==writes+1); /* readHandler still calls queueOut */
+    uint32_t delay=0;int32_t error=0;
+    assert(rk3_native_audio_iso_running(engine)&&rk3_native_audio_iso_error(engine)==0);
+    assert(rk3_native_audio_iso_stream_error(engine)==kIOReturnNoResources);
+    assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
+    mock.fail_read=0;mock.persistent_read_failure=false;
+    input_primary(1,false);input_callback(1,0);
+    assert(mock.reads[1].pending&&mock.read_submissions==reads+7);
+    output_callback(0);assert(rk3_native_audio_iso_clock(engine,&after)&&after.seed==before.seed);
+    assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
+    destroy_engine(engine);
+}
+static void test_initial_start_nonfatal_failures(void) {
+    rk3_native_audio_clock clock;uint32_t delay=0;int32_t error=0;
+    rk3_native_audio_iso *engine=new_engine();mock.fail_stop=true;
+    assert(rk3_native_audio_iso_start(engine)==0);
+    assert(mock.commands==2&&mock.read_submissions==64&&mock.reads_at_format==64);
+    assert(!rk3_native_audio_iso_clock(engine,&clock)); /* real clock gate is still required */
+    assert(!rk3_native_audio_iso_panic(engine,&delay,&error));destroy_engine(engine);
+    /* One rejected initial slot is logged, then the remaining63 are submitted
+     * before real audio parameters. Each slot has the original6-attempt budget. */
+    engine=new_engine();mock.read_failures_remaining=6;
+    assert(rk3_native_audio_iso_start(engine)==0);
+    assert(mock.read_submissions==69&&mock.read_count==63&&mock.reads_at_format==69&&mock.commands==2);
+    assert(rk3_native_audio_iso_stream_error(engine)==kIOReturnNoResources);
+    assert(rk3_native_audio_iso_error(engine)==0&&!rk3_native_audio_iso_panic(engine,&delay,&error));
+    assert(!rk3_native_audio_iso_clock(engine,&clock));destroy_engine(engine);
+    /* All64 may reject without bypassing the real-format call. Success from
+     * that command alone never fabricates a completed-device clock. */
+    engine=new_engine();mock.fail_read=kIOReturnNoResources;mock.persistent_read_failure=true;
+    assert(rk3_native_audio_iso_start(engine)==0);
+    assert(mock.read_submissions==64*6&&mock.read_count==0&&mock.reads_at_format==64*6&&mock.commands==2);
+    assert(rk3_native_audio_iso_pending(engine)==0&&rk3_native_audio_iso_stream_error(engine)==kIOReturnNoResources);
+    assert(!rk3_native_audio_iso_clock(engine,&clock)&&!rk3_native_audio_iso_panic(engine,&delay,&error));
+    destroy_engine(engine);
+    /* Original queueIn's restart guard precedes its calendar increment: once
+     * TooOld sets panic, later initial calls cannot enqueue more USB reads. */
+    engine=new_engine();mock.fail_read=kIOReturnIsoTooOld;mock.persistent_read_failure=true;
+    assert(rk3_native_audio_iso_start(engine)==0);
+    assert(mock.read_submissions==1&&mock.commands==2&&mock.reads_at_format==1);
+    assert(rk3_native_audio_iso_panic(engine,&delay,&error)&&delay==100&&error==kIOReturnIsoTooOld);
+    assert(!rk3_native_audio_iso_clock(engine,&clock));destroy_engine(engine);
+    engine=new_engine();mock.fail_read=kIOReturnNoDevice;mock.persistent_read_failure=true;
+    assert(rk3_native_audio_iso_start(engine)==kIOReturnNoDevice);
+    assert(mock.read_submissions==6&&mock.commands==1&&rk3_native_audio_iso_error(engine)==kIOReturnNoDevice);
+    assert(!rk3_native_audio_iso_running(engine)&&!rk3_native_audio_iso_clock(engine,&clock));destroy_engine(engine);
+}
+static void test_real_format_retries_preserve_panic_policy(void) {
+    rk3_native_audio_clock clock;uint32_t delay=0;int32_t error=0;
+    rk3_native_audio_iso *engine=new_engine();
+    mock.fail_read=kIOReturnIsoTooOld;mock.persistent_read_failure=true;mock.format_failures_remaining=1;
+    assert(rk3_native_audio_iso_start(engine)==0);
+    assert(mock.commands==3&&mock.format_failures_remaining==0&&mock.read_submissions==1);
+    assert(rk3_native_audio_iso_panic(engine,&delay,&error)&&delay==100&&error==kIOReturnIsoTooOld);
+    assert(!rk3_native_audio_iso_clock(engine,&clock));destroy_engine(engine);
+    engine=new_engine();mock.format_failures_remaining=5;
+    assert(rk3_native_audio_iso_start(engine)==kIOReturnIOError);
+    assert(mock.commands==6&&mock.format_failures_remaining==0&&mock.read_submissions==64);
+    assert(rk3_native_audio_iso_error(engine)==0&&!rk3_native_audio_iso_panic(engine,&delay,&error));
+    assert(!rk3_native_audio_iso_clock(engine,&clock));destroy_engine(engine);
+}
+static void test_priming_written_inactive_clear(void) {
+    rk3_native_audio_iso *engine=new_engine();assert(rk3_native_audio_iso_start(engine)==0);
+    const float pcm[2]={0.5f,0.25f};
+    assert(rk3_native_audio_iso_render_at(engine,pcm,17,1)==1); /* Marks written while priming. */
+    for(unsigned slot=0;slot<64;++slot){input_primary(slot,false);input_callback(slot,0);}
+    uint8_t *wire=mock.writes[0].buffer->bytes;
+    for(unsigned lane=0;lane<8;++lane)wire[17*8+lane]=(uint8_t)(0xa0+lane);
+    rk3_native_audio_iso_set_output_active(engine,false);rk3_native_audio_iso_service(engine);
+    const uint8_t cleared[8]={0,0,0,0,0,0,0xa6,0xa7};
+    assert(!memcmp(wire+17*8,cleared,8)&&wire[2]==0);
+    /* No post-priming render preceded the clear. Reactivation must accept
+     * addressed data again while preserving NI's original check-lane quirk. */
+    assert(rk3_native_audio_iso_render_at(engine,pcm,17,1)==1);
+    assert(!memcmp(wire+17*8,cleared,8));
+    rk3_native_audio_iso_set_output_active(engine,true);
+    assert(rk3_native_audio_iso_render_at(engine,pcm,17,1)==1);
+    const uint8_t reactivated[8]={0,0,0,0x40,0,0,0xa6,0x20};
+    assert(!memcmp(wire+17*8,reactivated,8));destroy_engine(engine);
+}
+static void test_partial_output_diagnostic(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);
+    output_callback_with_short(1,3);
+    assert(rk3_native_audio_iso_stream_error(engine)==kIOReturnUnderrun);
+    uint32_t delay=0;int32_t error=0;
+    assert(rk3_native_audio_iso_error(engine)==0&&!rk3_native_audio_iso_panic(engine,&delay,&error));
+    rk3_native_audio_clock clock;assert(rk3_native_audio_iso_clock(engine,&clock)&&clock.sample_frame==48);
+    destroy_engine(engine);
+}
+static void test_exact_variable_count_zero_event(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);
+    rk3_native_audio_clock initial;assert(rk3_native_audio_iso_clock(engine,&initial));
+    const uint16_t variable[8]={40,40,40,40,48,48,48,48}; /* 44 sample frames,352 wire bytes. */
+    uint64_t wrap_usb_frame=0;
+    for(unsigned step=0;step<=341;++step){
+        unsigned slot=step%64;uint64_t frame=mock.reads[slot].scheduled_frame;
+        complete_due_outputs(frame);
+        if(step==341){hardware_input(slot,variable,false);wrap_usb_frame=frame;}
+        else input_primary(slot,false);
+        float sample[2];assert(rk3_native_audio_iso_capture_at(engine,sample,0,1)==1);
+        rk3_native_audio_iso_service(engine);input_callback(slot,0);
+    }
+    /* Cursor starts2. The first wrap consumes131069 wire bytes, so after
+     *341 ordinary384-byte IRPs the event offset is125 in the variable IRP:
+     * micro3 prefix120 +5 consumed bytes. Timestamp uses total352, not48kHz. */
+    assert(wrap_usb_frame==1506);
+    rk3_native_audio_clock clock;assert(rk3_native_audio_iso_clock(engine,&clock));
+    uint64_t expected=host_for_frame(wrap_usb_frame+1)+ticks_for_ns(UINT64_C(1000000)*125/352);
+    uint64_t difference=clock.zero_host_time>expected?clock.zero_host_time-expected:expected-clock.zero_host_time;
+    assert(clock.zero_sample_frame==NI_AUDIO_RING_FRAME_COUNT&&difference<=2);
+    uint64_t nominal=initial.zero_host_time+ticks_for_ns(UINT64_C(1000000000)*NI_AUDIO_RING_FRAME_COUNT/48000);
+    difference=clock.zero_host_time>nominal?clock.zero_host_time-nominal:nominal-clock.zero_host_time;
+    assert(difference>ticks_for_ns(10000));destroy_engine(engine);
+}
+static void test_backward_output_host_time_guard(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);
+    rk3_native_audio_clock before,after;assert(rk3_native_audio_iso_clock(engine,&before));
+    /* Force the128ms anchor refresh to receive a backwards host-time pair while
+     * bus/sample frames advance. This deliberately malformed clock source must
+     * not make the public current-position clock regress. */
+    struct timespec delay={0,130000000};nanosleep(&delay,NULL);
+    assert(mock.anchor_host>ticks_for_ns(500000000));mock.anchor_host-=ticks_for_ns(500000000);
+    output_callback(1);assert(rk3_native_audio_iso_clock(engine,&after));
+    assert(after.sample_frame==before.sample_frame&&after.host_time==before.host_time);
+    assert(after.zero_sample_frame==before.zero_sample_frame&&after.zero_host_time==before.zero_host_time);
+    destroy_engine(engine);
 }
 
+static void test_delayed_abort_storage(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);mock.defer_abort=true;
+    rk3_native_audio_iso_stop(engine);
+    assert(rk3_native_audio_iso_pending(engine) > 0);
+    assert(!rk3_native_audio_iso_release_usb(engine));assert(!rk3_native_audio_iso_destroy(engine));
+    assert(mock.buffer_releases == 0 && mock.list_releases == 0);
+    drain_aborted();assert(rk3_native_audio_iso_is_quiescent(engine));destroy_engine(engine);
+}
+typedef struct {rk3_native_audio_iso *engine;size_t frames;} CaptureCall;
+static void *blocked_capture(void *context) {
+    CaptureCall *call=context;float pcm[96];call->frames=rk3_native_audio_iso_capture_at(call->engine,pcm,0,48);return NULL;
+}
+static void test_live_rt_storage(void) {
+    rk3_native_audio_iso *engine=new_engine();prime(engine);
+    atomic_store(&block_snapshot,true);CaptureCall call={engine,0};pthread_t thread;
+    assert(pthread_create(&thread,NULL,blocked_capture,&call) == 0);
+    for(unsigned i=0;i<1000 && !atomic_load(&snapshot_entered);++i){struct timespec delay={0,1000000};nanosleep(&delay,NULL);}
+    assert(atomic_load(&snapshot_entered));
+    rk3_native_audio_iso_stop(engine);assert(!rk3_native_audio_iso_is_quiescent(engine));
+    assert(!rk3_native_audio_iso_release_usb(engine) && !rk3_native_audio_iso_destroy(engine));
+    atomic_store(&release_snapshot,true);assert(pthread_join(thread,NULL) == 0);
+    atomic_store(&block_snapshot,false);assert(call.frames <= 48);destroy_engine(engine);
+}
 int main(void) {
-    IOUSBInterfaceInterface300 methods={0};
-    methods.AddRef=retain_interface;methods.Release=release_interface;
-    methods.LowLatencyCreateBuffer=create_buffer;methods.LowLatencyDestroyBuffer=destroy_buffer;
-    methods.SetPipePolicy=set_policy;methods.GetBusFrameNumber=get_frame;
-    methods.GetPipeProperties=pipe_properties;
-    methods.LowLatencyReadIsochPipeAsync=read_iso;methods.LowLatencyWriteIsochPipeAsync=write_iso;
-    methods.AbortPipe=abort_pipe;
-    IOUSBInterfaceInterface300 *pointer=&methods;
-    test_low_latency_startup(&pointer);test_full_session(&pointer);test_failures(&pointer);test_empty_output_tails(&pointer);test_out_of_order_input(&pointer);test_pipe_geometry(&pointer);
-    puts("NativeAudioISO: fake-interface startup, priming, PCM queues, clock, abort/drain and failures passed.");
+    test_lifted_calendar_and_deferred_dma();test_capture_primary_and_repeatable_positions();
+    test_delayed_callbacks_against_advancing_bus();test_microframe_ring_wrap();
+    test_empty_output_request_lifecycle();test_panic_classification();test_input_retry_exhaustion_no_invented_panic();test_initial_start_nonfatal_failures();test_real_format_retries_preserve_panic_policy();
+    test_priming_written_inactive_clear();test_partial_output_diagnostic();
+    test_exact_variable_count_zero_event();test_backward_output_host_time_guard();
+    test_delayed_abort_storage();test_live_rt_storage();
+    puts("NativeAudioISO: NI shared ring, deferred DMA, primary capture, advancing bus, clock, panic and lifetime passed.");
     return 0;
 }

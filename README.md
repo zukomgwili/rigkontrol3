@@ -29,46 +29,44 @@ partial-transfer and ring-wrap checks. The native ARM diagnostic has configured
 the cleaned device and validated its real device-info reply: **2 audio inputs,
 2 outputs, wire mode2, 1 MIDI input and 1 MIDI output**.
 
-Version **0.1.2 (build 3)** is installed on the test Mac. Both signed ARM64
-bundles match the build's 12-file manifest. CoreAudio exposes the native device
-with **2 inputs and 2 outputs at 48 kHz**. Standard CoreAudio clients passed
-three- and five-second capture runs with completed callbacks and clean stops;
-these runs sent silence. The installed MIDI plug-in, signed with an Apple-issued
-development identity, loads in MIDIServer and exposes the Controller source.
-The corrected CFData-based properties also pass actual cross-process
-communication between the installed audio owner and its clients.
+The currently installed **0.1.3 (build 4)** is unstable. Its unity-gain guitar
+check produced crackling, dropouts and intermittent controls. A separate silent
+check reproduced repeated `kIOReturnIsoTooOld` errors and USB reconnections,
+despite successful audio callbacks. That build used a FIFO snapshot and an
+invented 4 ms output calendar; neither preserves NI's original shared ring.
 
-The MIDI bundle includes a separate Controller source and LED Feedback
-destination, alongside the hardware DIN endpoints. Its profile follows NI's
-original CC assignments and calibration formula. A persistent CoreMIDI client
-recorded two presses of each of the eight switches, with each assignment
-reaching 0 and 127. The pedal reached the full MIDI 0–127 range after fresh
-calibration measured **88–648** from 555 samples. The user completed the repeated
-switch/pedal test without reporting faults and confirmed that host CC80 values
-of 127 and 0 respectively lit and extinguished LED 1.
+The **0.2.0 (build 5)** source restores the original data flow. Host output
+writes by sample position into the same mapped wire ring referenced by queued
+USB requests. Capture polls primary completion state and reads the requested
+ring positions without consuming a FIFO. The original 64-input/128-output
+calendar, exact mode-2 byte placement, USB-anchor timestamp arithmetic and
+audio-engine recovery triggers are retained. The 64 ms USB queue horizon is
+not a measurement of guitar signal latency. The necessary current macOS
+bindings and their limits are recorded in
+[the audio reconstruction](ReverseEngineering/AudioDriver.md) and
+[USB transport](ReverseEngineering/NativeUSB.md).
 
-A roughly 207-second listening run kept audio and MIDI active together. The
-user heard guitar and reported that the controls continued responding, but the
-guitar was very soft and had noticeable delay. The test client's 0.1 gain
-attenuated the signal by 20 dB; normal output level has not yet been established
-with unity gain. The installed driver also accepted a 128-frame CoreAudio
-buffer request in a separate one-second silent-output check.
+This source requires **macOS 26.4 or later** for explicitly kernel/user-shared
+primary transaction lists; the test Mac runs macOS 27.0.1. Version 0.2.0 has
+**not been installed or physically validated**. Mocks establish sample
+placement, live backing identity, clock arithmetic and buffer lifetime. They
+do not establish hardware DMA timing, clean sound or reliable recovery.
 
-The **0.1.3 (build 4) source** prepares a latency adaptation: a 4 ms output
-scheduling lead replaces the recovered 64 ms lead in the native adapter, while
-the NI reference scheduler remains intact. Public I/O waits for PCM readiness,
-and the capture consumer discards stale backlog. A regression using the actual
-ISO adapter fails against the previous behavior and passes with this change.
-**Build 4 is not installed or physically validated yet.** The 4 ms scheduling
-lead is not a measured total round-trip latency.
+The native MIDI bundle retains its separate Controller source and LED Feedback
+destination, alongside the hardware DIN endpoints. Earlier installed controller
+checks recorded two presses of all eight switches and full pedal MIDI 0–127.
+Fresh calibration measured **88–648** from 555 samples; host CC80 on/off lit and
+extinguished LED 1. Those results are retained evidence, not a new combined
+0.2.0 acceptance result. Incoming feedback remains explicit; applications must
+send their effect states to synchronize LEDs.
 
-These installed tests use standard CoreAudio and CoreMIDI clients, without the
-retired app or MainStage. Acceptable guitar level and latency remain open under
-`rigkontrol3-40h.3`; actual reconnect recovery and physical DIN loopback also
-remain unvalidated. Source/feedback/calibration and reconnect rules are
-documented in [the MIDI component](Driver/MIDI/README.md), with measured results
-in [hardware validation](ReverseEngineering/HardwareValidation.md).
-Task status is tracked in Beads under `rigkontrol3-40h`.
+These checks use standard CoreAudio and CoreMIDI clients, without the retired
+app or MainStage. Sustained guitar audio, simultaneous controls, reconnect and
+sleep/wake on the faithful port remain acceptance work. Physical DIN loopback,
+toe/external inputs and other sample rates remain separately tracked in Beads
+under `rigkontrol3-40h`. See [hardware validation](ReverseEngineering/HardwareValidation.md)
+for actual installed outcomes and [the MIDI component](Driver/MIDI/README.md)
+for mappings and calibration.
 
 ## Build and install
 
@@ -85,7 +83,7 @@ The two bundles are `RigKontrol3Audio.driver` and `RigKontrol3MIDI.plugin`.
 The installer checks their identities, ARM64 code, signatures and content,
 preserves previous versions, and prints a reversible session path. See
 [installation and rollback](ReverseEngineering/NativeDriverInstall.md).
-This personal-use build supports stereo48kHz. It uses no kernel extension,
+This personal-use build requires macOS 26.4+ and supports stereo 48 kHz. It uses no kernel extension,
 menu-bar app, external controller bridge, or MainStage dependency.
 
 After installation, the one-time pedal calibration utility measures fresh
@@ -113,7 +111,8 @@ finished, rather than relying on a short recording window:
 Run these in separate terminals when testing audio and controls together. The
 audio client defaults to sending guitar input 1 to both outputs with 0.1 gain
 and a ±0.2 clamp. That intentionally quiet test attenuates the signal by 20 dB.
-For the next level and latency test, request unity gain and a smaller buffer:
+For the next listening check, lower the hardware headphone level first, then
+request unity gain and a smaller buffer:
 
 ```sh
 .build/native/test/rk3-audio-client --monitor --gain 1 --buffer-frames 128 --live

@@ -1,7 +1,7 @@
 # Native USB transport
 
 `Driver/NativeUSB.h/.c` supplies the reusable native owner of the RK3 USB
-interface. It derives from the fresh diagnostic probe and the NI evidence
+interface, with `NativeHostUSB.h/.m` supplying the current IOUSBHost binding. It derives from the fresh diagnostic probe and the NI evidence
 recorded in `AudioDriver.md` and `MIDIDriver.md`. It does not use the earlier
 bridge application or a public RK3 driver implementation.
 
@@ -10,7 +10,8 @@ worker enumerates only VID `17cc` / PID `1940`, refuses ambiguous accessible
 devices, and retries absent/failed devices. Like original NI `initUSB` at
 `0x8e0`, it reapplies advertised USB configuration1 even when already
 configured, closes the device and verifies readback before claiming the
-newly instantiated interface. It then opens interface0 without
+newly instantiated interface. The retained legacy parent-device handle is
+closed before the single IOUSBHost child-interface claim. It opens interface0 without
 seizure, selects advertised alt1, validates bulk EP1 IN/OUT and isochronous
 EP2 IN / EP6 OUT, and starts its persistent 64-byte command reader before
 querying device information. Connection is published only after a real
@@ -48,12 +49,37 @@ cancelled; active startup writes and ACK waits honor the outer deadline.
 If startup finishes after cancellation, its ISO work is stopped and the
 session fails rather than reporting successful audio start.
 
-EP1 writes use `WritePipeAsyncTO` with one session-owned 64-byte buffer.
-Waiting for their completion pumps the same CFRunLoop, so the persistent
-input callback can rearm while firmware accepts output. The callback must
-confirm the entire byte count. Timeout or cancellation aborts OUT and marks
-the transport failed; the buffer remains owned until a late callback drains.
-Both command directions participate in close/quiescence checks.
+EP1 reads/writes use asynchronous IOUSBHost bulk transfers. Writes snapshot
+command bytes into independently owned bounded storage; audio never uses this
+copying path. Waiting for completion pumps the worker CFRunLoop, keeping the
+persistent read active. Full byte count is required. Timeout/cancellation
+aborts OUT; storage survives until the actual callback retires.
+
+Recovery follows original commandReplyDispatch/sendCommand rather than
+turning every pipe error into a whole-device reconnection:
+
+| Original event | Retained behavior |
+| --- | --- |
+| Read Aborted (`0xe00002eb`) | Retire without rearm. |
+| Read NotResponding (`0xe00002ed`) | Abort command IN then OUT; suspend reader without rearm. |
+| Read PipeStalled (`0xe000404f`) | Clear IN, rearm after retirement. |
+| Other read error | Record error and rearm. |
+| Write PipeStalled / USBTransactionTimeout (`0xe0004051`) | Clear IN then OUT, return failure once; do not replay the command. |
+
+NI recovery uses `ClearPipeStall(false)`, a controller-only operation. The
+public current IOUSBHost `clearStall` resets controller **and endpoint** and
+aborts affected pending I/O. This is a necessary API substitution: the binding
+tracks an interrupted read, preserves any successful report already delivered,
+and permits exactly one replacement read after retirement. It does not reset
+the device or replay failed MIDI/LED data. Startup still clears both ends, as
+NI did. A genuine service-termination notification updates a cached connected
+flag; transient pipe errors and suspend/resume notifications are not treated
+as device removal.
+
+The original wake path unsuspends the USB device and restores audio clocks;
+no EP1 rearm occurs there. A speculative power-triggered read retry has not
+been added. Sleep/wake and the lifetime after NotResponding remain physical
+validation requirements, not established guarantees of the current binding.
 
 The exposed command API accepts NI command7 MIDI output and only the exact
 LED frame `05 00 40 40 00 <mask> <toe 0|1> 00 00`. It validates
@@ -69,7 +95,12 @@ Internal command9 retains strict ACK=1 for the real sample rate. Its rate-ff
 stop sentinel accepts a bounded ACK, including the observed zero result,
 after a successful write: NI `performAudioEngineStart` ignores that initial
 stop result before configuring the real rate. A missing ACK or failed write
-still fails; other startup requirements and ISO scheduling are unchanged.
+still makes the command worker return failure. The engine ignores that
+initial stop result, as NI does, before attempting the real format; it does
+not ignore real-format rejection, active owner cancellation or device loss.
+Individual initial IN failures are likewise logged while the 64-slot attempt
+loop continues (the NI restart guard suppresses submissions after panic).
+The owner still requires a real valid clock before exposing started audio.
 
 The last 256 incoming command reports form a non-destructive history. Each
 has a session-wide monotonic sequence and a `mach_absolute_time()` receipt
@@ -83,36 +114,49 @@ History overrun is explicit in each returned batch.
 
 ## Audio and lifetime
 
-Audio start succeeds only after NI parameter acknowledgement **and a real
-completed-output clock sample**. Until then the session remains STARTING.
-The clock exposes completed device frames, matching host ticks and a seed
-combining connection generation with the ISO clock generation. The snapshot
-rechecks both engine pointer and generation around the read. It never
-manufactures a running clock while callbacks have not begun.
+Audio start requires NI parameter acknowledgement, real completed-output
+progress and an exact input ring-boundary timestamp. The clock exposes OUT
+start position/USB time plus input zero sample/time and a seed combining USB
+generation with audio clock generation. Reads recheck the published engine
+and connection around the snapshot; callback receipt time is not substituted
+for a missing hardware anchor.
 
-HAL render/capture/clock paths use the ISO engine's bounded atomic queues;
-they allocate no memory, take no mutex and issue no USB calls. Capture
-zero-fills unavailable frames while returning the actual frame count.
-Errors retain their code/status and trigger safe disconnect/retry. A
-previously running audio stream is restarted after reconnect only when
-startup and the first valid clock succeed; an explicit stop revokes that
-automatic restart even while disconnected.
+`NativeAudioISO` uses the original live mapped ring, host sample positions and
+input-led calendar. Render/capture/clock allocate nothing, take no mutex and
+issue no USB calls. Capture polls primary completion data and reads the
+requested ring positions instead of draining a FIFO. Current primary lists
+require macOS 26.4+. See `AudioDriver.md` for exact byte placement, whole-IRP
+publication, zero timestamps and original 68/136/136 latency/offset values.
+
+NI audio panic is distinct from device removal. The owner preserves EP1,
+connection generation and controller state while the host stops/restarts audio
+through its documented configuration handshake. Decode errors request immediate
+panic; input TooOld and output-slot exhaustion use 100 ms. Six other failed
+IN attempts return their diagnostic without inventing panic. Failed OUT keeps
+its schedule slot busy. Errors remain observable even without generation
+churn. Start cannot overtake a pending Stop/drain; audio ACK failure does not
+permanently fail the shared controller connection. Actual device removal
+still disconnects and discovers a new generation.
+
+The registered panic callback is copied under the state mutex and invoked
+outside it. Unregistration waits for an already captured call; a callback
+cannot synchronously unregister itself. The HAL queues its host notification
+and returns immediately, so worker command service continues while audio
+buffers drain. Generation checks reject stale notifications. Output-active
+state is published to each new engine before exposing it to host callers.
 
 Close relinquishes the client's reference and requests worker cleanup.
-`rk3_usb_close_wait` additionally waits a bounded interval for CLOSED before
-relinquishing that reference; false retains the worker-owned pending state.
-The worker stops ISO work, prevents EP1 rearming, aborts pending I/O and
-drains callbacks. If cancellation is delayed, it retains the worker and all
-callback storage rather than exiting the host process or freeing pending
-buffers. USB low-latency buffers are detached after quiescence and before
-the final interface close. Real-time calls atomically pin the session before
-loading the current engine. Retired CPU queue objects are reclaimed only
-when those readers quiesce; each engine retains its COM interface reference.
-Retirement is capped at four engines, so repeated failed reconnects cannot
-grow memory without bound if real-time readers never quiesce.
-A forced cancellation close is followed, after
-quiescence, by a non-seizing reopen for buffer detach/alternate restoration
-where the device remains available. Failures remain observable.
+`rk3_usb_close_wait` waits a bounded interval for CLOSED before relinquishing
+that reference. The worker prevents rearming, aborts pending I/O and drains
+callbacks. Delayed cancellation retains storage and worker ownership rather
+than freeing live buffers. Mapped ISO storage is released only after audio
+callbacks/RT calls quiesce, before alternate restoration and interface close.
+Real-time readers pin the engine; retired CPU objects are reclaimed only when
+those readers drain. Retirement is capped at four engines. The IOUSBHost
+adapter retains each interface, mapped buffer and transaction list through
+completion delivery; close and alternate changes return Busy while these
+owners remain. A cached, separately retained run loop protects completion
+publication against immediate worker-side retirement.
 
 ## Verification
 
@@ -123,10 +167,12 @@ access, with AddressSanitizer and UndefinedBehaviorSanitizer. It covers
 history overflow and independent cursors, reconnect without old-report
 replay, sequence continuity, cancellation without rearming, queued request
 ownership after timeout, stale command leases, command/port/length policy,
-capture zero-fill, no write after active-request expiration/cancellation,
+addressed capture, audio-only panic with stable controller generation, transient
+EP1 clear/rearm without command replay, no write after active-request expiration/cancellation,
 and valid-clock startup gating versus timeout/cancellation/engine errors.
 It also verifies pinned retirement and successful/timed-out close waiting.
 
-These checks establish software invariants. Real audio start, signal flow,
-DIN MIDI, unplug/reconnect and host integration require separate hardware
-validation by the owning integration session.
+These checks establish software invariants. Earlier installed versions demonstrated real capture and controller input, but
+installed build 4 failed audio continuity. The faithful 0.2.0 source has not
+been installed. Its signal flow, real DMA timing, DIN MIDI, unplug/reconnect,
+sleep/wake and host integration require separate hardware validation.

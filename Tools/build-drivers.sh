@@ -29,11 +29,12 @@ midi="$out/RigKontrol3MIDI.plugin"
 mkdir -p "$audio/Contents/MacOS" "$midi/Contents/MacOS"
 cp -f "$root/Driver/Audio/Info.plist" "$audio/Contents/Info.plist"
 cp -f "$root/Driver/MIDI/Info.plist" "$midi/Contents/Info.plist"
+xcrun clang $flags -fobjc-arc -fblocks -I"$root/Driver" -c "$root/Driver/NativeHostUSB.m" -o "$out/NativeHostUSB.o"
 xcrun clang $flags -fblocks -bundle -I"$root/Driver" \
     "$root/Driver/Audio/RK3AudioDriver.c" "$root/Driver/NativeUSB.c" \
     "$root/Driver/NativeAudioISO.c" "$root/Driver/DeviceProtocol.c" \
-    "$root/Driver/AudioCodec.c" "$root/Driver/AudioSchedule.c" \
-    -framework CoreAudio -framework CoreFoundation -framework IOKit \
+    "$root/Driver/AudioCodec.c" "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" "$out/NativeHostUSB.o" \
+    -framework CoreAudio -framework CoreFoundation -framework IOKit -framework IOUSBHost -framework Foundation \
     -o "$audio/Contents/MacOS/RK3AudioDriver"
 xcrun clang $flags -bundle -I"$root/Driver" "$root/Driver/MIDI/RK3MIDIDriver.c" \
     "$root/Driver/MIDIEvent.c" "$root/Driver/MIDI/MIDIStream.c" "$root/Driver/Controller.c" -framework CoreAudio -framework CoreMIDI \

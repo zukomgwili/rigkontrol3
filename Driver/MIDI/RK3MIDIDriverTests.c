@@ -8,18 +8,27 @@
 #include <string.h>
 #include <stdio.h>
 
+static OSStatus mock_get_size(AudioObjectID,const AudioObjectPropertyAddress *,UInt32,const void *,UInt32 *);
+static Boolean mock_has_property(AudioObjectID,const AudioObjectPropertyAddress *);
+static OSStatus mock_set_midi_integer(MIDIObjectRef,CFStringRef,SInt32);
 static OSStatus mock_get(AudioObjectID,const AudioObjectPropertyAddress *,UInt32,const void *,UInt32 *,void *);
 static OSStatus mock_set(AudioObjectID,const AudioObjectPropertyAddress *,UInt32,const void *,UInt32,const void *);
 static OSStatus mock_received(MIDIEndpointRef,const MIDIPacketList *);
 static OSStatus mock_midi_get_data(MIDIObjectRef,CFStringRef,CFDataRef *);
 static OSStatus mock_midi_set_data(MIDIObjectRef,CFStringRef,CFDataRef);
 #define RK3_MIDI_TESTING 1
+#define AudioObjectGetPropertyDataSize mock_get_size
+#define AudioObjectHasProperty mock_has_property
+#define MIDIObjectSetIntegerProperty mock_set_midi_integer
 #define AudioObjectGetPropertyData mock_get
 #define AudioObjectSetPropertyData mock_set
 #define MIDIReceived mock_received
 #define MIDIObjectGetDataProperty mock_midi_get_data
 #define MIDIObjectSetDataProperty mock_midi_set_data
 #include "RK3MIDIDriver.c"
+#undef AudioObjectGetPropertyDataSize
+#undef AudioObjectHasProperty
+#undef MIDIObjectSetIntegerProperty
 #undef AudioObjectGetPropertyData
 #undef AudioObjectSetPropertyData
 #undef MIDIReceived
@@ -60,6 +69,12 @@ static uint64_t delivered_time;
 static Driver *working_driver;
 static size_t writes;
 static OSStatus write_result;
+static size_t writes_to_stop=1,failures_remaining;
+static uint8_t attempted_notes[16];
+static bool provider_present=true;
+static uint32_t provider_flags=RK3_NATIVE_CONNECTED;
+static unsigned offline_updates;
+static SInt32 last_offline;
 enum { CF_FAULT_NONE, CF_FAULT_TYPE, CF_FAULT_LENGTH, CF_FAULT_SIZE, CF_FAULT_NULL, CF_FAULT_STATUS };
 static unsigned cf_fault;
 static AudioObjectPropertySelector cf_fault_selector;
@@ -85,8 +100,24 @@ static void read_cf_wire(UInt32 size,const void *data,void *wire,size_t length) 
     memcpy(wire,CFDataGetBytePtr((CFDataRef)property),length);
 }
 
+static OSStatus mock_get_size(AudioObjectID object,const AudioObjectPropertyAddress *property,UInt32 qualifier_size,const void *qualifier,UInt32 *size) {
+    (void)qualifier;assert(object==kAudioObjectSystemObject&&property->mSelector==kAudioHardwarePropertyDevices&&qualifier_size==0);
+    *size=provider_present?sizeof(AudioDeviceID):0;return noErr;
+}
+static Boolean mock_has_property(AudioObjectID object,const AudioObjectPropertyAddress *property) {
+    return object==42&&property->mSelector==RK3_PROPERTY_INFO;
+}
+static OSStatus mock_set_midi_integer(MIDIObjectRef object,CFStringRef property,SInt32 value) {
+    assert(CFRunLoopGetCurrent()==CFRunLoopGetMain());
+    assert((object==333||object==334)&&property==kMIDIPropertyOffline);
+    ++offline_updates;last_offline=value;return noErr;
+}
 static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *property,
                          UInt32 qualifier_size,const void *qualifier,UInt32 *size,void *data) {
+    if(object==kAudioObjectSystemObject) {
+        assert(property->mSelector==kAudioHardwarePropertyDevices&&qualifier_size==0&&*size>=sizeof(AudioDeviceID));
+        const AudioDeviceID device=42;memcpy(data,&device,sizeof(device));*size=sizeof(device);return noErr;
+    }
     assert(object == 42);
     if (property->mSelector == RK3_PROPERTY_INFO) {
         if(press_release_before_snapshot) {
@@ -96,7 +127,7 @@ static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *
             input_batch.reports[1]=(RK3NativeReport){.sequence=2,.length=3,.bytes={4,0,0}};
         }
         assert(qualifier_size == 0);
-        RK3NativeInfo info = {.version=RK3_CONTROL_VERSION,.flags=RK3_NATIVE_CONNECTED,
+        RK3NativeInfo info = {.version=RK3_CONTROL_VERSION,.flags=provider_flags,
             .generation=info_generation,.midi_inputs=1,.midi_outputs=1,.digital_snapshot=digital_snapshot};
         strcpy(info.device_uid,RK3_NATIVE_DEVICE_UID);
         strcpy(info.product_name,"Rig Kontrol 3 Native");
@@ -117,8 +148,10 @@ static OSStatus mock_set(AudioObjectID object,const AudioObjectPropertyAddress *
     assert(lease.version == RK3_CONTROL_VERSION && lease.generation == 7);
     assert(command.version == RK3_CONTROL_VERSION && command.length == 6);
     assert(command.bytes[0] == 7 && command.bytes[1] == 0 && command.bytes[2] == 3);
+    if(writes<sizeof(attempted_notes))attempted_notes[writes]=command.bytes[4];
     ++writes;
-    atomic_store(&working_driver->worker_stop,true);
+    if(writes>=writes_to_stop)atomic_store(&working_driver->worker_stop,true);
+    if(failures_remaining){--failures_remaining;return kAudioHardwareUnspecifiedError;}
     return write_result;
 }
 
@@ -418,15 +451,55 @@ static void test_worker_generation_and_error(void) {
         output_worker(driver);
         assert(writes == 1 && atomic_load(&driver->output_read) == 3);
         assert(atomic_load(&driver->feedback_write) == 1 && driver->feedback[0].kind == 1);
-        assert(atomic_load(&driver->online) == !fail);
-        if (fail) assert(atomic_load(&driver->failed_generation) == 7);
+        assert(atomic_load(&driver->online));
+        assert(atomic_load(&driver->output_failures)==fail);
+        assert(atomic_load(&driver->failed_generation)==0);
         free_driver(driver);
     }
 }
 
+/* A lost EP1 write is not removal. NI's device MIDIWrite is void, and the
+ * user-client returns success while the physical device is present. */
+static void test_transient_output_does_not_disconnect_sources(void) {
+    Driver *driver=make_driver();atomic_store(&driver->controller_enabled,true);
+    info_generation=7;digital_snapshot=UINT32_C(0x80000000);provider_present=true;provider_flags=RK3_NATIVE_CONNECTED;
+    input_batch=(RK3NativeReports){.version=1};expected_after=0;deliveries=0;
+    input_tick(NULL,driver); /* baseline, with both native sources enabled */
+    RK3NativeCommand command={.version=RK3_CONTROL_VERSION,.length=6,.bytes={7,0,3,0x90,60,100}};
+    driver->output[0]=(OutputEntry){42,6,0,command,0}; /* stale: never reaches USB */
+    driver->output[1]=(OutputEntry){42,7,0,command,0};
+    command.bytes[4]=61;driver->output[2]=(OutputEntry){42,7,0,command,0};
+    atomic_store(&driver->output_read,0);atomic_store(&driver->output_write,3);atomic_store(&driver->worker_stop,false);
+    working_driver=driver;writes=0;writes_to_stop=2;failures_remaining=1;write_result=noErr;
+    memset(attempted_notes,0,sizeof(attempted_notes));
+    pthread_t worker;add_ref(driver);assert(pthread_create(&worker,NULL,output_worker,driver)==0);
+    for(unsigned attempt=0;attempt<500&&atomic_load(&driver->output_read)<3;++attempt) {
+        const struct timespec delay={0,1000000};(void)nanosleep(&delay,NULL);
+    }
+    atomic_store(&driver->worker_stop,true);assert(pthread_join(worker,NULL)==0);
+    assert(writes==2&&attempted_notes[0]==60&&attempted_notes[1]==61); /* failed entry was not replayed */
+    assert(atomic_load(&driver->online)&&atomic_load(&driver->generation)==7&&atomic_load(&driver->failed_generation)==0);
+    assert(atomic_load(&driver->output_failures)==1);
+    assert(atomic_load(&driver->source_enabled)&&atomic_load(&driver->controller_enabled));
+    const uint8_t note[]={0x90,62,100};
+    input_batch=(RK3NativeReports){.version=1,.count=1,.next_sequence=1,.latest_sequence=1};
+    input_batch.reports[0]=midi_report(1,note,sizeof(note));expected_after=0;
+    input_tick(NULL,driver);assert(deliveries==1&&delivered_source==123&&memcmp(delivered,note,3)==0);
+    controller_batch(driver,2,0x10);
+    assert(deliveries==2&&delivered_source==124&&memcmp(delivered,(uint8_t[]){0xb0,80,127},3)==0);
+    /* Actual disappearance still publishes offline, on server main only. */
+    driver->midi_device=333;driver->controller_device=334;driver->published_online=true;
+    offline_updates=0;provider_present=false;refresh_topology(driver);
+    assert(!atomic_load(&driver->online)&&offline_updates==2&&last_offline==1);
+    provider_present=true;info_generation=8;refresh_topology(driver);
+    assert(atomic_load(&driver->online)&&atomic_load(&driver->generation)==8&&offline_updates==4&&last_offline==0);
+    if(calibration_data){CFRelease(calibration_data);calibration_data=NULL;}
+    info_generation=7;writes_to_stop=1;failures_remaining=0;free_driver(driver);
+}
+
 int main(void) {
     assert(CFPlugInRegisterFactoryFunction(factory_id(),RK3MIDIDriverFactory));
-    test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_cf_transport_rejection(); test_worker_generation_and_error();
+    test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_cf_transport_rejection(); test_worker_generation_and_error(); test_transient_output_does_not_disconnect_sources();
     assert(CFPlugInUnregisterFactory(factory_id()));
     puts("RK3 CoreMIDI: COM, bounded queue, generation lease, history cursor and input routing passed");
     return 0;

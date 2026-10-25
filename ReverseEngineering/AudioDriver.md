@@ -90,39 +90,34 @@ the device endpoint; the user-space equivalent is `ClearPipeStallBothEnds`.
 The error-recovery calls in `sendCommand` at `0x26c9/0x26db` pass **false**;
 they are distinct from the startup synchronization.
 
-### Observed current-host adaptation
+### Current-platform memory binding
 
-The fresh user-space transport retains the already advertised bandwidth:
-before audio start it validates actual pipe properties as ISO IN endpoint
-`0x82`, ISO OUT endpoint `0x06`, each 512 bytes and interval 1. Current-host
-`SetPipePolicy` returned `kIOReturnBadArgument` for both the desired 136-byte
-capacity and descriptor-sized 512. Original calls at `0x6962/0x6988` ignore
-their return values; the newly implemented engine omits this bandwidth
-adjustment after validation, while command 9 still requests capacity 136.
-Submission failures remain fatal.
+The earlier native implementation used IOUSBLib low-latency transfers but
+introduced its own per-transfer PCM snapshots. Its trailing-zero trimming,
+empty-request omission and later 4 ms calendar were compatibility workarounds
+in that implementation. They are superseded by the live-ring binding below;
+they must not be treated as NI behavior.
 
-Fresh tests then isolated an output geometry incompatibility: the current
-host rejected a valid 272-byte output plan with trailing empty microframes,
-logging an invalid transaction request-count/offset. Changing the frame lead
-alone did not help. Trimming only trailing zero requests from the low-latency
-write API call produced five seconds of completed audio/capture/clock progress;
-nonempty requests, interior gaps, bytes and scheduled start frame were retained.
-An all-empty plan is omitted and its schedule slot released without advancing
-sample bytes or clock. Completion checks use only the submitted microframes.
-This is a new user-space compatibility policy, not claimed NI behavior.
+Apple's current `IOUSBHostObject.h` documents controller-compatible mapped
+`IOBufferMemoryDescriptor` allocation without DMA bouncing. The public
+`IOUSBHostIsochronousTransaction` structure supplies an offset and `Wrap`
+option, including a transfer crossing the end of its backing ring. Thus queued
+requests can reference the same storage addressed by host sample writes,
+without a software PCM copy. Explicit `KernelUserShared` allocation for primary
+transaction lists is available on macOS 26.4+. The fresh audio engine requires
+that API rather than guessing that an older fallback has equivalent visibility.
+These declarations are in the selected SDK's `IOUSBHost.framework` headers;
+`Driver/NativeHostUSB.m` implements only this platform seam.
 
-The installed macOS 27.0.1 `IOUSBLib` universal binary, SHA-256
-`34571ff699fd416aec9030d13c18b7a800d9a1e04b928bae5584329d583d8201`,
-provides supporting primary evidence: its arm64e
-`LowLatencyWriteIsochPipeAsync` (`0x71f4`) sums requested counts at
-`0x725c..0x7270`, supplies exactly that sum as its data-descriptor length at
-`0x72a8`, and calls kernel selector `0x17` at `0x72e8`. Original NI output
-uses duplicated memory-descriptor ranges, described below, so its backing
-length differs. An end-offset bounds interaction is consistent with these
-facts; the private kernel implementation was not recovered. Hardware-free
-fake-interface regression reproduces the observed rejection before the fix
-and verifies unchanged packet bytes/calendar plus no clock advance on an
-empty plan afterward. See `HardwareValidation.md` for live validation scope.
+The verified pipes are ISO IN `0x82` and OUT `0x06`, maximum 512 bytes,
+interval 1. Command9 still requests NI's capacity 136. The old user-space
+`SetPipePolicy` call rejected both 136 and 512 on this host; original NI calls
+ignore its return. The new provider validates actual descriptors instead.
+Mapped storage and transaction lists remain owned through callback delivery.
+Primary status is read using the SDK's publication contract. Mocks establish
+backing identity and safe ownership; actual hardware prefetch/deadline timing
+still requires validation. Mapped memory alone does not prove arbitrary late
+writes are safe.
 
 ### RK3-specific I/O initialization before engine creation
 
@@ -176,9 +171,12 @@ output ring has `wire_width * stereo_groups * 32768` bytes, also 16384 frames.
 `performAudioEngineStart` at `0x5fb0` first sends the rate-255 stop sentinel,
 aborts both audio pipes, waits up to 1000 x 1 ms for outstanding input work,
 clears input and output IRPs and sample buffers, and fills check bytes. It
-sets the initial input byte cursor to 0 for mode 3 and 2 otherwise. It starts
+sets the initial input byte cursor to 0 for mode 3 and 2 otherwise. It attempts
 64 input IRPs, each containing eight microframe descriptors, beginning at
-USB frame number +100. It then sends the desired rate/width/capacity. Failed
+USB frame number +100. Individual initial IN failures are logged; the loop
+continues through all slots before sending the desired rate/width/capacity
+(`0x6342`..`0x639a`, then format call `0x63bc`). A restart flag suppresses
+subsequent queueIn submissions after a TooOld panic. It then sends the desired rate/width/capacity. Failed
 parameter commands are retried after 200 ms (four additional attempts).
 
 The initial stop call is specifically unchecked: `0x5fd6` calls
@@ -187,9 +185,11 @@ timer pointer without testing EAX. Desired-rate calls later test the returned
 status and retry. Therefore the original start path tolerates a negative stop
 reply even though `setAudioParams` itself requires reply value 1. The fresh
 device returned `[09,00]` for `[09,ff,ff,88,00,01]`; accepting that received
-stop value while still rejecting write/timeout failures is a bounded new-host
-policy consistent with the original's unchecked stop, not a general command-9
-success rule. After stop, original ISO IN calls Abort/ClearPipeStall(true) at
+stop value is supported by the command worker, but the engine ignores the
+initial stop callback's entire result, including failure, just as NI does.
+Real-format acknowledgement still requires 1. Pending command storage remains
+owned through retirement, and current owner cancellation/device-loss checks
+still reject a cancelled or removed start. After stop, original ISO IN calls Abort/ClearPipeStall(true) at
 `0x6016/0x6032`, and ISO OUT at `0x604e/0x606a`; those clear results are also
 unchecked.
 
@@ -247,8 +247,8 @@ requeues at `T+165` and generates output at `T+165`. This produces a 64 USB-fram
 lead in steady state. There is no separate `old_input_frame + delay` expression
 in the output submission. A native implementation must preserve the original
 saved frame until received-data/timestamp processing finishes, before reusing
-the input slot. Failed submissions in a new implementation should stop and
-drain rather than expose a planned position as completed hardware progress.
+the input slot. Planned positions are never reported as completed progress.
+Error handling follows the distinct IN/OUT branches described below.
 
 `queueOutIrp` records `floor(output_byte_cursor/(2*wire_width*groups))` as the
 output IRP's sample position before advancing the cursor by its total bytes,
@@ -265,7 +265,7 @@ Startup sets running (`+0xb98d`), priming (`+0xb98f`) and first-unit (`+0xb990`)
 to 1; clears restart (`+0xb992`), sync-error (`+0xb993`), device-error
 (`+0xb994`) and timestamp-established (`+0xb98c`). In mode 2, the packed input
 cursor begins at 2. `readFrameList` returns immediately throughout priming,
-and `clipOutputSamples` returns without accepting mixed samples. Output check
+and `clipOutputSamples` marks the stream written but returns without copying PCM. Output check
 patterns and silent payloads still flow during this phase.
 
 The transition is tied specifically to **input slot 63's callback**, rather
@@ -284,9 +284,15 @@ Statuses 0 and `0xe00002e7` permit decoding; other completed statuses advance
 the cursor without audio. A sync or device error makes `readMicroframe` at
 `0x8670` increment `USBstreamingErrors` and, with correction enabled, arm the
 panic timer immediately and set restart. `panicTimerCallback` at `0x5950`
-invokes the stop/start virtual slots and then clears restart. Lack of a free
-output slot and `IsoTooOld` submission failures schedule that restart after
-100 ms instead.
+invokes **IOAudioEngine pause/resume wrappers** and then clears restart. Vtable
+relocations at `0x11640/0x11648` resolve the wrappers: pause stops the engine,
+clears host buffers and notifies clients; resume notifies the host to restart.
+This is not a direct call pair to performAudioEngineStop/Start. Lack of a free
+output slot and **IN** `IsoTooOld` submission failures schedule that restart after
+100 ms instead. OUT submission errors log and leave the chosen output slot
+busy; they do not directly request panic. After six failed non-TooOld IN
+submissions, `queueInIrp` returns the error without arming panic (`0x673f`..
+`0x6757`). The TooOld branch at `0x6768` clears output and arms 100 ms.
 
 `Driver/AudioSchedule.h/.c` captures these original queue relationships as a
 hardware-free state model: per-input saved frames, input-led requested counts,
@@ -306,7 +312,7 @@ Input channel count is reply byte 9 + byte 11; output is byte 8 + byte 10
 (`setupTimerCallback`, `0x3490`, inlined engine creation at `0x36a4`).
 At `0x1b5d`, `createAudioEngine` passes device byte `+0x991` into engine
 `init`, which stores it at `+0xb978`. Establishing RK3's actual returned
-mode remains necessary. Although engine `init` receives the endpoint maximum
+mode was independently verified as 2 by the fresh command1 reply. Although engine `init` receives the endpoint maximum
 packet size, it sets its own maximum at `+0xba14` to 512.
 
 Mode 0 (`readMicroframeMode0`, `0x81f0`) consumes one byte for each stereo
@@ -341,8 +347,7 @@ eight-byte stereo group as:
 
 Its reader copies offsets 0,1,2,4,5,6 to the packed-24 stereo ring and checks
 offsets 3 and 7. Its writer inserts the same gaps in `clipOutputSamples`.
-This grouping is a confirmed mode-3 behavior; RK3 mode selection is still
-unconfirmed. Both modes set an error flag at engine `+0xb993`; when that flag
+This grouping is a confirmed mode-3 behavior; the attached RK3 reports mode 2. Both modes set an error flag at engine `+0xb993`; when that flag
 and the correction-enabled flag `+0xb991` are both set, subsequent input
 audio bytes are replaced with zero. Startup flags suppress or alter some
 check comparisons, so a new implementation needs explicit startup state.
@@ -376,13 +381,18 @@ calling its superclass. These are separate lifecycle stages.
 `performPowerStateChange` at `0x1fe0` calls the base implementation first.
 When changing from state 0 to state 1 or 2, it performs two USB device calls
 and invokes engine `awakeFromSleep` if initialized. Entering state 0 invokes
-`enterSleep`. Exact USB virtual call identities need relocation confirmation.
+`enterSleep`. The calls resolve to `SuspendDevice(false)` and `GetDeviceStatus`, checked
+against known neighboring device methods and Apple's historical IOUSBDevice virtual order.
 
 `enterSleep` at `0xbc50` cancels the timestamp timer and zeros four anchor
 fields. `awakeFromSleep` at `0xbcb0` resets the timestamp refresh counter and
 wall-clock interval, clears output sample streams, updates the USB-cycle
 clock estimate and obtains an anchor, then rearms the timestamp timer for
-128 ms when the device remains present.
+128 ms when the device remains present. No EP1 read-rearm call was found in
+this wake path. Original `commandReplyDispatch` handles NotResponding by
+aborting command IN and OUT and returning without rearming. A power-triggered
+EP1 retry would therefore be an invention unless further evidence establishes
+it. Current host sleep/wake lifecycle equivalence remains a hardware check.
 
 `updateWallTimePerUSBCycle` at `0xb880` samples the USB frame number before
 and after the uptime read until they agree. It computes the interval in
@@ -433,39 +443,135 @@ AddressSanitizer and UndefinedBehaviorSanitizer without USB or legacy execution.
   is documented but not implemented in this core. No original binary was
   executed or installed.
 
-## Fresh native ISO implementation
+## Faithful native ring and timing port (0.2.0, build 5)
 
-`Driver/NativeAudioISO.h/.c` is a new IOUSBLib300 adapter for the verified
-stereo/mode-2 topology. All IOKit calls belong to the NativeUSB session worker.
-It allocates both data buffers and frame-list buffers with
-`LowLatencyCreateBuffer`, as required by the current Apple SDK, posts 64 input
-requests, follows input counts for 128 available output slots, and preserves
-the NI requeue-before-output ordering and priming transition. Startup command
-9 requires acknowledgement, with the NI stop sentinel before queueing and
-the recovered 48000/24-bit/capacity-136 payload afterward. Retry delays pump
-the owning CFRunLoop so queued audio callbacks remain serviceable.
+`Driver/AudioRing.h/.c` implements NI's sample-position-addressed mode-2/G1
+output ring. `prepareMemory` (`0x59d0`, especially `0x5a5b..0x5a6b`) stores
+the descriptor at `+0xb928` and its CPU mapping at `+0xb930`. `queueOutIrp`
+references ranges of that descriptor; `clipOutputSamples` writes through the
+same mapping. This identity is the key dataflow preserved by the port.
 
-The HAL-facing Float32 stereo queues use lock-free atomic indices and bounded
-single-producer/single-consumer storage. Contending HAL calls return zero
-instead of blocking. Output starvation inserts silence at actual device
-cadence; the enqueue API still returns only frames actually accepted.
-Capture returns only decoded frames that have arrived. The clock publishes
-completed output sample counts with USB frame-list timestamps, falling back
-to the callback's actual host tick when the timestamp is absent; it does not
-advance an audio counter from elapsed host time alone. That callback fallback
-has additional scheduling jitter and still needs hardware timing validation.
+For frame `f`, wire lanes `{0,1,3,4,5,7}` receive packed bytes
+`(6*f-2+k) mod 98304`, `k=0..5`. The wire ring is 131072 bytes / 16384 frames;
+its check lanes 2 and 6 are untouched by clip. The original host framework
+splits a wrapped block into tail conversion/clip followed by head
+conversion/clip. Converting the entire wrapped block before clipping can
+change the two-byte carry, so that order is tested explicitly. Priming marks
+written state without copying PCM. NI's inactive clear is also literal: zero
+wire lanes 0..5, leave lanes 6/7 and the packed ring untouched. The surprising
+check-lane footprint is retained rather than corrected.
 
-Stop aborts both pipes and retains every buffer/context until all callbacks
-drain. `release_usb` frees low-latency buffers before interface close while
-retaining the CPU queues/object for late HAL calls; a retained COM reference
-protects the interface object through final destruction. Pending callbacks
-prevent release. Corrupt input, partial output, invalid status or a failed
-ISO submission stops the stream and exposes an error to its owner.
+`NativeAudioISO` passes the same mapped output ring to every queued OUT
+request, with each microframe's recovered offset and wrap option. It keeps all
+eight transactions, including trailing or entirely empty requests. Initial IN submission errors remain diagnostic and do not invent an early
+startup return; the owner still requires an actual valid clock before exposing
+started audio. An empty
+request retains its slot until completion and reports its saved start
+position. Failed OUT submissions retain their reserved slot as NI does.
+Input slots keep separate 4096-byte backing ranges and eight fixed 512-byte
+microframe offsets. The original T+101..164 priming reads and paired T+165
+requeue/OUT calendar are unchanged. The 64 ms queue horizon is not measured
+audio latency: host writes future sample positions in already queued storage.
 
-`Driver/Tests/NativeAudioISOTests.c` uses a fake IOUSBLib vtable, rather than a
-USB device, to verify startup command bytes, all 64 scheduled reads, priming
-silence, real sample conversion, capture queues, completion clocks, failed
-ACK/submission, corrupt input, abort/drain, detach and final COM ownership.
-Strict ARM64 C11 warnings plus AddressSanitizer/UndefinedBehaviorSanitizer
-pass. These checks establish software behavior; they do not establish audible
-hardware output or stable device timing.
+The HAL places output using `mOutputTime.mSampleTime` and captures using
+`mInputTime.mSampleTime`, modulo the 16384-frame ring, including negative
+initial sample times. Capture invokes primary processing before conversion,
+then reads those exact sample positions repeatedly without consuming a FIFO.
+NI submits input lists with updateFrequency zero, publishing the complete
+eight-microframe IRP at primary completion. The modern provider exposes
+per-transaction primary status, so the engine waits for all eight entries
+before decoding the batch. This preserves the complete actual-byte denominator
+used by NI timestamps even when the asynchronous callback is delayed.
+
+A bounded ownership flag serializes decoder state against list reset on the
+modern worker/host threads. Atomic 64-bit stereo snapshots preserve coherent
+packed-frame reads, including the currently partial frame. The capture path
+allocates nothing, takes no mutex, makes no USB call and never drops a backlog
+to make a FIFO appear current. The wire output uses a separate bounded render
+ownership flag. These synchronization mechanisms are current thread/ARM
+bindings, not new audio queue policies.
+
+### Original-to-ARM binding account
+
+| Original NI behavior | ARM/current-macOS binding | Evidence or remaining limit |
+| --- | --- | --- |
+| `prepareMemory` / `queueOutIrp`: same wired output backing, split ring ranges | IOUSBHost optimized mapped buffer, transaction offsets and `Wrap` | SDK documents no bouncing; CPU identity/wrap/lifetime tested; physical DMA timing pending. |
+| `clipOutputSamples`: write host `firstSampleFrame` into ring | `mOutputTime` addressed `AudioRing` write, same queued backing | Exact mode-2 lane/carry/wrap/priming vectors and deferred-pointer tests. |
+| `convertInputSamples` / `readFrameList`: primary polling then positioned conversion | `mInputTime` ring reads, complete-IRP primary gate, bounded decoder ownership and atomic stereo views | Primary storage publication documented; delayed-callback and partial-batch tests. |
+| `writeHandler` / `getCurrentSampleFrame`: completed OUT start position | Saved start position plus USB-frame time | Position and integer timestamp vectors; no completion-receipt clock fallback. |
+| `takeSimpleTimeStamp` / timestamp timer | Exact input boundary fraction; USB/host anchors refreshed at 128 ms | Initial and variable-length ring-wrap vectors; hardware drift pending. |
+| IOAudioEngine pause/resume panic | AudioServerPlugIn configuration handshake, preserving EP1/USB generation | SDK stop/Perform/restart ordering and mocked lifecycle; actual host recovery pending. |
+| Last-output-client inactive clear | Output `StreamIsActive`; original literal wire clear | Clear bytes tested; host last-client transition equivalence pending. |
+| Kernel controller-only `ClearPipeStall(false)` | Public IOUSBHost both-end clear with interrupted-read retirement gate | Unavoidable API difference; no failed-command replay; error matrix tested. |
+| Sleep/wake wire clear and clock reset | Host audio lifecycle expected to stop/restart engine | Physical verification required, especially if host keeps I/O active; no invented EP1 wake retry. |
+
+### Exact positions and zero timestamps
+
+`writeHandler` publishes the completed OUT request's **start** ring position,
+not its end position or an elapsed-host-time sample counter. The port retains
+that position and the corresponding USB-frame anchor. The HAL's zero timestamp
+uses the input ring-boundary event directly; it is not back-extrapolated from
+a nominal 48 kHz completion timestamp.
+
+At the first post-priming data, `readFrameList` calls `takeSimpleTimeStamp`
+with byte offset zero before payload consumption. With first post-priming
+input saved at T+165, NI's extra frame gives zero time T+166. Mode2 then
+records each packed-ring wrap immediately after its check byte, before the
+next payload byte; bytewise processing therefore uses consumed offset `b+1`.
+`takeSimpleTimeStamp` sums **all eight actual byte counts**, including their
+prefix before the event. A variable-size example with counts
+`40,40,40,40,48,48,48,48` totals 352 bytes. A wrap at consumed offset 125 in
+USB frame 1506 gives zero time **1507 ms + 125/352 ms**, sample frame 16384.
+Using nominal 16384/48000 to infer that time is incorrect.
+
+The worker refreshes actual USB-frame/host-time anchors every 128 ms with NI's
+bounded 1.1 ms boundary probe and `(new + old*1023 + 512) >> 10` smoothing.
+RT capture records exact boundary coordinates without USB/time-anchor work.
+Backwards timestamps are rejected. The public clock becomes valid only after
+both real output progress and an input zero event. Original format metadata
+uses `f=floor(rate/8000)+11`: input latency `4*f`, output latency `8*f`, sample
+offset `8*f`, hence **68/136/136 frames at 48 kHz**. The ring period 16384 is a
+clock boundary, not an audio batch size. The current HAL maps NI's sampleOffset
+136 to `kAudioDevicePropertySafetyOffset` in both input and output scopes.
+That is a host metadata binding, not the old IOAudioEngine ABI; actual host
+write-ahead and latency behavior still require validation.
+
+### Recovery and unavoidable platform substitutions
+
+The original kernel IOAudioEngine/IOUSBPipe ABI cannot run inside an ARM user
+process. Its pause/resume behavior maps to the current AudioServerPlugIn host
+configuration handshake: `RequestDeviceConfigurationChange` causes the host
+to stop I/O before `PerformDeviceConfigurationChange` and restart afterward
+(the SDK documents this ordering). The notification is dispatched off the USB
+worker, coalesced and checked against the current connection. Recoverable
+audio panic preserves EP1, report history, controller baselines, assignments,
+calibration and USB generation. It aborts/drains only audio work. A successful
+restart changes the audio clock seed. Actual device termination still uses the
+whole-device lifecycle.
+
+Original panic delays and IN/OUT error distinctions above are retained.
+A failed transfer remains diagnostic even if no immediate panic is specified.
+The host's output `StreamIsActive` state is mapped to NI's inactive-output
+clear. Its equivalence to NI's last-output-client transition while input
+continues must still be checked against the actual host. Likewise, actual
+sleep/wake must verify that host StopIO/StartIO restores the original wire
+clear, clock-anchor reset and timer behavior. No speculative EP1 wake retry
+was added.
+
+Stop prevents new audio submission, aborts audio pipes and retains mappings,
+transaction lists, callback contexts and interface ownership until callbacks
+and RT readers drain. Modern completion blocks are marshalled to the owning
+worker; they retain a cached run loop across publication so early retirement
+cannot cause a use-after-free. Pending storage is not freed just because a
+caller timed out. The public IOUSBHost clear-stall operation resets both ends,
+whereas NI recovery sometimes used controller-only clearing; see
+`NativeUSB.md` for that explicit necessary substitution.
+
+Tests cover the production ISO/Host/HAL seams with advancing USB time, deferred
+callbacks, future sample writes into queued memory, wrap, full-IRP primary
+publication, exact zero-event fractions, empty requests, original retries and
+panic delays, teardown and early completion retirement under ASan/UBSan.
+These establish software invariants. Actual controller DMA visibility, clean
+sustained guitar audio, latency and recovery are still installation/hardware
+acceptance work. The installed build 4 failed those checks; no 0.2.0 hardware
+pass is claimed.

@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdint.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../NativeUSB.h"
@@ -21,10 +22,32 @@ static AudioServerPlugInHostRef host;
 static rk3_usb_session *usb;
 static _Atomic uint32_t references=1;
 static _Atomic uint32_t running;
+static atomic_bool input_active=true,output_active=true;
 static pthread_mutex_t control=PTHREAD_MUTEX_INITIALIZER;
 static uint32_t clients[CLIENT_LIMIT];
 static bool client_active[CLIENT_LIMIT];
 static dispatch_source_t monitor;
+static dispatch_queue_t device_control_queue;
+static atomic_bool configuration_pending;
+static atomic_int last_configuration_error;
+#define RK3_AUDIO_RESTART_ACTION UINT64_C(0x726b33617564696f)
+/* NI panic pauses/resumes its host engine. The current host's configuration
+ * handshake is the documented equivalent: it stops IO before Perform and
+ * restarts outstanding IO afterward (AudioServerPlugIn.h71-77). */
+static void audio_panic_handler(void *context,uint64_t generation,int32_t error) {
+    (void)context;(void)error;
+    if(!device_control_queue||atomic_exchange(&configuration_pending,true))return;
+    dispatch_async(device_control_queue,^{
+        RK3NativeInfo current={0};
+        if(!usb||!host||!rk3_usb_info(usb,&current)||current.generation!=generation||
+           !(current.flags&RK3_NATIVE_CONNECTED)) {
+            atomic_store(&configuration_pending,false);return;
+        }
+        OSStatus result=host->RequestDeviceConfigurationChange(host,DEVICE,RK3_AUDIO_RESTART_ACTION,NULL);
+        atomic_store(&last_configuration_error,result);
+        if(result)atomic_store(&configuration_pending,false);
+    });
+}
 static mach_timebase_info_data_t timebase;
 static _Atomic uint64_t last_frame, last_time, last_seed;
 static _Atomic uint32_t clock_revision;
@@ -90,20 +113,26 @@ static OSStatus initialize(AudioServerPlugInDriverRef value, AudioServerPlugInHo
         if(!usb) { pthread_mutex_unlock(&control); return kAudioHardwareUnspecifiedError; }
         host=owner; (void)mach_timebase_info(&timebase);
         dispatch_queue_t queue=dispatch_queue_create("org.rigkontrol3.ni-arm.properties",DISPATCH_QUEUE_SERIAL);
+        device_control_queue=queue;
+        if(!rk3_usb_set_audio_panic_handler(usb,audio_panic_handler,NULL)) {
+            rk3_usb_close(usb);usb=NULL;host=NULL;device_control_queue=NULL;
+            dispatch_release(queue);pthread_mutex_unlock(&control);return kAudioHardwareUnspecifiedError;
+        }
         monitor=dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER,0,0,queue);
         if(monitor) {
             dispatch_source_set_timer(monitor,dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),NSEC_PER_SEC/2,NSEC_PER_SEC/20);
             dispatch_source_set_event_handler(monitor,^{
-                static uint32_t flags; static uint64_t generation;
+                static uint32_t flags;static uint64_t generation;static int32_t last_error;
                 RK3NativeInfo current=info();
-                if(flags!=current.flags||generation!=current.generation) {
-                    flags=current.flags; generation=current.generation;
-                    notify(kAudioDevicePropertyDeviceIsAlive); notify(kAudioDevicePropertyDeviceIsRunning); notify(RK3_PROPERTY_INFO);
-                }
+                bool transport_changed=flags!=current.flags||generation!=current.generation;
+                if(transport_changed){notify(kAudioDevicePropertyDeviceIsAlive);notify(kAudioDevicePropertyDeviceIsRunning);}
+                if(transport_changed||last_error!=current.last_error)notify(RK3_PROPERTY_INFO);
+                flags=current.flags;generation=current.generation;last_error=current.last_error;
             });
             dispatch_resume(monitor);
         }
-        dispatch_release(queue);
+        /* The process-lifetime singleton owns this queue even if no monitor
+         * source could be created; asynchronous panic work must retain it. */
     }
     pthread_mutex_unlock(&control); return 0;
 }
@@ -115,7 +144,20 @@ static OSStatus client(AudioServerPlugInDriverRef v,AudioObjectID o,const AudioS
     (void)c;return valid(v)&&o==DEVICE?0:kAudioHardwareBadObjectError;
 }
 static OSStatus configuration(AudioServerPlugInDriverRef v,AudioObjectID o,UInt64 action,void *data) {
-    (void)action;(void)data;return valid(v)&&o==DEVICE?0:kAudioHardwareBadObjectError;
+    (void)data;
+    if(!valid(v)||o!=DEVICE)return kAudioHardwareBadObjectError;
+    if(action!=RK3_AUDIO_RESTART_ACTION)return kAudioHardwareUnsupportedOperationError;
+    if(atomic_load(&running))return kAudioHardwareIllegalOperationError;
+    /* Host StopIO has drained only the audio engine. A subsequent Host StartIO
+     * resets the NI rings/clock while the controller's USB lease remains valid. */
+    atomic_store(&configuration_pending,false);return 0;
+}
+static OSStatus abort_configuration(AudioServerPlugInDriverRef v,AudioObjectID o,UInt64 action,void *data) {
+    (void)data;
+    if(!valid(v)||o!=DEVICE)return kAudioHardwareBadObjectError;
+    if(action!=RK3_AUDIO_RESTART_ACTION)return kAudioHardwareUnsupportedOperationError;
+    atomic_store(&last_configuration_error,kAudioHardwareUnspecifiedError);
+    atomic_store(&configuration_pending,false);return 0;
 }
 static bool has(AudioObjectID o, const AudioObjectPropertyAddress *a) {
     if(!a||!object(o)||a->mElement!=kAudioObjectPropertyElementMain) return false;
@@ -236,7 +278,7 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
             if(o==DEVICE)number=a->mScope==kAudioObjectPropertyScopeInput?
                 RK3_AUDIO_INPUT_LATENCY_FRAMES:RK3_AUDIO_OUTPUT_LATENCY_FRAMES;
             break;
-        case kAudioDevicePropertySafetyOffset:number=128;break;
+        case kAudioDevicePropertySafetyOffset:number=RK3_AUDIO_SAMPLE_OFFSET_FRAMES;break;
         case kAudioDevicePropertyZeroTimeStampPeriod:number=PERIOD;break;
         case kAudioDevicePropertyClockAlgorithm:number=kAudioDeviceClockAlgorithmRaw;break;
         case kAudioDevicePropertyClockIsStable:number=0;break;
@@ -244,7 +286,8 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         case kAudioDevicePropertyNominalSampleRate:{Float64 rate=RATE;memcpy(out,&rate,sizeof(rate));return 0;}
         case kAudioDevicePropertyAvailableNominalSampleRates:{AudioValueRange range={RATE,RATE};memcpy(out,&range,sizeof(range));return 0;}
         case kAudioDevicePropertyStreamConfiguration:{AudioBufferList list={1,{{2,0,NULL}}};memcpy(out,&list,sizeof(list));return 0;}
-        case kAudioStreamPropertyIsActive:case kAudioStreamPropertyStartingChannel:number=1;break;
+        case kAudioStreamPropertyIsActive:number=atomic_load(o==INPUT?&input_active:&output_active);break;
+        case kAudioStreamPropertyStartingChannel:number=1;break;
         case kAudioStreamPropertyDirection:number=o==INPUT;break;
         case kAudioStreamPropertyTerminalType:number=kAudioStreamTerminalTypeLine;break;
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:{AudioStreamBasicDescription f=format();memcpy(out,&f,sizeof(f));return 0;}
@@ -291,7 +334,13 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         return usb&&rk3_usb_command_for_generation(usb,command->bytes,command->length,lease->generation,500)?0:kAudioHardwareUnspecifiedError;
     }
     if(a->mSelector==kAudioDevicePropertyNominalSampleRate)return *(const Float64 *)data==RATE?0:kAudioHardwareUnsupportedOperationError;
-    if(a->mSelector==kAudioStreamPropertyIsActive)return *(const UInt32 *)data==1?0:kAudioHardwareUnsupportedOperationError;
+    if(a->mSelector==kAudioStreamPropertyIsActive) {
+        UInt32 active=0;memcpy(&active,data,sizeof(active));if(active>1)return kAudioHardwareIllegalOperationError;
+        atomic_store(o==INPUT?&input_active:&output_active,active!=0);
+        if(o==OUTPUT&&usb)rk3_usb_set_output_active(usb,active!=0);
+        AudioObjectPropertyAddress changed={kAudioStreamPropertyIsActive,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
+        if(host)(void)host->PropertiesChanged(host,o,1,&changed);return 0;
+    }
     AudioStreamBasicDescription expected=format();
     const AudioStreamBasicDescription *requested=data;
     return requested->mSampleRate==expected.mSampleRate&&requested->mFormatID==expected.mFormatID&&
@@ -320,8 +369,9 @@ static OSStatus timestamp(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c,
     (void)c;if(!valid(v)||o!=DEVICE||!sample||!time||!seed)return kAudioHardwareBadObjectError;
     rk3_usb_clock_snapshot clock;
     if(!usb||!rk3_usb_clock(usb,&clock)||!clock.host_time)return kAudioHardwareNotRunningError;
-    if(!clock.seed||!timebase.numer||!timebase.denom)return kAudioHardwareNotRunningError;
-    uint64_t frame=(clock.sample_frame/PERIOD)*PERIOD;
+    if(!clock.seed||!clock.zero_host_time)return kAudioHardwareNotRunningError;
+    uint64_t frame=clock.zero_sample_frame;
+    if(frame%PERIOD)return kAudioHardwareIllegalOperationError;
     uint32_t revision=atomic_load_explicit(&clock_revision,memory_order_acquire);
     if(!(revision&1)) {
         uint64_t old_seed=atomic_load_explicit(&last_seed,memory_order_relaxed);
@@ -329,9 +379,9 @@ static OSStatus timestamp(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c,
         if(clock.seed>old_seed||(clock.seed==old_seed&&frame>old_frame)) {
             uint32_t expected=revision;
             if(atomic_compare_exchange_strong_explicit(&clock_revision,&expected,revision+1,memory_order_acquire,memory_order_relaxed)) {
-                long double delta=(long double)(clock.sample_frame-frame)*1000000000.0L*timebase.denom/(RATE*(long double)timebase.numer);
-                uint64_t ticks=(uint64_t)delta;
-                atomic_store_explicit(&last_time,clock.host_time>ticks?clock.host_time-ticks:1,memory_order_relaxed);
+                /* NI timestamps its input ring boundary at the exact USB
+                 * byte fraction. Do not infer it from a nominal sample rate. */
+                atomic_store_explicit(&last_time,clock.zero_host_time,memory_order_relaxed);
                 atomic_store_explicit(&last_frame,frame,memory_order_relaxed);
                 atomic_store_explicit(&last_seed,clock.seed,memory_order_relaxed);
                 atomic_store_explicit(&clock_revision,revision+2,memory_order_release);
@@ -359,20 +409,28 @@ static OSStatus edge(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c,UInt3
     (void)c;(void)operation;(void)frames;(void)cycle;return valid(v)&&o==DEVICE?0:kAudioHardwareBadObjectError;
 }
 static OSStatus io(AudioServerPlugInDriverRef v,AudioObjectID o,AudioObjectID stream,UInt32 c,UInt32 operation,UInt32 frames,const AudioServerPlugInIOCycleInfo *cycle,void *main_buffer,void *secondary) {
-    (void)c;(void)cycle;(void)secondary;
+    (void)c;(void)secondary;
     if(!valid(v)||o!=DEVICE||(stream!=INPUT&&stream!=OUTPUT))return kAudioHardwareBadObjectError;
-    if(!usb||!main_buffer||frames>PERIOD)return kAudioHardwareIllegalOperationError;
+    if(!usb||!main_buffer||frames>PERIOD||!cycle)return kAudioHardwareIllegalOperationError;
+    const AudioTimeStamp *stamp=operation==kAudioServerPlugInIOOperationReadInput?&cycle->mInputTime:&cycle->mOutputTime;
+    if(!(stamp->mFlags&kAudioTimeStampSampleTimeValid)||!isfinite(stamp->mSampleTime)||
+       stamp->mSampleTime< -0x1p63||stamp->mSampleTime>=0x1p63)return kAudioHardwareIllegalOperationError;
+    /* The old host supplied a ring firstSampleFrame. Preserve that position,
+     * including initial negative input times, using unsigned modulo16384. */
+    uint64_t first=(uint64_t)(int64_t)floor(stamp->mSampleTime);
     if(operation==kAudioServerPlugInIOOperationReadInput&&stream==INPUT){
-        size_t actual=rk3_usb_capture(usb,main_buffer,frames);
+        if(!atomic_load(&input_active)){memset(main_buffer,0,frames*2*sizeof(float));return 0;}
+        size_t actual=rk3_usb_capture_at(usb,main_buffer,first,frames);
         if(actual<frames)memset((float *)main_buffer+actual*2,0,(frames-actual)*2*sizeof(float));return 0;
     }
     if(operation==kAudioServerPlugInIOOperationWriteMix&&stream==OUTPUT){
-        return rk3_usb_render(usb,main_buffer,frames)==frames?0:kAudioHardwareUnspecifiedError;
+        if(!atomic_load(&output_active))return 0;
+        return rk3_usb_render_at(usb,main_buffer,first,frames)==frames?0:kAudioHardwareUnspecifiedError;
     }
     return kAudioHardwareUnsupportedOperationError;
 }
 static AudioServerPlugInDriverInterface table={NULL,query,retain,release,initialize,create,destroy,client,client,
-    configuration,configuration,has_property,is_settable,get_size,get,set,start,stop,timestamp,will,edge,io,edge};
+    configuration,abort_configuration,has_property,is_settable,get_size,get,set,start,stop,timestamp,will,edge,io,edge};
 __attribute__((visibility("default"))) void *RK3AudioFactory(CFAllocatorRef allocator,CFUUIDRef type) {
     (void)allocator;if(!type||!CFEqual(type,kAudioServerPlugInTypeUUID))return NULL;
     retain(driver);return driver;
