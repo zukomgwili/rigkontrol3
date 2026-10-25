@@ -51,6 +51,11 @@ void rk3_usb_close(rk3_usb_session *session);
 bool rk3_usb_close_wait(rk3_usb_session *session, uint32_t timeout_ms);
 bool rk3_usb_get_status(rk3_usb_session *session, rk3_usb_status *status);
 bool rk3_usb_info(rk3_usb_session *session, RK3NativeInfo *info);
+/* Non-RT USB-cohort snapshot; EINVAL/ENODEV/ESTALE leave out14 unchanged.
+ * Caller retains session ownership through the call; finish calls before close.
+ * No USB operation or audio-state requirement. Valid at the locked copy only. */
+int32_t rk3_usb_copy_spec(rk3_usb_session *session, uint64_t generation,
+                          uint8_t out14[RK3_INFO_BYTES]);
 bool rk3_usb_reports(rk3_usb_session *session, const RK3NativeReportQuery *query,
                      RK3NativeReports *reports);
 typedef struct {

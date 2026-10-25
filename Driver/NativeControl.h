@@ -11,6 +11,7 @@
 enum {
     RK3_CONTROL_VERSION = 1,
     RK3_PROPERTY_INPUT_GAIN = 0x6e676169, /* ngai; raw Float32 software input gain */
+    RK3_PROPERTY_SPEC = 0x6e737063,     /* nspc; cached raw14 specification */
     RK3_PROPERTY_INFO = 0x6e696e66,     /* ninf; get RK3NativeInfo */
     RK3_PROPERTY_REPORTS = 0x6e727074,  /* nrpt; get RK3NativeReports */
     RK3_PROPERTY_COMMAND = 0x6e636d64,  /* ncmd; set RK3NativeCommand */
@@ -35,6 +36,25 @@ _Static_assert(sizeof(RK3NativeGainQuery)==16,"Gain query ABI");
 _Static_assert(sizeof(RK3NativeGainValue)==24,"Gain value ABI");
 _Static_assert(offsetof(RK3NativeGainValue,generation)==8,"Gain generation ABI");
 _Static_assert(offsetof(RK3NativeGainValue,value_bits)==16,"Gain bits ABI");
+
+/* Native functional cache publication; status is errno, not NI IOReturn. */
+typedef struct { uint32_t version,reserved; uint64_t generation; } RK3NativeSpecQuery;
+typedef struct {
+    uint32_t version;
+    int32_t status;
+    uint64_t generation;
+    uint8_t raw[14],reserved[2];
+} RK3NativeSpec;
+_Static_assert(sizeof(RK3NativeSpecQuery)==16,"Spec query ABI");
+_Static_assert(offsetof(RK3NativeSpecQuery,version)==0,"Spec query version ABI");
+_Static_assert(offsetof(RK3NativeSpecQuery,reserved)==4,"Spec query reserved ABI");
+_Static_assert(offsetof(RK3NativeSpecQuery,generation)==8,"Spec query generation ABI");
+_Static_assert(sizeof(RK3NativeSpec)==32,"Spec reply ABI");
+_Static_assert(offsetof(RK3NativeSpec,version)==0,"Spec version ABI");
+_Static_assert(offsetof(RK3NativeSpec,status)==4,"Spec status ABI");
+_Static_assert(offsetof(RK3NativeSpec,generation)==8,"Spec generation ABI");
+_Static_assert(offsetof(RK3NativeSpec,raw)==16,"Spec raw ABI");
+_Static_assert(offsetof(RK3NativeSpec,reserved)==30,"Spec reserved ABI");
 
 typedef struct {
     uint32_t version;

@@ -1214,7 +1214,245 @@ static void gain_generation_borrow_test(void){
         pthread_cond_destroy(&borrow.condition);pthread_mutex_destroy(&borrow.mutex);gain_borrow=NULL;finish(&session);
     }
 }
+static const uint8_t spec_startup_info[] = {1,0x0d,0,6,0,3,9,0x29,2,2,0,0,1,1,2};
+static void spec_info(rk3_usb_session *session,const uint8_t payload[14]) {
+    session->read_buffer[0]=RK3_COMMAND_INFO;memcpy(session->read_buffer+1,payload,14);
+    session->pending=true;report_complete(session,0,15);
+}
+static void spec_attempt(rk3_usb_session *session) {
+    pthread_mutex_lock(&session->mutex);spec_begin_attempt_locked(session);pthread_mutex_unlock(&session->mutex);
+}
+static void spec_commit(rk3_usb_session *session) {
+    pthread_mutex_lock(&session->mutex);++session->generation;spec_commit_locked(session);pthread_mutex_unlock(&session->mutex);
+}
+static void spec_publication_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;
+    uint8_t out[14],unchanged[14];memset(out,0xa5,sizeof(out));memcpy(unchanged,out,sizeof(out));
+    spec_attempt(&session);spec_info(&session,spec_startup_info+1);
+    assert(rk3_usb_copy_spec(&session,9,out)==ENODEV&&!memcmp(out,unchanged,14));
+    spec_commit(&session);
+    assert(rk3_usb_copy_spec(&session,10,out)==0&&!memcmp(out,spec_startup_info+1,14));
+    finish(&session);
+}
+static void spec_refresh_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;
+    uint8_t out[14],unchanged[14];memset(out,0xa5,14);memcpy(unchanged,out,14);
+    assert(rk3_usb_copy_spec(NULL,9,out)==EINVAL&&!memcmp(out,unchanged,14));
+    assert(rk3_usb_copy_spec(&session,0,out)==EINVAL&&!memcmp(out,unchanged,14));
+    assert(rk3_usb_copy_spec(&session,9,NULL)==EINVAL);
+    spec_attempt(&session);spec_commit(&session); /* A commit does not require metadata. */
+    assert(rk3_usb_copy_spec(&session,10,out)==ENODEV&&!memcmp(out,unchanged,14));
+    unsigned reads=read_arms,writes=command_writes,starts=fake_start_calls,services=fake_service_calls;
+    spec_info(&session,spec_startup_info+1); /* Late first INFO promotes the same generation. */
+    assert(rk3_usb_copy_spec(&session,10,out)==0&&!memcmp(out,spec_startup_info+1,14));
+    const uint8_t refreshed[14]={1,2,3,4,5,6,7,8,9,10,11,12,13,14};
+    spec_info(&session,refreshed);
+    assert(rk3_usb_copy_spec(&session,10,out)==0&&!memcmp(out,refreshed,14));
+    memset(session.read_buffer+1,0xff,14);session.pending=true;report_complete(&session,0,14);
+    assert(rk3_usb_copy_spec(&session,10,out)==0&&!memcmp(out,refreshed,14));
+    memset(out,0xa5,14);
+    assert(rk3_usb_copy_spec(&session,9,out)==ESTALE&&!memcmp(out,unchanged,14));
+    const uint8_t zero[14]={0};spec_info(&session,zero); /* Refresh, never a startup bypass. */
+    assert(rk3_usb_copy_spec(&session,10,out)==0&&!memcmp(out,zero,14));
+    set_error(&session,EIO,"Diagnostic without USB retirement");
+    assert(rk3_usb_copy_spec(&session,10,out)==0&&!memcmp(out,zero,14));
+    assert(read_arms==reads&&command_writes==writes&&fake_start_calls==starts&&fake_service_calls==services);
+    spec_attempt(&session); /* Same old status.info and generation cannot certify a new attempt. */
+    memset(out,0xa5,14);
+    assert(rk3_usb_copy_spec(&session,9,out)==ENODEV&&!memcmp(out,unchanged,14));
+    spec_commit(&session);
+    assert(rk3_usb_copy_spec(&session,11,out)==ENODEV&&!memcmp(out,unchanged,14));
+    finish(&session);
+}
+static void spec_retirement_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;
+    uint8_t out[14],unchanged[14];memset(out,0xa5,14);memcpy(unchanged,out,14);
+    spec_attempt(&session);spec_info(&session,spec_startup_info+1);spec_commit(&session);
+    disconnect_device(&session);
+    assert(rk3_usb_copy_spec(&session,10,out)==ENODEV&&!memcmp(out,unchanged,14));
+    /* Revocation cannot be resurrected by a late connection-publication section. */
+    spec_commit(&session);
+    assert(rk3_usb_copy_spec(&session,11,out)==ENODEV&&!memcmp(out,unchanged,14));
+    session.stopping_io=false;session.command_suspended=true;
+    spec_attempt(&session);spec_info(&session,spec_startup_info+1);spec_commit(&session);
+    report_complete(&session,kIOReturnNoDevice,0);
+    assert(rk3_usb_copy_spec(&session,12,out)==ENODEV&&!memcmp(out,unchanged,14));
+    spec_info(&session,spec_startup_info+1);
+    assert(rk3_usb_copy_spec(&session,12,out)==ENODEV&&!memcmp(out,unchanged,14));
+    finish(&session);
+}
+static void spec_protocol_retirement_test(void) {
+    for (unsigned kind=0;kind<2;++kind) {
+        rk3_usb_session session;initialize(&session);session.command_suspended=true;
+        uint8_t out[14],unchanged[14];memset(out,0xa5,14);memcpy(unchanged,out,14);
+        spec_attempt(&session);spec_info(&session,spec_startup_info+1);spec_commit(&session);
+        if (kind==0) report_complete(&session,0,sizeof(session.read_buffer)+1);
+        else command_write_complete(&session,0,1);
+        assert(rk3_usb_copy_spec(&session,10,out)==ENODEV&&!memcmp(out,unchanged,14));
+        spec_info(&session,spec_startup_info+1);
+        assert(rk3_usb_copy_spec(&session,10,out)==ENODEV&&!memcmp(out,unchanged,14));
+        finish(&session);
+    }
+}
+typedef struct {
+    rk3_usb_session *session;
+    pthread_mutex_t mutex;pthread_cond_t condition;
+    CFRunLoopRef loop;CFRunLoopSourceRef source;
+    bool entered,done;
+} SpecDrain;
+static SpecDrain *spec_drain;
+static int32_t spec_abort_pending(void *interface,uint8_t pipe) {
+    (void)interface;assert(pipe==4);
+    pthread_mutex_lock(&spec_drain->mutex);spec_drain->entered=true;
+    pthread_cond_broadcast(&spec_drain->condition);pthread_mutex_unlock(&spec_drain->mutex);
+    return 0; /* Keep the old callback outstanding until explicitly delivered. */
+}
+static void spec_deliver_retiring_info(void *context) {
+    SpecDrain *drain=context;uint8_t out[14],unchanged[14];memset(out,0xa5,14);memcpy(unchanged,out,14);
+    spec_info(drain->session,spec_startup_info+1);
+    assert(rk3_usb_copy_spec(drain->session,10,out)==ENODEV&&!memcmp(out,unchanged,14));
+}
+static void *spec_disconnect_pending(void *context) {
+    SpecDrain *drain=context;CFRunLoopRef loop=CFRunLoopGetCurrent();
+    CFRunLoopSourceContext source_context={.info=drain,.perform=spec_deliver_retiring_info};
+    CFRunLoopSourceRef source=CFRunLoopSourceCreate(NULL,0,&source_context);assert(source);
+    CFRunLoopAddSource(loop,source,kCFRunLoopDefaultMode);
+    pthread_mutex_lock(&drain->mutex);drain->loop=loop;drain->source=source;pthread_mutex_unlock(&drain->mutex);
+    disconnect_device(drain->session);
+    /* This new publication cannot execute while the old callback retains its I/O. */
+    spec_attempt(drain->session);spec_commit(drain->session);
+    pthread_mutex_lock(&drain->mutex);drain->done=true;pthread_cond_broadcast(&drain->condition);pthread_mutex_unlock(&drain->mutex);
+    CFRunLoopRemoveSource(loop,source,kCFRunLoopDefaultMode);CFRelease(source);
+    return NULL;
+}
+static void spec_drain_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;
+    spec_attempt(&session);spec_info(&session,spec_startup_info+1);spec_commit(&session);
+    RK3HostInterface interface={.abort_pipe=spec_abort_pending};session.interface=&interface;
+    session.opened=session.pending=true;session.command_in=4;
+    SpecDrain drain={.session=&session};assert(!pthread_mutex_init(&drain.mutex,NULL));assert(!pthread_cond_init(&drain.condition,NULL));spec_drain=&drain;
+    pthread_t thread;assert(!pthread_create(&thread,NULL,spec_disconnect_pending,&drain));
+    pthread_mutex_lock(&drain.mutex);while(!drain.entered)pthread_cond_wait(&drain.condition,&drain.mutex);
+    assert(!drain.done);uint8_t out[14],unchanged[14];memset(out,0xa5,14);memcpy(unchanged,out,14);
+    assert(rk3_usb_copy_spec(&session,10,out)==ENODEV&&!memcmp(out,unchanged,14));
+    RK3NativeInfo info;assert(rk3_usb_info(&session,&info)&&info.generation==10);
+    CFRunLoopSourceSignal(drain.source);CFRunLoopWakeUp(drain.loop);pthread_mutex_unlock(&drain.mutex);
+    assert(!pthread_join(thread,NULL));
+    assert(rk3_usb_info(&session,&info)&&info.generation==11);
+    assert(rk3_usb_copy_spec(&session,11,out)==ENODEV&&!memcmp(out,unchanged,14));
+    session.stopping_io=false;session.command_suspended=true;
+    spec_info(&session,spec_startup_info+1);
+    assert(rk3_usb_copy_spec(&session,11,out)==0&&!memcmp(out,spec_startup_info+1,14));
+    pthread_cond_destroy(&drain.condition);pthread_mutex_destroy(&drain.mutex);spec_drain=NULL;finish(&session);
+}
+static void *spec_close_observer(void *context) {
+    rk3_usb_session *session=context;
+    /* This thread owns the existing worker reference throughout the getter. */
+    pthread_mutex_lock(&session->mutex);
+    while(!atomic_load(&session->closing))pthread_cond_wait(&session->wake,&session->mutex);
+    pthread_mutex_unlock(&session->mutex);
+    uint8_t out[14],unchanged[14];memset(out,0xa5,14);memcpy(unchanged,out,14);
+    assert(rk3_usb_copy_spec(session,10,out)==ENODEV&&!memcmp(out,unchanged,14));
+    spec_commit(session);spec_info(session,spec_startup_info+1);
+    assert(rk3_usb_copy_spec(session,11,out)==ENODEV&&!memcmp(out,unchanged,14));
+    pthread_mutex_lock(&session->mutex);session->status.state=RK3_USB_CLOSED;
+    pthread_cond_broadcast(&session->wake);pthread_mutex_unlock(&session->mutex);
+    release_session(session);return NULL;
+}
+static void spec_close_test(void) {
+    for(unsigned wait=0;wait<2;++wait) {
+        rk3_usb_session *session=calloc(1,sizeof(*session));assert(session);initialize(session);session->command_suspended=true;
+        spec_attempt(session);spec_info(session,spec_startup_info+1);spec_commit(session);
+        pthread_t thread;assert(!pthread_create(&thread,NULL,spec_close_observer,session));
+        if(wait)assert(rk3_usb_close_wait(session,1000));else rk3_usb_close(session);
+        /* The API relinquishes the caller reference. No call may use it now. */
+        assert(!pthread_join(thread,NULL));
+    }
+}
+static void spec_property_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;usb=&session;
+    RK3NativeSpecQuery query={1,0,10};RK3NativeSpec value;
+    spec_attempt(&session);spec_info(&session,spec_startup_info+1);spec_commit(&session);
+    unsigned reads=read_arms,writes=command_writes,starts=fake_start_calls,services=fake_service_calls;
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==0&&value.generation==10);
+    assert(!memcmp(value.raw,spec_startup_info+1,14)); /* No audio engine is required. */
+    const uint8_t raw[14]={1,2,3,4,5,6,7,8,9,10,11,12,13,14};spec_info(&session,raw);
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==0&&value.generation==10&&!memcmp(value.raw,raw,14));
+    query.generation=9;assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==ESTALE&&value.generation==0);
+    for(size_t i=0;i<sizeof(value.raw);++i)assert(value.raw[i]==0);
+    query.generation=10;
+    const uint8_t zero[14]={0};spec_info(&session,zero);
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==0&&value.generation==10&&!memcmp(value.raw,zero,14));
+    spec_info(&session,raw);
+    assert(read_arms==reads&&command_writes==writes&&fake_start_calls==starts&&fake_service_calls==services);
+    rk3_native_audio_iso audio={0};test_audio(&session,&audio);session.status.state=RK3_USB_READY;
+    fake_start_result=0;fake_clock_valid=true;
+    Request *request=enqueue_test_request(&session,REQUEST_START,NULL,0);process_one_request(&session,true);
+    assert(request->complete&&request->result==0);free_test_request(request);
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==0&&!memcmp(value.raw,raw,14));
+    fake_panic_pending=true;fake_panic_delay=0;fake_panic_error=kIOReturnIsoTooOld;audio_panic_tick(&session,100);
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==0&&!memcmp(value.raw,raw,14));
+    request=enqueue_test_request(&session,REQUEST_STOP,NULL,0);process_one_request(&session,true);
+    assert(request->complete&&request->result==0);free_test_request(request);
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==0&&!memcmp(value.raw,raw,14));
+    request=enqueue_test_request(&session,REQUEST_START,NULL,0);process_one_request(&session,true);
+    assert(request->complete&&request->result==0);free_test_request(request);
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==0&&!memcmp(value.raw,raw,14));
+    disconnect_device(&session);
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==ENODEV&&value.generation==0);
+    for(size_t i=0;i<sizeof(value.raw);++i)assert(value.raw[i]==0);
+    session.stopping_io=false;session.command_suspended=true;spec_attempt(&session);
+    const uint8_t next[14]={0x0e,0,6,0,3,9,0x29,2,2,0,0,1,1,2};
+    spec_info(&session,next);spec_commit(&session);
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==ESTALE&&value.generation==0);
+    for(size_t i=0;i<sizeof(value.raw);++i)assert(value.raw[i]==0);
+    query.generation=11;
+    assert(rk3_native_copy_spec(DEVICE,&query,&value)==0&&value.status==0&&value.generation==11&&!memcmp(value.raw,next,14));
+    usb=NULL;finish(&session);
+}
+typedef struct {pthread_mutex_t mutex;pthread_cond_t condition;unsigned arrived,turn;} SpecBarrier;
+static void spec_barrier(SpecBarrier *barrier) {
+    pthread_mutex_lock(&barrier->mutex);unsigned turn=barrier->turn;
+    if(++barrier->arrived==2){barrier->arrived=0;++barrier->turn;pthread_cond_broadcast(&barrier->condition);}
+    else while(turn==barrier->turn)pthread_cond_wait(&barrier->condition,&barrier->mutex);
+    pthread_mutex_unlock(&barrier->mutex);
+}
+typedef struct {
+    rk3_usb_session *session;SpecBarrier barrier;uint64_t generation;int32_t result;uint8_t raw[14];
+} SpecRace;
+static void *spec_concurrent_getter(void *context) {
+    SpecRace *race=context;
+    for(unsigned round=0;round<32;++round)for(unsigned operation=0;operation<3;++operation){
+        spec_barrier(&race->barrier);memset(race->raw,0xa5,14);
+        race->result=rk3_usb_copy_spec(race->session,race->generation,race->raw);
+        spec_barrier(&race->barrier);
+    }
+    return NULL;
+}
+static void spec_snapshot_race_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;
+    spec_attempt(&session);spec_info(&session,spec_startup_info+1);spec_commit(&session);
+    SpecRace race={.session=&session};assert(!pthread_mutex_init(&race.barrier.mutex,NULL));assert(!pthread_cond_init(&race.barrier.condition,NULL));
+    pthread_t thread;assert(!pthread_create(&thread,NULL,spec_concurrent_getter,&race));
+    uint8_t current[14];memcpy(current,spec_startup_info+1,14);
+    for(unsigned round=0;round<32;++round){
+        uint8_t refresh[14],next[14],unchanged[14];memset(refresh,0x20+(int)round,14);
+        memcpy(next,spec_startup_info+1,14);next[0]=(uint8_t)(0x60+round);memset(unchanged,0xa5,14);
+        race.generation=10+round;spec_barrier(&race.barrier);spec_info(&session,refresh);spec_barrier(&race.barrier);
+        assert(race.result==0&&(!memcmp(race.raw,current,14)||!memcmp(race.raw,refresh,14)));
+        spec_barrier(&race.barrier);spec_attempt(&session);spec_barrier(&race.barrier);
+        assert((race.result==0&&!memcmp(race.raw,refresh,14))||(race.result==ENODEV&&!memcmp(race.raw,unchanged,14)));
+        spec_info(&session,next);
+        spec_barrier(&race.barrier);spec_commit(&session);spec_barrier(&race.barrier);
+        assert((race.result==ENODEV||race.result==ESTALE)&&!memcmp(race.raw,unchanged,14));
+        memcpy(current,next,14);
+    }
+    assert(!pthread_join(thread,NULL));uint8_t out[14];
+    assert(rk3_usb_copy_spec(&session,42,out)==0&&!memcmp(out,current,14));
+    pthread_cond_destroy(&race.barrier.condition);pthread_mutex_destroy(&race.barrier.mutex);finish(&session);
+}
 int main(void) {
+    spec_publication_test();spec_refresh_test();spec_retirement_test();spec_protocol_retirement_test();spec_drain_test();spec_close_test();spec_property_test();spec_snapshot_race_test();
     gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
     puts("NativeUSB: NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
     return 0;

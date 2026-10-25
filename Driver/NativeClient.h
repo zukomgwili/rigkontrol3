@@ -5,6 +5,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <string.h>
 #include <limits.h>
+#include <errno.h>
 
 /* Public CoreAudio clients use CFData property-list objects. NativeControl's
  * fixed-width structs are the data INSIDE those objects, never raw RPC bytes.
@@ -25,6 +26,24 @@ static inline OSStatus rk3_native_copy_blob(AudioObjectID device, UInt32 selecto
     if(error==0)memcpy(output,CFDataGetBytePtr((CFDataRef)object),output_length);
     if(object)CFRelease(object);
     return error;
+}
+static inline OSStatus rk3_native_copy_spec(AudioObjectID device,
+    const RK3NativeSpecQuery *query,RK3NativeSpec *value) {
+    if(!query||!value||query->version!=RK3_CONTROL_VERSION||query->reserved||!query->generation)
+        return kAudioHardwareIllegalOperationError;
+    RK3NativeSpec current;
+    OSStatus error=rk3_native_copy_blob(device,RK3_PROPERTY_SPEC,query,sizeof(*query),&current,sizeof(current));
+    if(error)return error;
+    if(current.version!=RK3_CONTROL_VERSION||current.reserved[0]||current.reserved[1])
+        return kAudioHardwareIllegalOperationError;
+    if(current.status==0) {
+        if(current.generation!=query->generation)return kAudioHardwareIllegalOperationError;
+    } else {
+        if((current.status!=ENODEV&&current.status!=ESTALE)||current.generation)
+            return kAudioHardwareIllegalOperationError;
+        for(size_t i=0;i<sizeof(current.raw);++i)if(current.raw[i])return kAudioHardwareIllegalOperationError;
+    }
+    *value=current;return 0;
 }
 static inline OSStatus rk3_native_copy_input_gain(AudioObjectID device,
     const RK3NativeGainQuery *query,RK3NativeGainValue *value) {

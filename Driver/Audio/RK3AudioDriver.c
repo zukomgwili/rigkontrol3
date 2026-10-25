@@ -198,6 +198,7 @@ static bool has(AudioObjectID o, const AudioObjectPropertyAddress *a) {
             case kAudioDevicePropertyPreferredChannelsForStereo: case kAudioDevicePropertyZeroTimeStampPeriod:
             case kAudioDevicePropertyClockAlgorithm: case kAudioDevicePropertyClockIsStable:
             case kAudioDevicePropertyStreamConfiguration: case kAudioObjectPropertyCustomPropertyInfoList:return true;
+            case RK3_PROPERTY_SPEC:return a->mScope==kAudioObjectPropertyScopeGlobal;
             case RK3_PROPERTY_INPUT_GAIN:return a->mScope==kAudioObjectPropertyScopeGlobal;
             case RK3_PROPERTY_INFO: case RK3_PROPERTY_REPORTS: case RK3_PROPERTY_COMMAND: return true;
             default:return false;
@@ -246,8 +247,8 @@ static UInt32 size_for(AudioObjectID o,const AudioObjectPropertyAddress *a) {
         case kAudioDevicePropertyStreamConfiguration:return sizeof(AudioBufferList);
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:return sizeof(AudioStreamBasicDescription);
         case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:return sizeof(AudioStreamRangedDescription);
-        case kAudioObjectPropertyCustomPropertyInfoList:return 4*sizeof(AudioServerPlugInCustomPropertyInfo);
-        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:return sizeof(CFPropertyListRef);
+        case kAudioObjectPropertyCustomPropertyInfoList:return 5*sizeof(AudioServerPlugInCustomPropertyInfo);
+        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:case RK3_PROPERTY_SPEC:return sizeof(CFPropertyListRef);
         default:return sizeof(UInt32);
     }
 }
@@ -308,8 +309,20 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
                 {RK3_PROPERTY_INFO,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeNone},
                 {RK3_PROPERTY_REPORTS,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
                 {RK3_PROPERTY_COMMAND,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
-                {RK3_PROPERTY_INPUT_GAIN,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
+                {RK3_PROPERTY_INPUT_GAIN,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
+                {RK3_PROPERTY_SPEC,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
             memcpy(out,custom,sizeof(custom));return 0;}
+        case RK3_PROPERTY_SPEC:{
+            RK3NativeSpecQuery query;OSStatus error=read_cfdata(qs,q,&query,sizeof(query));if(error)return error;
+            if(query.version!=RK3_CONTROL_VERSION||query.reserved||!query.generation)return kAudioHardwareIllegalOperationError;
+            RK3NativeSpec value={.version=RK3_CONTROL_VERSION,.generation=query.generation};
+            pthread_mutex_lock(&control);
+            int32_t result=usb?rk3_usb_copy_spec(usb,query.generation,value.raw):ENODEV;
+            pthread_mutex_unlock(&control);
+            if(result!=0&&result!=ENODEV&&result!=ESTALE)return kAudioHardwareUnspecifiedError;
+            if(result){value.status=result;value.generation=0;memset(value.raw,0,sizeof(value.raw));}
+            return return_cfdata(&value,sizeof(value),out);
+        }
         case RK3_PROPERTY_INPUT_GAIN:{
             RK3NativeGainQuery query;OSStatus error=gain_query(qs,q,&query);if(error)return error;
             RK3NativeGainValue value={.version=RK3_CONTROL_VERSION,.channel=query.channel,.generation=query.generation};

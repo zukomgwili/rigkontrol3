@@ -131,6 +131,79 @@ new reader, increments connection generation after validation, and keeps
 the global sequence increasing. A new generation cannot replay old MIDI.
 History overrun is explicit in each returned batch.
 
+## Original specification snapshot: SPEC14
+
+The read-only **`nspc`** (`0x6e737063`) DEVICE/global/main custom property
+publishes the original NI S18 specification: exactly the 14 opaque bytes
+already accepted from command01, without its command byte. For RK3
+VID17cc/PID1940 there is no PID2305-only correction. A read sends no USB
+command, starts no owner and performs no audio, controller, calibration or
+LED operation. Existing `ninf`, `nrpt`, `ncmd` and `ngai` records are unchanged.
+This is a native functional API, not the original NI private IOKit ABI or a
+complete NI application-recognition implementation.
+
+The qualifier and returned value are owned CFData property-list objects;
+property-size discovery returns `sizeof(CFPropertyListRef)` without requiring
+a qualifier. Fixed-width scalar fields use the existing ARM host byte order.
+
+| Record / offset | Field |
+| --- | --- |
+| Query16 /0 | U32 version1 |
+| Query /4 | U32 reserved0 |
+| Query /8 | U64 nonzero expected generation |
+| Reply32 /0 | U32 version1 |
+| Reply /4 | I32 native errno status: 0, ENODEV or ESTALE |
+| Reply /8 | U64 generation |
+| Reply /16 | Original raw14 |
+| Reply /30 | Two reserved zero bytes |
+
+On status0, the reply contains the requested current committed generation and
+all14 original bytes. They are not decoded, swapped, filtered or normalized;
+a later accepted all-zero INFO refresh is valid data. ENODEV takes precedence
+when specification data is unavailable or the owner is closing. ESTALE means
+that an available cohort has a different generation. Both error envelopes have
+generation0 and zero raw/reserved bytes: these bytes are **invalid data**, not
+a successful zero specification. Native errno is distinct from CoreAudio
+OSStatus and original NI IOReturn values. A valid domain-error envelope returns
+CoreAudio noErr; clients must inspect the envelope status.
+
+Pending INFO belongs to the current physical connection attempt. It becomes
+available atomically with the existing generation commit; a commit without
+pending INFO remains unavailable without changing connection success. A later
+accepted INFO on that same committed attempt publishes or refreshes all14 at
+the same generation. Close, known physical transport loss and attempt retirement
+revoke publication before teardown/drain. INFO received during retirement
+cannot republish data. The existing mandatory callback drain still prevents an
+old interface's callbacks from crossing into a new attempt. Audio-only
+stop/start, panic/recovery and generic diagnostic state changes retain the
+physical cohort.
+
+`rk3_usb_copy_spec` checks and copies under the existing session mutex. It
+returns EINVAL for a NULL session/output or generation0 and writes the caller's
+14-byte buffer only on success. Callers must retain ownership of the session
+through the call. The new HAL getter alone uses the existing `control` gate to
+pin its selected session, then releases that gate before allocating CFData.
+The copy is a coherent cached snapshot, not an instantaneous physical-unplug
+probe or a promise that the connection remains live afterward.
+
+Malformed wrappers, types, sizes, version/reserved fields or generation0 are
+CoreAudio transport/validation errors. The HAL preserves its existing
+written-size convention while leaving the payload output unchanged on those
+errors. NativeClient validates a temporary reply's length, version, reserved
+bytes, recognized status, success generation and canonical failure shape before
+assigning the caller's result. Transport/shape failures leave that result
+unchanged; a validated ENODEV/ESTALE envelope may be returned as such.
+
+This slice is verified offline through the public owner getter and the actual
+NativeClient → HAL → NativeUSB path, including staging, same-generation
+promotion/refresh, retirement/drain, generation changes, read-only metadata,
+error/output guards and audio-only retention. The hardware-boundary fixtures
+also check that reads add zero USB/ISO/control operations. The reviewed plan is
+[`NIOwnerAdapterImplementationPlan.md`](NIOwnerAdapterImplementationPlan.md),
+and implementation/results are tracked in Beads `rigkontrol3-40h.24`. Passing
+these software checks does not establish installed-driver or NI application
+acceptance; those remain separate project work.
+
 ## Audio and lifetime
 
 Audio start requires NI parameter acknowledgement, real completed-output
