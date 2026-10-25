@@ -6,8 +6,8 @@ result. No provider, NI application, signing asset or security setting was
 changed by this research.
 
 **No supported driver-side alias satisfying NI's unchanged lookup was
-established.** The tested `IOUserClass` and registry-name mechanism fails that
-lookup. The inspected Apple source explains the distinction between names,
+established.** The tested `IOUserClass` and registry-name mechanism fails the modern
+class-query proxy. The inspected Apple source explains the distinction between names,
 reported classes and kernel class matching. This is a decision to keep the
 production binding unadmitted, not a proof that every DriverKit implementation
 or NI application is incompatible.
@@ -34,8 +34,11 @@ errors and a successful independent identity recheck:
 The result is preserved privately in
 `.build/ni/driverkit-discovery-evidence/20261025-eligible-probe-5a25a43/live-result.json`
 (SHA256 `fb8b8f0c1e5c69374c09589aff21ed892170b106584a806fd52fa0251167b549`).
-It proves service publication and this exact lookup failure; it tests no NI
-user-client selectors, device information, audio or application acceptance.
+It proves publication and the exact class-query failure through
+`IOServiceGetMatchingServices` in the modern ARM diagnostic. The original
+agent's matching-notification operation and actual Rosetta process were not
+executed. No NI user-client selectors, device information, audio or application
+acceptance were tested.
 
 Apple's public personality documentation distinguishes `IOClass` from
 `IOUserClass` and lists property and name matching as separate criteria. Naming

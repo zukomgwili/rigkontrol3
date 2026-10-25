@@ -413,9 +413,10 @@ from name matching. Both API error codes were zero. The evaluator rechecked the
 unique marked identity before retaining the negative verdict. Independent
 readback confirms the result.
 
-This rejects the tested naming mechanism for the exact legacy query. It does
-not reject all DriverKit implementations or establish actual NI application
-acceptance. The [bounded primary-source comparison](DriverKitClassMatching.md)
+This rejects the tested naming mechanism for the class query in the modern
+ARM diagnostic. The original agent uses matching notifications; its actual
+notification operation and Rosetta process were not exercised. This does not
+reject all DriverKit implementations or establish NI application acceptance. The [bounded primary-source comparison](DriverKitClassMatching.md)
 found no documented driver-side matching alias. Its examined server helper
 also supplies no automatic legacy compatibility flag. Published-source version
 limits and untested modern NI application behavior remain explicit. The name
@@ -451,3 +452,23 @@ no owned removal carrier remains. All evidence is saved under ignored
 `.build/ni/driverkit-discovery-evidence/20261025-eligible-probe-5a25a43` and detailed
 in Beads `.17`/`.2`. NI audio ring, timing, recovery and installed drivers remain
 unchanged.
+
+## Supporting-agent feasibility checkpoint
+
+The user-approved assessment in `rigkontrol3-40h.18` is complete and
+independently reviewed. The [feasibility report](NIHardwareAgentFeasibility.md)
+identifies a conditional adaptation path, not an implementation-ready agent.
+The exact Controller Editor1.7.4/R199 frontend and its matching agent were
+identified from the supplied installer without running either. Four original
+agent functions establish cap-local endpoint, message-wrapper and version-query
+facts; they do not establish the complete wire ABI or unchanged-app acceptance.
+Decompiler continuations beyond the selected assembly are explicitly excluded
+from the findings.
+
+The next source-only proof is captured in `rigkontrol3-40h.19`: four exact
+transport boundaries, with assembly-first framing, reply ownership and endpoint
+checks before code. Startup identity, full connection lifecycle, direct
+frontend driver access, signing, typed ARM builds and actual NI acceptance
+remain gates in `.2`/`.17`. Closing the bounded assessment does not select a
+production backend or complete the primary driver port. No NI driver or agent
+implementation was changed.
