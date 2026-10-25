@@ -121,6 +121,10 @@ or timing work. It must use the actual constraints above. It cannot silently
 continue the current HAL, start another backend, reduce security or select
 DriverKit merely because the original family is deprecated.
 
+The follow-up [.17 eligibility assessment](KernelBindingDecision.md) records
+current loading/signing requirements and local observations. It does not change
+this audit's original-functionality scope or establish a loadable kernel port.
+
 ## Change register
 
 “Contingent” below means justified only within a chosen interface; it is not

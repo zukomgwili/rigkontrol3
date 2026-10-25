@@ -106,6 +106,12 @@ candidate, pending current loading policy, signing and deployment constraints.
 Beads `.17` now gates one explicit binding decision before further coding or
 runtime experiments. No new implementation or installation occurred in the audit.
 
+The follow-up [.17 kernel-binding check](ReverseEngineering/KernelBindingDecision.md)
+records the public API, signing and loading requirements. Retained kernel audio
+is structurally plausible, but is not admitted under the current observed SIP,
+MDM and signing conditions. The user's security constraint remains unresolved;
+no coding, loading, toolchain or security change occurred in that check.
+
 ## Build and install
 
 ```sh
