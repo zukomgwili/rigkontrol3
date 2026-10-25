@@ -8,7 +8,7 @@ decision below incorporates the user's subsequent firm security constraint.
 **Reopened decision — original NI automatic recognition is required.** The
 user explicitly confirmed this on2026-10-25. The current AudioServerPlugIn /
 IOUSBHost / CoreMIDI baseline does not publish NI's IOKit service/UserClient ABI
-and cannot satisfy that requirement by itself. `.17` is blocked on the required compatibility/deployment gates; the earlier
+and cannot satisfy that requirement by itself. `.17` is now testing a bounded DriverKit feasibility probe; the earlier
 public-baseline decision below is historical and superseded for completion.
 SIP remains enabled. No new kernel/DriverKit provider, signing, installation,
 account enrollment or security action is admitted merely by reopening it.
@@ -255,7 +255,7 @@ capabilities. This does not reopen an unapproved compatibility-provider project.
 [Apple DriverKit entitlement process](https://developer.apple.com/documentation/driverkit/requesting-entitlements-for-driverkit-development),
 [Apple DTS user-client access clarification](https://developer.apple.com/forums/thread/774297).
 
-Current local preflight: macOS27.0.1/build26A434, arm64, SIP enabled; one valid
+Earlier local preflight, before DriverKit provisioning: macOS27.0.1/build26A434, arm64, SIP enabled; one valid
 Apple Development identity, no Developer ID identity found by the normal-user
 unsandboxed query; DEP and MDM enrollment both No. Five existing provisioning profiles decoded
 successfully using normal macOS trust services; none grants base DriverKit,
@@ -307,9 +307,46 @@ or the NI private interface. Its seven files were restored exactly to the
 reviewed main baseline; the original wire/selector evidence remains in Beads.
 Further HAL power/display extension implementation stopped before source edits.
 
-No remaining card is closed on these audits. `.17` and the parent are blocked:
-the actual NI service/user-client route, coherent build environment,
-signing/loading access and unmodified NI target-client acceptance remain
-unsatisfied. Native functionality is not an accepted substitute for those
+No remaining card is closed on these audits. That earlier assessment blocked
+`.17` and the parent. Subsequent DriverKit development preparation below has
+resumed them; no production backend or NI compatibility is admitted. Native functionality is not an accepted substitute for those
 gates, and unavailable credentials or security changes are not inferred as consent. All audio, control, settings, display, rate,
 power, physical DIN/pedal and stable-operation requirements remain in scope.
+
+## DriverKit development probe: subsequent progress
+
+The user confirmed active Apple Developer Program membership and permission to
+create development profiles. Normal Xcode provisioning succeeded after the
+current Mac was registered for development. Both the containing app and base
+DriverKit service now have matching Apple Development signatures and real
+profiles granting their required capabilities. Strict/deep verification and
+Apple-anchor checks pass. No kext certificate, MDM enrollment or SIP change
+was involved. This supersedes the earlier absence-of-DriverKit-profile snapshot;
+it does not resolve the separate retained-kernel deployment restrictions.
+
+The [software-only discovery probe](../Tools/DriverKitDiscoveryProbe/README.md)
+builds unsigned and development-signed. Its fixtures pass strict compilation
+and ASan/UBSan; independent source reviews cover service scope, bundle layout,
+identity matching and inconclusive results. Actual activation and OS class
+matching remain separate runtime evidence. No RK3, audio, MIDI or NI selector
+implementation is present in this probe.
+
+The original MIDI driver is being ported and may require a necessary lookup
+adaptation. The unchanged NI agent has its own matching constraint: bounded
+read-only exports of NIHardwareAgent1.7.4/R199
+(SHA256 `f0ae68ad29ed57163a8be022f3e60ca5a08fbf1ae47621129eb86e52fa134258`)
+show its RK3 filter initialized with type1, VID17cc, PID1940 and
+`de_caiaq_driver_NIUSBAudioDevice`. The initializer loads the exact RK3 global
+at `1002f7f84` and calls the filter constructor at `1002f7fa9`. That constructor
+stores the supplied class string at filter+0x20 (`1002f7559` through
+`1002f7575`); the factory reads that field and calls `IOServiceMatching` at
+`1002f5b0b`. No property or name-only alternative was found in that factory.
+The inspection covered seven functions and one50-instruction initializer
+window; full DeviceClass activation and current Guitar Rig recognition are
+still unproved. Private exports and exact hashes are retained in `.17`/`.2`.
+
+A probe miss therefore directly tests retaining this legacy class lookup for
+the original agent's declared RK3 filter. It does not establish that every
+DriverKit route or every NI application is impossible. A positive result
+likewise proves no user-client ABI or actual application acceptance. The user
+still requires actual original NI automatic recognition.
