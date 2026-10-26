@@ -5,14 +5,15 @@
 Beads `rigkontrol3-40h.27` records the audited plan before code, packaging or
 runtime changes. Its final plan SHA256 is
 `1736d5faa5310ff7b95f75d1f3edc64c0648167ca07c2149c10c037c5a06c8d9`.
-The signed candidate is prepared and independently reviewed; installation and
-this hardware check have not yet run. SIP remains enabled.
+The signed candidate is installed. Its exact installed files and the six
+planned one-shot hardware samples passed verification. SIP remains enabled;
+this result covers USB identity and generation handling only.
 
-Installed 0.2.3/build 8 matches its saved 12-file manifest
+Before installation, 0.2.3/build 8 matched its saved 12-file manifest
 `ed1813cf1f7ac5d13f9d1dd2b67117751fc6da0e2726888974c7d660cc37eeca`.
-Both signatures verify with ordinary access to macOS trust services. The
-protected historical backup session has not been independently opened by an
-unprivileged process.
+Both build-8 signatures verified with ordinary access to macOS trust services.
+Protected backup journals have not been independently opened by an
+unprivileged process; active installed files are verified separately.
 
 The candidate explicitly includes three reviewed, previously uninstalled
 changes: `.16` restores NI's postqueue priming and nonfatal startup behavior;
@@ -51,8 +52,8 @@ transport failure or crash stops this run. Do not repeat unplug cycles, tune
 recovery or start a scheduling soak from this result. SPEC14 may legitimately
 refresh within a generation; the identity capture does not.
 
-Signed bundles will be retained under the persistent immutable path
-`.build/native/candidates/build9-<exact-prebuild-source-SHA>/drivers`.
+Signed bundles are retained under the persistent immutable path
+`.build/native/candidates/build9-e16097a145960471b6dd37ebbb795f86c4e3ed02/drivers`.
 Installation uses the existing installer's explicit `--source` for that frozen
 tree after artifact review, with a verified build-8 copy retained for recovery.
 Administrator authentication remains user-owned. The install briefly restarts
@@ -65,8 +66,8 @@ MIDIServer restarts. `--restore --restart-services` is rejected by the current
 parser. A successful `--verify-session` alone does not prove candidate bytes
 are active, because it also accepts a restored session; active file hashes are
 checked separately. Legacy quarantine and existing user mappings/calibration
-are preserved. The exact artifact and live results will be recorded in Beads
-and appended here after those operations occur.
+are preserved. The exact artifact and executed live results are recorded below
+and in Beads.
 
 ### Frozen signed artifact
 
@@ -83,29 +84,76 @@ ARM64-only architectures, versions and exact source/artifact hashes passed
 independent static review. Both plist changes are version fields only. The
 readback fixture passed strict and sanitizer checks with 46 synthetic JSON
 snapshots each; review caught and fixed mixed successful/stale replies that
-conflicted with the observed generation. Only `--help` ran on the real client.
+conflicted with the observed generation. During packaging, only `--help` ran on
+the real client; the six live samples below ran after installation.
 Installer staging/rollback regressions passed without real service changes.
 
-Installed files and the mutable default `.build/native/drivers` still match
-build 8. Installation must use the frozen candidate's explicit `--source`
-directory. A byte-exact build-8 artifact copy is retained at
+The mutable default `.build/native/drivers` still matches build 8. Installation
+used the frozen candidate's explicit `--source` directory; all 12 active files
+now match build 9. A byte-exact build-8 artifact copy is retained at
 `.build/native/package-history/build8-ed1813cf-before-build9/`.
 Later documentation/result commits do not change the prebuild source label or
-rebuild this signed artifact. No hardware result is claimed by these checks.
+rebuild this signed artifact. These packaging checks alone make no hardware
+claim; the separately executed hardware result follows.
 
-### Installation handoff pending
+### Installation and hardware result
 
-The admitted read-only preflight found SIP enabled, macOS 27.0.1, one matching
-RK3 USB registry record and one existing native driver owner. This establishes
-preconditions, not a successful read of the new capture property. The filtered
-registry record and raw serial stay in ignored local evidence.
+The initial noninteractive installer stopped before execution because `sudo`
+required authentication. A subsequent pasted multiline command failed argument
+parsing; isolated argument-parser reproduction confirmed that leading spaces
+inside option tokens explain that error. The unchanged single-line command
+parsed correctly, and the user reported successful installation with SESSION:
 
-The exact noninteractive installer attempt stopped at `sudo: a password is
-required` before the installer ran. No new SESSION or service restart was
-created by the agent. The user has the explicit frozen `--source` Terminal
-command and must supply the installer's actual SESSION path after
-administrator authentication. Hardware validation remains unstarted; all
-prepared artifacts and rollback copies are retained unchanged.
+`/Library/Application Support/RigKontrol3/NativeDriverBackups/20261026T110147Z-3be14ddc`
+
+All 12 active bundle files match the frozen build-9 manifest. Both bundles are
+0.2.4/build 9, ARM64 only, with the expected identifiers; strict/deep signature,
+Apple anchor and exact existing leaf certificate/team checks passed. A second
+review independently verified the installed file set. The protected SESSION
+journal returned EACCES to the ordinary user and was not independently read;
+this limitation does not substitute for the separate active-file verification.
+
+The recorded preflight had SIP enabled, macOS 27.0.1 and one RK3 registry record.
+The postinstall owner was PID 196, UID 202, displayed as
+`Core Audio Driver (RigKontrol3Audio.driver)`. The first observer used a name
+without spaces and falsely matched zero processes; a read-only process-name
+check corrected that observer before any hardware readback. No driver absence
+or crash was inferred from that failed match.
+
+Exactly six one-shot readbacks ran, each capped at 15 seconds. The user performed
+one unplug/reconnect cycle with playback paused and switches released. Every
+sample retained the same owner PID and CoreAudio object 96; none timed out or
+retried.
+
+| Sample | Query generation | Current generation | Identity and SPEC14 result |
+| --- | --- | --- | --- |
+| Baseline | 1 | 1 | Available, native status 0 |
+| Repeat | 1 | 1 | Available; identical physical identity |
+| Unplugged | 1 | 1 | ENODEV 19, generation 0, invalid/null payloads |
+| Reconnected | 2 | 2 | Available; same identity under the newer generation |
+| Old generation | 1 | 2 | ESTALE 70, generation 0, invalid/null payloads |
+| Final | 2 | 2 | Available; same identity |
+
+The available samples report VID 17cc/PID 1940, all eight identity steps
+attempted and defined, and all eight raw step statuses zero. All five scalar
+and three representable ASCII string comparisons with the retained selected
+USB registry record match. The exact 31-byte string fields remain in ignored
+local evidence. SPEC14 is 14 bytes and available in both live generations;
+its value was not required to remain immutable within a generation. Generic
+status flags remained diagnostic context rather than an availability gate.
+
+The result manifest is
+`.build/native/identity-hardware-evidence/installed-build9/result-manifest.json`,
+SHA256 `458515b4df24d5c7ccc9f804a3a6441fa740cddfa0fb37f6443e1f7743c1c751`.
+It pins the installed verification, registry comparison and all six raw sample
+files. Raw serials and unique identity bytes remain ignored local data; only
+hashes and nonunique results are recorded here and in Beads.
+
+No driver source, timing, recovery, mappings, calibration or security settings
+changed during this validation. No audio stream, MIDI/control write, NI
+application or direct USB probe was started. This passes the bounded `.27`
+identity/generation check. Full original NI application recognition and the
+separate audio timing/reliability criteria remain open.
 
 ## Historical version-specific observations
 
