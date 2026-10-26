@@ -1,5 +1,78 @@
 # Fresh native hardware validation
 
+## Candidate 0.2.4 / build 9: USB identity validation
+
+Beads `rigkontrol3-40h.27` records the audited plan before code, packaging or
+runtime changes. Its final plan SHA256 is
+`1736d5faa5310ff7b95f75d1f3edc64c0648167ca07c2149c10c037c5a06c8d9`.
+Candidate preparation is in progress; installation and this hardware check
+have not yet run. SIP remains enabled.
+
+Installed 0.2.3/build 8 matches its saved 12-file manifest
+`ed1813cf1f7ac5d13f9d1dd2b67117751fc6da0e2726888974c7d660cc37eeca`.
+Both signatures verify with ordinary access to macOS trust services. The
+protected historical backup session has not been independently opened by an
+unprivileged process.
+
+The candidate explicitly includes three reviewed, previously uninstalled
+changes: `.16` restores NI's postqueue priming and nonfatal startup behavior;
+`.24` publishes SPEC14; `.26` captures and publishes physical USB identity.
+The driver C/Objective-C/header inputs remain the source tested by `.26` at
+`c4dc56ac676d4cff67404652c51e15918f5000c4`, with 14 strict and 14 sanitizer
+targets and separate Spec/Standards reviews passing. The only driver source
+changes in this packaging step are both plist versions to 0.2.4/build 9.
+The candidate changes behavior from installed build 8. It makes no claim to
+resolve `.11`, A7/A9, physical audio timing or full NI application recognition.
+
+`Tools/rk3-identity-readback.c` is a one-shot public CoreAudio/NativeClient
+reader, with an isolated CLI fixture. It discovers one native UID as a locator,
+reads `ninf` before and after one generation-qualified `nusb`/`nspc` pair, and
+reports exact bytes as hex. It performs no direct USB claim, bundle loading,
+audio start, MIDI/control write, polling or retry. Native flags are diagnostic
+context; they do not replace the cache's availability or become a new gate.
+Unissued or failed calls have invalid/null data and a separate call status;
+canonical native errors never become a physical zero identity.
+
+The bounded procedure uses one existing driver owner and at most six samples:
+
+1. Verify a coherent baseline generation G, then repeat once. Compare actual
+   physical fields with the selected USB registry record where representable;
+   registry labels do not substitute for the NI string reader. Keep raw serial
+   data in ignored local evidence and commit hashes/results only.
+2. With controls released and audio paused, unplug USB once. The old-generation
+   query should report canonical unavailable data where the device object
+   remains. Record unexpected object disappearance as a host-lifetime limit.
+3. Reconnect once, wait the planned interval, and read generation G2. Claim a
+   monotonic recovery only if the owner PID is unchanged and G2 is greater than
+   G. Check an old G query is stale, then verify the current G2 again.
+
+An owner change, generation mismatch, unexpected partial physical metadata,
+transport failure or crash stops this run. Do not repeat unplug cycles, tune
+recovery or start a scheduling soak from this result. SPEC14 may legitimately
+refresh within a generation; the identity capture does not.
+
+Signed bundles will be retained under the persistent immutable path
+`.build/native/candidates/build9-<exact-prebuild-source-SHA>/drivers`.
+Installation uses the existing installer's explicit `--source` for that frozen
+tree after artifact review, with a verified build-8 copy retained for recovery.
+Administrator authentication remains user-owned. The install briefly restarts
+CoreAudio and the console user's MIDI server; no SIP, profile or trust setting
+changes are part of it.
+
+The installer records its new protected SESSION before moving active bundles.
+Rollback uses `--restore SESSION`, followed by separate CoreAudio and console
+MIDIServer restarts. `--restore --restart-services` is rejected by the current
+parser. A successful `--verify-session` alone does not prove candidate bytes
+are active, because it also accepts a restored session; active file hashes are
+checked separately. Legacy quarantine and existing user mappings/calibration
+are preserved. The exact artifact and live results will be recorded in Beads
+and appended here after those operations occur.
+
+## Historical version-specific observations
+
+The older candidate/installed states below are retained as historical records.
+They are not the current package or a new acceptance result.
+
 The source candidate0.2.2/build7 restores clock maintenance and software input
 gain after the recorded contract checks. It has not replaced installed0.2.1/build6
 or received a new physical acceptance result. Historical passes/failures below
