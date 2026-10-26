@@ -1,5 +1,16 @@
 # Smallest owner-adapter implementation plan
 
+## Source-gate update after .28 planning
+
+The selected `.29` inbound StringUTF8 and owned-field replacement source proof
+is now recovered; see [the exact contract](NIStringUTF8Contract.md). The frozen
+`.28` plan below remains the admission record. Its old `.29` unexecuted status
+is historical and superseded by that result. No ARM binding code is admitted
+by source-proof completion: `.2` still needs its exact status/cohort/lifetime
+and typed implementation plan. Outgoing `wstrToUTF8`, runtime and full NI
+application recognition remain separate gates. No driver/runtime/security
+change occurred in this proof.
+
 ## Current .28 decision after hardware identity validation
 
 Authoritative Beads plan SHA256: `68ef4c736e99ee5f2c4c270eb5a5fec97432fa3fea960dbba8b7ab16be0ea284` (10,395 bytes).
