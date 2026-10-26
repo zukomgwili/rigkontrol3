@@ -13,11 +13,13 @@
 #include <signal.h>
 #include <spawn.h>
 #include <string>
+#include <stdexcept>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
 #include <utility>
 #include "../NIInformation.h"
+#include "../NISerialNumber.h"
 
 extern char **environ;
 
@@ -27,8 +29,8 @@ namespace fixture {
 void check(bool value, const char *message) {
     if (!value) { std::fprintf(stderr,"FAIL: %s\n",message); std::exit(1); }
 }
-enum class Phase { none, buffer, assignment, reserve, transfer };
-enum class Fault { none, create, length, maximum, array, assignment };
+enum class Phase { none, buffer, assignment, reserve, transfer, wide_construct, wide_copy };
+enum class Fault { none, create, length, maximum, array, assignment, wide_construct, wide_copy };
 enum class Child { none, null_next, release_throw, reserve_throw };
 struct BoundaryFailure {};
 struct Allocation {
@@ -36,6 +38,7 @@ struct Allocation {
     std::size_t bytes{};
     Phase phase{};
     bool array{}, deleted{};
+    unsigned deletion_order{};
 };
 Allocation allocations[64]{};
 unsigned allocation_count = 0, cpp_allocations = 0, array_attempts = 0, fault_hits = 0;
@@ -48,7 +51,12 @@ std::string *current_output = nullptr;
 CFStringRef source = nullptr;
 bool source_released = false;
 unsigned creates = 0, lengths = 0, maxima = 0, cstrings = 0, releases = 0, reserves = 0;
-unsigned parent_calls = 0;
+unsigned parent_calls = 0, utf16_parent_calls = 0, helper_cases = 0;
+unsigned byte_productions = 0, wide_copies = 0, deletion_ordinal = 0;
+bool utf16_call = false, expected_connected = false, oversized_helper = false;
+std::u16string *wide_output = nullptr;
+const void *byte_payload = nullptr, *wide_payload = nullptr;
+std::size_t byte_count = 0, wide_count = 0;
 unsigned release_throw_unwind_count = 99;
 CFIndex last_maximum = 0, last_capacity = 0;
 bool forced_maximum = false, false_after_valid_conversion = false;
@@ -65,6 +73,9 @@ void mark(char value) {
     order[order_count++] = value;
 }
 void *allocate(std::size_t size, bool array) {
+    // Guard-only helper cases allow bounded exception diagnostic storage, but
+    // must never reach a real huge allocation even under a changed native guard.
+    if (oversized_helper) check(size <= 4096,"oversized helper cannot allocate huge storage");
     if (armed) {
         ++cpp_allocations;
         if (array && phase == Phase::buffer) {
@@ -78,7 +89,9 @@ void *allocate(std::size_t size, bool array) {
         }
         if ((array && phase == Phase::buffer &&
              (size == std::numeric_limits<std::size_t>::max() || fault == Fault::array)) ||
-            (!array && phase == Phase::assignment && fault == Fault::assignment)) {
+            (!array && phase == Phase::assignment && fault == Fault::assignment) ||
+            (!array && phase == Phase::wide_construct && fault == Fault::wide_construct) ||
+            (!array && phase == Phase::wide_copy && fault == Fault::wide_copy)) {
             ++fault_hits;
             throw std::bad_alloc();
         }
@@ -87,7 +100,7 @@ void *allocate(std::size_t size, bool array) {
     if (!pointer) throw std::bad_alloc();
     if (armed && phase != Phase::none) {
         check(allocation_count < 64,"bounded allocation trace");
-        allocations[allocation_count++] = {pointer,size,phase,array,false};
+        allocations[allocation_count++] = {pointer,size,phase,array,false,0};
     }
     return pointer;
 }
@@ -99,6 +112,8 @@ void deallocate(void *pointer, bool array) noexcept {
             if (a.pointer == pointer && !a.deleted) {
                 check(a.array == array,"matching scalar/array allocation boundary");
                 a.deleted = true;
+                check(deletion_ordinal < 64,"bounded scalar deletion trace");
+                a.deletion_order = ++deletion_ordinal;
                 break;
             }
         }
@@ -136,10 +151,16 @@ void reset() {
     release_throw_unwind_count = 99;
     fault = Fault::none;
     child = Child::none;
+    byte_productions = wide_copies = deletion_ordinal = 0;
+    utf16_call = expected_connected = oversized_helper = false;
+    wide_output = nullptr;
+    byte_payload = wide_payload = nullptr;
+    byte_count = wide_count = 0;
 }
 CFStringRef make(CFAllocatorRef allocator, const UniChar *units, CFIndex count,
                  CFAllocatorRef deallocator) {
     ++creates; mark('C'); phase = Phase::none;
+    if (utf16_call) check(creates == 1,"UTF16 performs one real byte conversion");
     check(expected_cache && allocator == nullptr && deallocator == kCFAllocatorNull,
           "original CF allocators and cached input");
     check(static_cast<const void *>(units) == static_cast<const void *>(expected_cache->serial.data()) &&
@@ -213,6 +234,44 @@ void reserve_zero(std::string &value) {
     value.reserve(0);
     phase = Phase::transfer;
 }
+const Allocation *payload_record(const void *pointer) {
+    if (!pointer) return nullptr;
+    for (unsigned i = allocation_count; i > 0; --i)
+        if (allocations[i-1].pointer == pointer) return &allocations[i-1];
+    return nullptr;
+}
+bool produce_bytes(const rk3::ni::DeviceInformation *cache, bool connected, std::string &value) {
+    check(utf16_call && ++byte_productions == 1,"UTF16 forwards byte producer exactly once");
+    check(cache == expected_cache && connected == expected_connected && value.empty(),
+          "UTF16 forwards supplied snapshot into fresh real byte string");
+    current_output = &value;
+    old_output_data = value.data(); old_output_is_heap = false;
+    const bool result = rk3::ni::get_serial_number(cache,connected,value);
+    if (result) {
+        check(source_released && releases == 1,"producer ends CF borrowing before widening");
+        byte_payload = value.data(); byte_count = value.size();
+        phase = Phase::wide_construct;
+    }
+    return result;
+}
+void assign_utf16(std::u16string &output, const std::u16string &widened) {
+    check(utf16_call && ++wide_copies == 1,"UTF16 performs one counted output COPY");
+    check(&output == wide_output && source_released && releases == 1 &&
+          widened.size() == byte_count,"UTF16 COPY follows finished counted byte conversion");
+    wide_payload = widened.data(); wide_count = widened.size();
+    if (byte_count > std::string{}.capacity()) {
+        const Allocation *bytes = payload_record(byte_payload);
+        check(bytes && !bytes->array && !bytes->deleted,
+              "byte payload remains owned until wide COPY completes");
+    }
+    if (wide_count > std::u16string{}.capacity()) {
+        const Allocation *wide = payload_record(wide_payload);
+        check(wide && !wide->array && !wide->deleted,"completed wide payload is live at COPY");
+    }
+    phase = Phase::wide_copy;
+    output.assign(widened.data(),widened.size());
+}
+
 }
 void *operator new(std::size_t size) { return fixture::allocate(size,false); }
 void *operator new[](std::size_t size) { return fixture::allocate(size,true); }
@@ -227,7 +286,11 @@ void operator delete[](void *pointer,std::size_t) noexcept { fixture::deallocate
 #define CFStringGetCString fixture::cstring
 #define CFRelease fixture::release
 #define RK3_NI_SERIAL_RESERVE_ZERO fixture::reserve_zero
+#define RK3_NI_SERIAL_PRODUCE_BYTES fixture::produce_bytes
+#define RK3_NI_SERIAL_ASSIGN_UTF16 fixture::assign_utf16
 #include "../NISerialNumber.cpp"
+#undef RK3_NI_SERIAL_ASSIGN_UTF16
+#undef RK3_NI_SERIAL_PRODUCE_BYTES
 #undef RK3_NI_SERIAL_RESERVE_ZERO
 #undef CFRelease
 #undef CFStringGetCString
@@ -378,6 +441,211 @@ void transfer_ownership() {
         check(output == std::string(128,'Q'),"output remains valid after conversion/CF teardown");
     }
 }
+bool run_utf16(const rk3::ni::DeviceInformation *cache, bool connected, std::u16string &output) {
+    expected_cache = cache; expected_connected = connected; wide_output = &output;
+    utf16_call = true;
+    ++utf16_parent_calls;
+    armed = true;
+    try {
+        const bool result = rk3::ni::get_serial_number(cache,connected,output);
+        // The byte string was local to the overload and is now retired.
+        current_output = nullptr;
+        armed = utf16_call = false; phase = Phase::none;
+        return result;
+    } catch (...) {
+        current_output = nullptr;
+        armed = utf16_call = false; phase = Phase::none;
+        throw;
+    }
+}
+void check_output_live(const std::u16string &output) {
+    const Allocation *record = payload_record(output.data());
+    check(!record || !record->deleted,"UTF16 destination owns live storage before value observation");
+}
+void check_copy_completed(const std::u16string &output) {
+    check(byte_productions == 1 && wide_copies == 1,"actual producer then counted UTF16 COPY");
+    check_output_live(output);
+    check(output.data() != wide_payload,"UTF16 output storage is independent of widened temporary");
+}
+void check_heap_temporaries_retired() {
+    const Allocation *bytes = payload_record(byte_payload), *wide = payload_record(wide_payload);
+    check(bytes && wide && !bytes->array && !wide->array && bytes->deleted && wide->deleted &&
+          bytes->deletion_order > wide->deletion_order && wide->deletion_order > 0,
+          "completed wide payload retires before byte payload");
+}
+void first_utf16_ascii() {
+    reset(); rk3::ni::DeviceInformation cache{}; cache.serial = u"RK3";
+    std::u16string output = u"old-output";
+    check(run_utf16(&cache,true,output),"actual public UTF16 serial overload succeeds");
+    check_copy_completed(output);
+    check(output == u"RK3","actual public UTF16 ASCII value");
+    cleanup();
+}
+void utf16_guarded_false() {
+    for (unsigned which = 0; which < 3; ++which) {
+        reset(); rk3::ni::DeviceInformation cache{}; cache.serial = u"stored";
+        std::u16string output(128,u'x'), before = output;
+        const char16_t *old = output.data(); const std::size_t capacity = output.capacity();
+        const auto *input = which == 2 ? &cache : nullptr;
+        check(!run_utf16(input,which == 1,output),"UTF16 absent/disconnected input returns false");
+        check(byte_productions == 1 && wide_copies == 0 && creates == 0 &&
+              cpp_allocations == 0 && byte_payload == nullptr && wide_payload == nullptr,
+              "false UTF16 path still calls actual byte producer once without conversion or COPY");
+        check_output_live(output);
+        check(output == before && output.data() == old && output.capacity() == capacity,
+              "false UTF16 path preserves destination value and ownership");
+        cleanup();
+    }
+}
+void utf16_successful_values() {
+    const std::u16string inputs[] = {u"",u"\u00e9",u"\U0001f600",
+        std::u16string(u"A\0B",3),std::u16string(u"\0\u00e9",2)};
+    const std::u16string outputs[] = {u"",std::u16string({0xffc3,0xffa9}),
+        std::u16string({0xfff0,0xff9f,0xff98,0xff80}),u"A",u""};
+    for (unsigned i = 0; i < 5; ++i) {
+        reset(); rk3::ni::DeviceInformation cache{}; cache.serial = inputs[i];
+        cache.vendor = cache.product = u"decoy"; cache.vendor_id = 0x2222; cache.product_id = 0x4444;
+        std::u16string output(128,u'x');
+        check(run_utf16(&cache,true,output),"real UTF16 composition returns true including empty");
+        check_copy_completed(output);
+        check(output == outputs[i] && output.c_str()[output.size()] == 0,
+              "literal signed-byte UTF16 values preserve real producer first-NUL behavior");
+        check(cache.serial == inputs[i] && cache.vendor == u"decoy" && cache.product == u"decoy" &&
+              cache.vendor_id == 0x2222 && cache.product_id == 0x4444,
+              "distinct UTF16 output leaves borrowed cache unchanged");
+        check(creates == 1 && lengths == 1 && maxima == 1 && releases == 1 && reserves == 1,
+              "UTF16 path uses one real counted CF producer");
+        cleanup();
+    }
+}
+void utf16_aliased_output() {
+    reset(); rk3::ni::DeviceInformation cache{}; cache.serial = u"\u00e9";
+    check(run_utf16(&cache,true,cache.serial),"UTF16 output may alias a mutable cached serial");
+    check_copy_completed(cache.serial);
+    check(cache.serial == std::u16string({0xffc3,0xffa9}) && source_released,
+          "aliased field changes only after input/CF borrowing finished");
+    cleanup();
+}
+void utf16_copy_ownership() {
+    for (unsigned ample = 0; ample < 2; ++ample) {
+        reset(); rk3::ni::DeviceInformation cache{}; cache.serial.assign(128,u'Q');
+        check(128 > std::string{}.capacity() && 128 > std::u16string{}.capacity(),
+              "UTF16 ownership witness has real native heap-sized byte and wide payloads");
+        std::u16string output(ample ? 512 : 3,u'x');
+        const char16_t *old = output.data(); const std::size_t capacity = output.capacity();
+        check((capacity >= 128) == (ample != 0),"UTF16 COPY witnesses distinguish old capacity");
+        check(run_utf16(&cache,true,output),"heap UTF16 serial composition succeeds");
+        check_copy_completed(output);
+        check_heap_temporaries_retired();
+        if (ample) check(output.data() == old && output.capacity() == capacity,
+                         "ample old storage retains original in-place counted COPY");
+        check(output == std::u16string(128,u'Q'),"UTF16 COPY survives both temporary destructions");
+        cleanup();
+    }
+}
+void utf16_producer_faults() {
+    const Fault cases[] = {Fault::create,Fault::length,Fault::maximum,Fault::assignment};
+    for (unsigned i = 0; i < 4; ++i) {
+        reset(); rk3::ni::DeviceInformation cache{}; cache.serial.assign(128,u'S');
+        std::u16string output(256,u'x'), before = output;
+        const char16_t *old = output.data(); const std::size_t capacity = output.capacity();
+        fault = cases[i]; bool expected = false, wrong = false;
+        try { (void)run_utf16(&cache,true,output); }
+        catch (const BoundaryFailure &) { expected = i < 3; wrong = !expected; }
+        catch (const std::bad_alloc &) { expected = i == 3; wrong = !expected; }
+        catch (...) { wrong = true; }
+        check(expected && !wrong && fault_hits == 1 && byte_productions == 1 && wide_copies == 0,
+              "real producer exceptions propagate without a UTF16 COPY or false conversion");
+        check(byte_payload == nullptr && wide_payload == nullptr && reserves == 0 &&
+              releases == (i == 0 ? 0u : 1u),
+              "producer fault precedes completed outer byte/wide payloads");
+        check_output_live(output);
+        check(output == before && output.data() == old && output.capacity() == capacity,
+              "producer exception preserves UTF16 destination before assignment");
+        // The fresh outer byte string is normally empty on this real path;
+        // no invented heap-byte destructor observation is claimed here.
+        cleanup();
+    }
+}
+void utf16_allocation_faults() {
+    for (unsigned copy = 0; copy < 2; ++copy) {
+        for (unsigned alias = 0; alias < 2; ++alias) {
+            reset(); rk3::ni::DeviceInformation cache{};
+            cache.serial.assign(128,alias ? u'\u00e9' : u'Q');
+            std::u16string separate(3,u'x');
+            std::u16string &output = alias ? cache.serial : separate;
+            const std::u16string before = output;
+            const char16_t *old = output.data(); const std::size_t capacity = output.capacity();
+            const std::size_t expected_units = alias ? 256 : 128;
+            check(expected_units > std::string{}.capacity() &&
+                  expected_units > std::u16string{}.capacity() && capacity < expected_units,
+                  "allocation faults use real heap payloads and insufficient old COPY capacity");
+            fault = copy ? Fault::wide_copy : Fault::wide_construct;
+            bool threw = false, wrong = false;
+            try { (void)run_utf16(&cache,true,output); }
+            catch (const std::bad_alloc &) { threw = true; }
+            catch (...) { wrong = true; }
+            check(threw && !wrong && fault_hits == 1 && byte_productions == 1 &&
+                  wide_copies == (copy ? 1u : 0u),
+                  "actual widening/COPY allocation exception propagates through UTF16 caller");
+            const Allocation *bytes = payload_record(byte_payload);
+            check(bytes && !bytes->array && bytes->deleted && bytes->deletion_order > 0,
+                  "widening or COPY allocation failure retires actual owned byte payload");
+            if (copy) check_heap_temporaries_retired();
+            else check(wide_payload == nullptr,"construction failure has no completed wide payload");
+            check_output_live(output);
+            check(output == before && output.data() == old && output.capacity() == capacity,
+                  "actual allocation failure preserves distinct or aliased UTF16 field");
+            cleanup();
+        }
+    }
+}
+void counted_helper_cases() {
+    // Internal counted conversion witnesses, not values the .35 producer can
+    // publish after its separate C-string truncation stage.
+    const char counted[] = {'A',static_cast<char>(0x80),0,static_cast<char>(0xff),'Z',0};
+    const char heap[129] = {
+        'Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q',
+        'Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q',
+        'Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q',
+        'Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q',
+        'Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q',
+        'Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q',
+        'Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q',
+        'Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q','Q',0};
+    const char *inputs[] = {"","RK3",counted,heap};
+    const std::size_t counts[] = {0,3,5,128};
+    const std::u16string expected[] = {u"",u"RK3",std::u16string({0x0041,0xff80,0,0xffff,0x005a}),
+                                     std::u16string(128,u'Q')};
+    for (unsigned i = 0; i < 4; ++i) {
+        reset(); ++helper_cases; armed = true; phase = Phase::wide_construct;
+        {
+            const std::u16string value = rk3::ni::widen_serial_bytes(inputs[i],counts[i]);
+            check(value == expected[i] && value.c_str()[value.size()] == 0,
+                  "private counted helper preserves literal signed bytes and embedded NUL suffix");
+        }
+        armed = false; phase = Phase::none; cleanup();
+    }
+}
+void counted_helper_limits() {
+    const char sentinel[] = {0};
+    const std::size_t counts[] = {std::size_t(UINT64_C(0x7ffffffffffffff0)),
+                                 std::numeric_limits<std::size_t>::max()};
+    for (std::size_t count : counts) {
+        reset(); ++helper_cases; oversized_helper = true; armed = true; phase = Phase::wide_construct;
+        bool length_error = false, wrong = false;
+        try { (void)rk3::ni::widen_serial_bytes(sentinel,count); }
+        catch (const std::length_error &) { length_error = true; }
+        catch (...) { wrong = true; }
+        armed = false; phase = Phase::none; oversized_helper = false;
+        check(length_error && !wrong,"oversized counted helper propagates standard length_error");
+        // Native construction can reject the same count. This alone does not
+        // prove the explicit original guard; source review retains that guard.
+        // Exception diagnostic allocations are allowed within the bounded gate.
+        cleanup();
+    }
+}
+
 [[noreturn]] void terminated() noexcept {
     if (child == Child::release_throw && releases == 1 && reserves == 0 && cstrings == 1 &&
         release_throw_unwind_count == 0 && current_output && *current_output == "old-output") {
@@ -495,8 +763,17 @@ int main(int argc, char **argv) {
     fixture::allocation_throws();
     fixture::maximum_request();
     fixture::transfer_ownership();
+    fixture::first_utf16_ascii();
+    fixture::utf16_guarded_false();
+    fixture::utf16_successful_values();
+    fixture::utf16_aliased_output();
+    fixture::utf16_copy_ownership();
+    fixture::utf16_producer_faults();
+    fixture::utf16_allocation_faults();
+    fixture::counted_helper_cases();
+    fixture::counted_helper_limits();
     fixture::cleanup();
     fixture::child_contracts();
-    std::printf("NI serial producer tests: PASS (%u public parent calls + 3 controlled child modes)\n",
-                fixture::parent_calls);
+    std::printf("NI serial tests: PASS (%u byte public + %u UTF16 public + %u internal helper cases + 3 controlled child modes)\n",
+                fixture::parent_calls,fixture::utf16_parent_calls,fixture::helper_cases);
 }

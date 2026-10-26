@@ -1,5 +1,104 @@
 # Native NI UTF-16 serial overload: reviewed implementation plan
 
+## Implementation result: .39
+
+Date: **2026-10-26**. Baseline: `b3f01ad`. The planned UTF-16 serial overload
+is implemented and passes the selected offline conformance checks. It remains
+an **unlinked library operation**. Full original NI recognition is incomplete.
+
+The single new overload calls the actual existing byte producer once, widens
+its explicit byte count with NI's signed-byte rule and copies the owned UTF-16
+temporary into output. Native object lifetime preserves the recovered cleanup
+and exception propagation. Mutable cached-field output aliasing works after
+input/CF borrowing ends. No new identity, codec, state or connection policy was
+added; all three existing byte-getter functions are byte-for-byte unchanged.
+
+The original explicit length guard remains first. Native `std::length_error`
+and native string storage/SSO/max-size/unwind are platform bindings; the current
+diagnostic is not a claim about NI's historical private `what()` text. The two
+cpp-private hooks default to real operations and the fixture forwards those
+same operations without replacing the producer result or copied value.
+
+### Checks actually executed
+
+- Public TDD: the first ASCII success assertion failed at runtime against a
+  successfully compiled false scaffold, then passed with the real operation.
+  Strict ARM compilation/import guards preceded both executions. The initial
+  ASCII-only runs did not redundantly run the old regression groups; snapshots
+  preserve the actual RED/GREEN source and logs.
+- The final expanded strict and ASan/UBSan runs each pass **22 byte public calls,
+  20 UTF-16 public calls, six internal-helper cases and three existing controlled
+  child modes**. No new child mode or local termination policy was introduced.
+- Real CF/std paths cover false versus empty, literal signed-byte non-ASCII and
+  non-BMP values, first-NUL behavior, mutable output aliasing and cache preservation
+  for distinct output. Internal counted-NUL witnesses are labelled separately;
+  they are not claimed as values produced by the byte getter's C-string stage.
+- Actual scalar allocation faults and tracked live payload identities verify
+  independently owned COPY output, original in-place assignment with ample
+  capacity, completed-wide cleanup before byte cleanup, and propagation/preserved
+  destination state on widening and output-copy failure, including alias cases.
+  Retired temporary pointers are never dereferenced. Real producer failures
+  normally leave the fresh outer byte destination empty; those cases do not
+  pretend to observe a heap-byte destructor. The later allocation-fault cases
+  provide the actual heap cleanup witnesses.
+- The two huge-count helper cases throw the standard length-error category;
+  a 4096-byte allocation gate prevents any real huge allocation before malloc
+  while permitting bounded exception diagnostic storage. Native construction
+  also rejects huge counts, so these cases alone do not prove the explicit
+  source guard or distinguish its removal. Source review establishes retention.
+- **Nine compiled semantic negative controls** each pass strict compilation,
+  pre-run import/ARM checks and then fail the intended assertion with normal
+  exit 1: unsigned widening, strlen count, guarded cached-UTF16 bypass, repeated
+  producer, empty-as-false, active-callsite MOVE, swallowed exception, premature
+  output clear and valid early byte retirement after widening. No compiler
+  failure, signal, crash or timeout is counted. MOVE is rejected at the missing
+  counted-COPY assertion; separate positive heap cases establish COPY ownership.
+- Control copies omit exactly ten old main-call lines (nine byte-test groups
+  and the child group) after those regressions already passed in each full
+  positive run. All new assertions/functions and argument handling remain
+  unchanged. The inherited success-print text is not evidence of child execution;
+  all accepted controls fail before that line. No old 15-control rerun occurred.
+- The separate production object is strict ARM64 with CF, strings/stdexcept,
+  allocation, memory and compiler/runtime imports only. All final fixtures and
+  controls are ARM64; saved `nm` checks precede execution and `otool` libraries
+  are retained. Production has no direct device/query, audio/MIDI, IPC, timer
+  or process-spawn import. These are direct-import observations, not a claim
+  about undocumented historical framework internals.
+- Independent Spec and Standards/scope/ownership/test-efficacy reviews passed
+  the exact three final source hashes and the control definitions/fixture diff.
+  Original byte-test bodies and child-process policy remain unchanged. Parent
+  sanitizer success and deliberate child `_Exit` markers do not prove historical
+  private allocator behavior or child leak-freedom. The old intentional raw-array
+  exception policy remains tested separately and was not repaired.
+
+The final expanded suite already reruns the original 22+3 checks once in each
+mode. Unchanged NIInformation and Driver/Tools paths were neither rebuilt nor
+presented as newly tested; their prior source/evidence pins remain intact.
+The production header/implementation did not change after first GREEN. The
+fixture expanded afterward, before its single final run in each mode; no final
+gate rerun was required.
+
+Private evidence: `.build/ni/utf16-serial-implementation/20261026-b3f01ad/`.
+The final manifest hash and exact report/evidence fidelity reviews are recorded
+in Beads `.39`. It pins commands, snapshots, objects/binaries, symbols/libraries,
+actual RED/GREEN and final logs, controls and independent review records.
+
+### Scope and remaining work
+
+Only the four admitted paths and passive Beads export change. No NI body/metadata
+recovery, driver/backend/owner/property, runtime/frontend/agent integration,
+application/endpoint/device/audio/MIDI, package/install or security action
+occurred. Installed `0.2.4/build9`, NI ring/calendar/timing/recovery, mappings,
+calibration and LED authority remain untouched. SIP stays enabled.
+
+Next: **rigkontrol3-40h.40**, planning the smallest original instance-publication
+step from the completed producer and existing query/writer/frontend proofs
+before coding. Do not invent identity or zero original unwritten words. Full
+`.2` original NI recognition/lifecycle/session/events/policy and `.3`/`.11`
+reliability remain required and incomplete.
+
+## Historical .38 planning record
+
 Date: **2026-10-26**. Beads authority: **rigkontrol3-40h.38**.
 Baseline: `d445f7e`. This result is planning only; implementation is not started.
 
