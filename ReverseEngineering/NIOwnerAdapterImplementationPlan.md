@@ -1,5 +1,22 @@
 # Smallest owner-adapter implementation plan
 
+## Current implementation-plan update after .30
+
+The exact typed information-binding plan is now independently reviewed and
+recorded in [NIInformationImplementationPlan.md](NIInformationImplementationPlan.md).
+Its Beads design SHA256 is `a6d46f382e5ff27f5477b623952d9b0f20141e12ec12add01f5118584d0ebc6c` (19,331 bytes).
+`.30` completes planning only; `.31` remains open and unimplemented. This
+supersedes the earlier “still needs its exact plan” and next-step wording below.
+
+The next operation uses the existing generation-qualified identity/SPEC14 cache,
+original readiness waits, CF conversion, sequential owned-field copying and
+exception behavior. The only shared-header edits planned are C/C++ assertion
+spelling and one byte-pointer cast. No driver algorithm, installed bundle,
+audio timing/recovery or security setting changes in this planning step.
+Original NI application recognition and the remaining `.2` gates are incomplete.
+The frozen `.28` admission record and `.29` source result below remain historical
+source authority; neither is re-executed here.
+
 ## Source-gate update after .28 planning
 
 The selected `.29` inbound StringUTF8 and owned-field replacement source proof
