@@ -1,3 +1,138 @@
+# Original instance-message writer: implementation result
+
+`rigkontrol3-40h.41` implements only the frozen `.40` plan, authorized by the
+user on 2026-10-26. The historical planning report and its exact 17,602-byte
+plan are preserved below without edits. Plan SHA256:
+`074db89cff2668b6cf783fd282fa70962e3500969320e0c22f2c81c9761229e5`.
+The historical report's wording about awaiting implementation describes `.40`.
+
+## Implemented operation
+
+`Agent/NIInstanceMessage.h/.cpp` provides one void writer and a caller-owned
+1052-byte storage alias. It ports NI's original `MessageSetUTF16String` normal
+operation from the existing 210-byte/62-instruction export. No additional NI
+binary or metadata was read or recovered. The remaining 14 bytes of the
+original 224-byte cap remain unclassified.
+
+The writer retains low-32-bit increment wrapping before unsigned clamp512,
+full raw-type OR02000000, count/reply control words, untouched caller bytes
+16..23, exactly1024 bytes of character clearing, unconditional first-unit load,
+bounded NUL copy and capacity-only previous-unit surrogate backoff. The copied
+last unit remains after an earlier backoff NUL; declared counts do not shrink.
+Natural source-NUL termination does not apply that backoff. Wrapped0/1 uses a
+valid byte cursor inside the whole storage, including the previous word at+26.
+
+Platform bindings replace GP/x86 object layout with a valid native owned U16
+input and explicit caller-owned byte storage. Fixed-width/little-endian checks
+and memcpy word accesses preserve values without alignment or aliasing errors.
+The original zero operation uses public native bzero. No owning temporary,
+allocation, extra status, noexcept/catch policy, prep Boolean, getter, list,
+mutex, sender, connection authority or runtime is added. Source and storage
+remain separate, alive and stable; caller prestate is neither read nor repaired.
+
+The separate strict ARM64 production object has exactly one exported writer
+and only `_bzero` undefined. The library remains unlinked from all driver and
+agent runtimes. This result does not publish an actual NI message or prove
+application recognition.
+
+## Executed offline checks
+
+The fixture includes the actual implementation to reach its private counted
+writer only for the explicitly planned synthetic wrap/prefix cases. Public
+calls use real owned native strings. No giant/fabricated std object or invalid
+pointer was created. Every private source has512 readable units. Literal
+headers/units/count tables, untouched caller prestate, canaries, cleared tails,
+source snapshots and call-only scalar/array new counters exercise the result.
+No source normalization, separate query-gate imitation or faulting read oracle
+is used. Physical first-read behavior is source-reviewed rather than claimed
+from identical output bytes. No leak-freedom claim is made.
+
+| Gate | Recorded result |
+| --- | --- |
+| Initial direct-compiler attempt | Compile exit1: C++ array header not found; no executable run and no functional RED credit |
+| Actual public ASCII RED | Strict compile0, ARM64 and imports checked before run; no-op writer exits1 at ASCII payload24 assertion |
+| Actual public ASCII GREEN | Same public test against real writer, compile0/guard/run0 |
+| Separate production object | Strict compile0, ARM64; only bzero import and one public writer; no execution |
+| Final strict suite | Compile0/ARM64/import guard/run0;19 public calls and20 bounded private-prefix cases |
+| Initial sanitized startup | Compile0/guards then abort-6: macOS rejects detect_leaks=1; no positive result credited |
+| Final ASan+UBSan suite | Compile0/ARM64/import guard/run0;19 public calls and20 private-prefix cases; no sanitizer diagnostics |
+
+Public cases cover ASCII/empty/full raw-type bits, counted embedded NUL,
+length510/511/512/700, natural unpaired surrogates, capacity high/low and
+non-low residuals, non-high previous units, leading NUL at clipped count,
+FFC3/FFA9/FFFF units and long-to-short reuse. Private literal count/prefix
+cases cover0,1,510,511,512,fffffffe,ffffffff,100000000,1ffffffff,SIZE_MAX,
+each with nonzero and leading-NUL source. The actual writer allocates no native
+heap in any tested call; production source/import review independently excludes
+allocation. Count bounds are checked before any derived wire-span pointer.
+
+Both independent source/fixture/control-safety reviews passed before final
+positive and control executions. All nine isolated source-only controls then
+compiled successfully, passed ARM/import guards and failed the intended normal
+assertion with exit1. No compiler error, signal, timeout or startup abort counts
+as a rejected semantic control:
+
+| Control | Assertion detecting it |
+| --- | --- |
+| Mask raw type bits | full message type |
+| Wide/preclamped count | declared payload count |
+| Clear only copied prefix | ASCII terminator and cleared tail |
+| Zero opaque caller words | opaque caller words unchanged |
+| Continue bounded copy past NUL | embedded NUL stops before B but retains declared size |
+| Inspect current surrogate unit | capacity terminator backs over previous high surrogate |
+| Erase the residual in valid backoff | capacity residual after earlier NUL retained |
+| Backoff on natural NUL | natural unpaired high surrogate retained |
+| Include first12 control bytes in payload count | ASCII payload24 |
+
+Strict flags: C++17, arm64, minmacOS13, Wall/Wextra/Werror/pedantic/g/O2.
+Sanitized flags use O1/frame-pointer/ASan+UBSan. The explicit xcrun SDK
+isysroot fixes native C++ header search; it changes no writer behavior. The
+sanitized retry disables only unsupported LeakSanitizer detect_leaks; ASan and
+UBSan halt-on-error remain enabled. Source stayed unchanged after first ASCII
+GREEN; the expanded fixture stayed unchanged through final gates and controls.
+These two stopped attempts and their exact runner versions are preserved.
+
+Per-run snapshots, compiler path/hash/version, SDK path, exact argv/exits,
+lipo/nm/otool outputs and pre-run import decisions are saved under
+`.build/ni/instance-message-implementation/20261026-85149c7/`.
+Compiler identity was captured before each compilation; remaining tool and
+public SDK-header identities are captured at publication, not claimed as earlier
+pre-run checks. Initial runner was saved after its compile stop, explicitly.
+`final-evidence.json` pins this report, generated evidence, final source and
+all99 unchanged existing Agent/Driver/Tools files. Independent final fidelity
+review results are recorded in Beads externally to avoid a circular self-hash.
+
+Final source SHA256:
+
+- Header:352fe148d65dbcca0e6904a83d7d217b1d982ec18f253f18a4159d1c79096582.
+- CPP:c7f0e6bc017ede65dacff24e5efae105b23c8492ccc42ca9ee74d1fd3489dcd7.
+- Fixture:18d1e81ee7594a1351e058d401cb5afa56ff3cebd421d0445711746a0f6799b5.
+- Nine control definitions:53943158f450f41c85901c797dea8a65e0370b43cefcb7bd12a65e9e468f8dee.
+
+## Scope and remaining integration
+
+Only the three admitted new source/fixture paths, this existing report and
+passive Beads export change. All99 existing Agent/Driver/Tools paths are
+byte-identical; old serial, information, driver and physical suites were not
+repeated. The installed frozen0.2.4/build9 package is unchanged. No driver
+build/package/signing/install, real NI port/application, device/audio/MIDI/USB
+operation or security change occurred. NI ring/calendar/timing/recovery,
+mappings/calibration/LED authority and SIP settings remain untouched.
+
+`.42` is open, unstarted planning of the smallest original query/caller step.
+Original nonnull/true-only gate, shared serial scratch across the list, same
+message storage, original mutex/getter/construct/send order, ignored send result
+and scratch destruction before unlock remain required. The query's65-byte/EH
+coverage gap and actual untouched-word storage provenance need a precise plan
+before any additional original reads or code. No guessed zeros, new policies
+or automatic broader recovery are admitted. Full `.2` original NI automatic
+recognition/lifecycle/session/events/policy and `.3/.11` reliability remain
+required and incomplete.
+
+---
+
+## Preserved historical planning report
+
 # Original NI instance-message writer plan
 
 `rigkontrol3-40h.40` completes planning only. The next implementation card is
