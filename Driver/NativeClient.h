@@ -13,7 +13,7 @@
 static inline OSStatus rk3_native_copy_blob(AudioObjectID device, UInt32 selector,
     const void *query, size_t query_length, void *output, size_t output_length) {
     if(!output || (query_length && !query) || query_length>(size_t)LONG_MAX || output_length>(size_t)LONG_MAX)return kAudioHardwareIllegalOperationError;
-    CFDataRef qualifier=query_length?CFDataCreate(NULL,query,(CFIndex)query_length):NULL;
+    CFDataRef qualifier=query_length?CFDataCreate(NULL,(const UInt8 *)query,(CFIndex)query_length):NULL;
     if(query_length&&!qualifier)return kAudioHardwareUnspecifiedError;
     CFPropertyListRef object=NULL;
     UInt32 size=sizeof(object);

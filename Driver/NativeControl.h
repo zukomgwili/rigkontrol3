@@ -3,6 +3,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+#define RK3_CONTROL_STATIC_ASSERT static_assert
+#else
+#define RK3_CONTROL_STATIC_ASSERT _Static_assert
+#endif
+
 /* Private cross-process transport between the two native driver bundles.
  * Fixed-width values only. Host byte order (both bundles are ARM64).
  * The structs below are wrapped in CFDataRef objects for CoreAudio transport;
@@ -33,10 +39,10 @@ typedef struct {
     uint64_t generation;
     uint32_t value_bits,reserved;
 } RK3NativeGainValue;
-_Static_assert(sizeof(RK3NativeGainQuery)==16,"Gain query ABI");
-_Static_assert(sizeof(RK3NativeGainValue)==24,"Gain value ABI");
-_Static_assert(offsetof(RK3NativeGainValue,generation)==8,"Gain generation ABI");
-_Static_assert(offsetof(RK3NativeGainValue,value_bits)==16,"Gain bits ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeGainQuery)==16,"Gain query ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeGainValue)==24,"Gain value ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeGainValue,generation)==8,"Gain generation ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeGainValue,value_bits)==16,"Gain bits ABI");
 
 /* Native functional cache publication; status is errno, not NI IOReturn. */
 typedef struct { uint32_t version,reserved; uint64_t generation; } RK3NativeSpecQuery;
@@ -46,16 +52,16 @@ typedef struct {
     uint64_t generation;
     uint8_t raw[14],reserved[2];
 } RK3NativeSpec;
-_Static_assert(sizeof(RK3NativeSpecQuery)==16,"Spec query ABI");
-_Static_assert(offsetof(RK3NativeSpecQuery,version)==0,"Spec query version ABI");
-_Static_assert(offsetof(RK3NativeSpecQuery,reserved)==4,"Spec query reserved ABI");
-_Static_assert(offsetof(RK3NativeSpecQuery,generation)==8,"Spec query generation ABI");
-_Static_assert(sizeof(RK3NativeSpec)==32,"Spec reply ABI");
-_Static_assert(offsetof(RK3NativeSpec,version)==0,"Spec version ABI");
-_Static_assert(offsetof(RK3NativeSpec,status)==4,"Spec status ABI");
-_Static_assert(offsetof(RK3NativeSpec,generation)==8,"Spec generation ABI");
-_Static_assert(offsetof(RK3NativeSpec,raw)==16,"Spec raw ABI");
-_Static_assert(offsetof(RK3NativeSpec,reserved)==30,"Spec reserved ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeSpecQuery)==16,"Spec query ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeSpecQuery,version)==0,"Spec query version ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeSpecQuery,reserved)==4,"Spec query reserved ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeSpecQuery,generation)==8,"Spec query generation ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeSpec)==32,"Spec reply ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeSpec,version)==0,"Spec version ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeSpec,status)==4,"Spec status ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeSpec,generation)==8,"Spec generation ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeSpec,raw)==16,"Spec raw ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeSpec,reserved)==30,"Spec reserved ABI");
 
 /* Whole-operation status indices; storage order does not reorder USB calls. */
 enum {
@@ -88,27 +94,27 @@ typedef struct {
     uint8_t serial[RK3_USB_IDENTITY_STRING_BYTES];
     uint8_t reserved[3];
 } RK3NativeUSBIdentity;
-_Static_assert(sizeof(RK3NativeUSBIdentityQuery)==16,"USB identity query ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentityQuery,version)==0,"USB identity query version ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentityQuery,reserved)==4,"USB identity query reserved ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentityQuery,generation)==8,"USB identity query generation ABI");
-_Static_assert(sizeof(RK3NativeUSBIdentity)==160,"USB identity reply ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,version)==0,"USB identity version ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,status)==4,"USB identity status ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,generation)==8,"USB identity generation ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,attempted_mask)==16,"USB identity attempted ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,defined_mask)==20,"USB identity defined ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,vendor_id)==24,"USB identity vendor ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,product_id)==26,"USB identity product ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,product_index)==28,"USB identity product index ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,manufacturer_index)==29,"USB identity manufacturer index ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,serial_index)==30,"USB identity serial index ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,reserved0)==31,"USB identity reserved byte ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,step_status)==32,"USB identity operation status ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,product)==64,"USB identity product bytes ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,manufacturer)==95,"USB identity manufacturer bytes ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,serial)==126,"USB identity serial bytes ABI");
-_Static_assert(offsetof(RK3NativeUSBIdentity,reserved)==157,"USB identity reserved ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeUSBIdentityQuery)==16,"USB identity query ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentityQuery,version)==0,"USB identity query version ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentityQuery,reserved)==4,"USB identity query reserved ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentityQuery,generation)==8,"USB identity query generation ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeUSBIdentity)==160,"USB identity reply ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,version)==0,"USB identity version ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,status)==4,"USB identity status ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,generation)==8,"USB identity generation ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,attempted_mask)==16,"USB identity attempted ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,defined_mask)==20,"USB identity defined ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,vendor_id)==24,"USB identity vendor ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,product_id)==26,"USB identity product ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,product_index)==28,"USB identity product index ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,manufacturer_index)==29,"USB identity manufacturer index ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,serial_index)==30,"USB identity serial index ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,reserved0)==31,"USB identity reserved byte ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,step_status)==32,"USB identity operation status ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,product)==64,"USB identity product bytes ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,manufacturer)==95,"USB identity manufacturer bytes ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,serial)==126,"USB identity serial bytes ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeUSBIdentity,reserved)==157,"USB identity reserved ABI");
 
 typedef struct {
     uint32_t version;
@@ -171,10 +177,11 @@ typedef struct {
  * hardware write completion is synchronous/bounded and failures propagate.
  * COMMAND requires a CommandLease qualifier; the worker validates generation
  * immediately before the write, so stale queued data cannot cross reconnects. */
-_Static_assert(sizeof(RK3NativeInfo)==240,"Native info ABI");
-_Static_assert(sizeof(RK3NativeReport)==88,"Native report ABI");
-_Static_assert(sizeof(RK3NativeReportQuery)==16,"Native report query ABI");
-_Static_assert(sizeof(RK3NativeReports)==2848,"Native report batch ABI");
-_Static_assert(sizeof(RK3NativeCommandLease)==16,"Native command lease ABI");
-_Static_assert(sizeof(RK3NativeCommand)==72,"Native command ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeInfo)==240,"Native info ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeReport)==88,"Native report ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeReportQuery)==16,"Native report query ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeReports)==2848,"Native report batch ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeCommandLease)==16,"Native command lease ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeCommand)==72,"Native command ABI");
+#undef RK3_CONTROL_STATIC_ASSERT
 #endif

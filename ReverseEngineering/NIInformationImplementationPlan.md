@@ -1,5 +1,87 @@
 # ARM NI information binding: reviewed implementation plan
 
+## Implementation result: .31
+
+Date: **2026-10-26**. Source baseline: `5bd4c25`. The planned library operation
+is implemented and passes offline conformance checks. It is not linked into an
+agent or installed driver. **Original NI automatic recognition remains unproved.**
+
+The new `Agent/NIInformation.h/.cpp` operation accepts the existing owner's
+borrowed device/generation and reads actual `NativeClient` identity and SPEC14
+records. It preserves the original initial read plus three zero-sentinel retries,
+100/200/300 ms waits, final status-zero success, CF UTF-8 conversion, independently
+owned UTF-16 values, sequential field copies, partial updates and propagated
+allocation exceptions. Native unavailable/schema errors return false before
+output changes; they are not relabelled as numerically equivalent NI errors.
+
+The only shared-driver edits are the scoped C/C++ assertion spelling macro in
+`NativeControl.h` and one `const UInt8 *` query cast in `NativeClient.h`. All 41
+ABI assertion expressions/messages and all types, fields, selectors and layout
+values remain unchanged. ARM typed objects/compiler unwind replace x86 object
+representations. No new UTF decoder, owner, backend, property, lifecycle loop or
+frontend patch was introduced. Driver algorithms and all Tools sources remain
+byte-identical to the baseline after normalizing those two compatibility edits.
+
+### Verification actually executed
+
+- Strict C11 and C++17 shared-header checks pass, including all ABI assertions
+  and the assertion-macro leak guard. Separate preserved pre-edit failures prove
+  the assertion and byte-pointer changes are required for strict C++ compilation.
+- Two functional RED/GREEN steps are preserved: a compiled false scaffold fails
+  the real default strings-enabled success assertion; the single-acquisition
+  implementation then fails the bounded pair/wait assertion before the original
+  readiness loop is added. Both final behaviors pass.
+- **56 public-operation cases** pass under strict ARM64 C++17 and ASan/UBSan.
+  Actual module and NativeClient helpers use synthetic GET responses with real
+  CFData/CFString objects. Cases cover every required availability bit, native
+  and malformed replies, fixed generation, zero/error readiness order, omitted
+  default argument, explicit strings=false, Unicode/first NUL, CF NULL, direct
+  and fallback extraction, owned copies and six actual allocation-failure stages.
+- Allocation/deletion observations distinguish a copied output allocation from
+  the conversion temporary. Failure cases verify header/earlier-field mutation,
+  current-field preservation, exception propagation and NI's cleanup placement.
+  Fixture-owned CF witnesses are cleaned only after the relevant observations.
+- **Ten compiled semantic negative controls** each exit 1 at a relevant assertion:
+  wrong generation, missing required reader, added unrequested-field gate,
+  zero-sentinel failure, changed wait, reader-error failure, moving instead of
+  copying, aggregate commit, exception-to-false and extra exceptional CF cleanup.
+  Build failure or a crash is not accepted as negative-control success.
+- The standalone production object and both final fixture binaries are ARM64.
+  Before every fixture execution, import inspection confirms the real CoreAudio
+  GET is absent. The separately compiled production object references real GET;
+  neither form imports a SET, audio start/listener, IOKit/USB, IPC-port or run-loop
+  operation. This is a direct-import check, not a claim about framework internals.
+- Existing `sh Tools/build-native.sh test` and `sanitize` each pass **14/14** on
+  the final identical sources. The two expected MIDI-output rejection messages
+  are test vectors. The scripts compile diagnostics and locally ad-hoc-sign an
+  unused audio-client artifact; no hardware diagnostic/helper is executed.
+- Independent Spec and Standards/scope/test-efficacy reviews pass all five final
+  source hashes with no remaining findings. `git diff --check` passes.
+
+Private evidence: `.build/ni/information-binding-implementation/20261026-5bd4c25/`.
+`execution-evidence.json` pins source snapshots, commands, RED/GREEN logs, symbol
+and architecture checks, negative controls, both driver regression logs and
+fixture binaries, review records and this report. Beads `.31` records its hash.
+Raw NI body recovery was unnecessary and was not performed.
+
+### Limits and remaining work
+
+This closes only `.31`'s selected library operation and offline conformance.
+`.2` still requires original serial/instance publication, agent runtime,
+version/session/event and mapped-controller policy integration and actual NI
+application recognition. `.3`/`.11` retain their separate reliability gates.
+The lease is not persistent identity across owner restart, the two GETs are not
+atomic, and successful return does not guarantee continued physical connection.
+No broader historical CF decoder or unreachable large-input coverage is claimed.
+
+Installed `0.2.4/build9`, its frozen `e16097a` package and rollback session
+`20261026T110147Z-3be14ddc` are untouched. NI audio ring/calendar/clock/timing/
+recovery, mappings, calibration, LED policy and security settings are unchanged.
+SIP stays enabled. There is no new package, installation or live acceptance run.
+The next bounded recognition step must be planned in `.2` before further code.
+
+## Historical .30 planning record
+
 Status on 2026-10-26: **planning complete; implementation not started**.
 `rigkontrol3-40h.30` records the plan; `rigkontrol3-40h.31` is the next
 implementation task. Original NI automatic recognition remains incomplete.
