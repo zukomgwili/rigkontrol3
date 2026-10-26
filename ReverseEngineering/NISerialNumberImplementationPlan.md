@@ -1,5 +1,106 @@
 # ARM NI serial producer: reviewed implementation plan
 
+## Implementation result: .35
+
+Date: **2026-10-26**. Baseline: `12ddd16`. The planned serial-producer library
+operation is implemented and passes offline conformance checks. It is not
+linked into an agent or installed driver. **Full NI recognition remains open.**
+
+`Agent/NISerialNumber.h/.cpp` exposes the single reviewed getter. It consumes
+a coherent borrowed cache/connection snapshot, performs NI's counted CF
+conversion and transfers ownership into output. False guards and conversion
+throws retain old output. The native CF guard and clear/reserve(0)/move stage
+preserve the recovered cleanup and nonthrowing contracts. The raw array retains
+normal-only deletion, and its exceptional leftover is observed before any
+fixture cleanup. No driver query, state/cache, codec or failure policy was added.
+
+The Darwin-only CF pointer interoperation, width/alignment and lifetime limits
+remain explicit. Native C++ ownership and unwind replace x86 representations;
+no raw object bytes are transplanted. This is not a portable aliasing proof or
+a claim about historical/private CF or allocator implementation policies.
+
+### Checks actually executed
+
+- Functional TDD: the actual public successful-cache assertion fails against a
+  compiled false scaffold, then passes with the real operation. Strict ARM64
+  compilation and forbidden-import checks precede each execution. Preserved
+  snapshots/logs distinguish runtime RED from a missing file/compiler error.
+- Final strict and ASan/UBSan runs each pass **22 public parent calls plus three
+  controlled child modes**. Real CF/std operations cover missing/disconnected
+  guards, ASCII/empty/Unicode/counted embedded NUL, maximum branches and buffer
+  thresholds, exact SIZE_MAX allocation interception, ignored conversion Boolean,
+  actual allocation faults, ownership transfer and original cleanup order.
+- Heap ownership checks prove the conversion allocation becomes output.data()
+  for both smaller and larger old destinations. They do not infer reserve(0)'s
+  private shrink policy. Array-unwind checks observe NI's normal-only deletion
+  before the fixture frees its own tracked leftover; this is not a production
+  cleanup repair or claim that the original exceptional path is leak-free.
+- The same guarded fixture self-spawns only three fixed modes. Exact markers
+  and normal exit codes **73/74/75** establish NULL-next-call interception,
+  normal-path CF-release termination, and reserve-stage termination. NULL is
+  intercepted before any real invalid CF API or release. Signals, crashes,
+  timeouts and escaped exceptions are not accepted as successful observations.
+  Each child is waitable, bounded to ten seconds and reaped by its owner.
+  Deliberate child `_Exit` markers do not establish child leak-freedom.
+- **15 compiled semantic negative controls** exit 1 at relevant assertions:
+  ignored connection state, wrong input count, empty-as-failure, gated conversion
+  Boolean, counted suffix assignment, premature output clearing, copied output,
+  swallowed allocation exception, omitted CF cleanup, added array cleanup,
+  skipped reserve, both changed noexcept stages, an allocation shortcut and a
+  wrong allocation request. The latter fails before real huge allocation.
+  The noexcept controls use actual escaped-exception child exit **95**, signal
+  zero, followed by the parent assertion; arbitrary child failure is not counted.
+- One wrong-request mutation initially failed strict compilation because its
+  changed call left an unused local. That candidate was not run or counted.
+  Its corrected form changes the request calculation and fails the intended
+  runtime boundary assertion. A proposed array-new-expression surrogate was
+  not run: compiler expression form alone was not assumed to insert a distinct
+  precheck. The observable forbidden shortcut was tested directly instead.
+- The standalone production object and all final fixtures/control binaries are
+  ARM64. Production imports contain CF, strings, allocation and compiler/runtime
+  operations, with no query, audio/MIDI, IPC, timer or process-spawn operation.
+  Fixtures permit only their documented self-spawn/wait/pipe helpers in addition
+  to data APIs. `nm` checks run before execution; `lipo`/`otool` results are saved.
+- The unchanged neighboring information fixture passes **56 strict and 56
+  sanitizer public-operation cases**, built into a new evidence directory.
+  Driver/Tools/shared headers are unchanged, so their prior 14+14 regression
+  results were not rerun or presented as new evidence.
+- Independent Spec and Standards/scope/test-efficacy/process-safety reviews pass
+  the three final source hashes. `git diff --check` passes. Existing `.31`/`.33`
+  source, reports and private evidence remain intact.
+
+Review tightened only the fixture before final runs: allocation faults exclude
+CF-internal phases; child cleanup never signals a PID after lost wait ownership;
+and every forced maximum request is checked before reaching malloc. Earlier
+fixture/control snapshots and the compile-only control failure are preserved.
+Production semantics did not change during those test-harness corrections.
+
+Private evidence:
+`.build/ni/serial-producer-implementation/20261026-12ddd16/`.
+The final manifest hash is recorded in Beads `.35`; it pins commands, source
+snapshots, symbols/libraries, RED/GREEN and sanitizer logs, controlled outcomes,
+negative controls, review records and this report. Prior successful controls
+on the same final sources are rechecked and retained; they were not repeated
+merely because the last mutation needed a compile-only correction.
+
+### Scope and remaining work
+
+Only the four admitted paths and passive Beads export change. No Driver/Tools,
+existing information module, NI source recovery, runtime, frontend, USB owner,
+property, device/audio/MIDI operation, package/install or security change occurs.
+Installed `0.2.4/build9`, frozen `e16097a` package and rollback session
+`20261026T110147Z-3be14ddc` remain untouched. SIP stays enabled. NI ring/calendar/
+timing/recovery, mappings, calibration and LED policy remain unchanged.
+
+This closes `.35`'s selected library/offline operation. `.2` still requires the
+original signed-byte widening/instance path and full agent lifecycle, session,
+event/policy and unchanged NI application recognition. `.3`/`.11` retain their
+separate reliability gates. `.36` plans the next smallest original instance-
+string operation from existing proofs before further coding; no fresh source
+recovery or full-agent project is assumed by this result.
+
+## Historical .34 planning record
+
 Status on 2026-10-26: **.34 planning complete; .35 implementation not started**.
 Full original NI application recognition remains incomplete under `.2`.
 
