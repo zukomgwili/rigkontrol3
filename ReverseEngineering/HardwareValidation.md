@@ -5,8 +5,8 @@
 Beads `rigkontrol3-40h.27` records the audited plan before code, packaging or
 runtime changes. Its final plan SHA256 is
 `1736d5faa5310ff7b95f75d1f3edc64c0648167ca07c2149c10c037c5a06c8d9`.
-Candidate preparation is in progress; installation and this hardware check
-have not yet run. SIP remains enabled.
+The signed candidate is prepared and independently reviewed; installation and
+this hardware check have not yet run. SIP remains enabled.
 
 Installed 0.2.3/build 8 matches its saved 12-file manifest
 `ed1813cf1f7ac5d13f9d1dd2b67117751fc6da0e2726888974c7d660cc37eeca`.
@@ -67,6 +67,31 @@ are active, because it also accepts a restored session; active file hashes are
 checked separately. Legacy quarantine and existing user mappings/calibration
 are preserved. The exact artifact and live results will be recorded in Beads
 and appended here after those operations occur.
+
+### Frozen signed artifact
+
+The exact prebuild source is `e16097a145960471b6dd37ebbb795f86c4e3ed02`.
+The immutable candidate is
+`.build/native/candidates/build9-e16097a145960471b6dd37ebbb795f86c4e3ed02/`.
+Its `drivers/manifest.json` SHA256 is
+`4a0ee85c3554bd50a4b3af91e8dc46a5ee714d039d0f6b2c59992ecacef6837f`;
+all 12 files in the two bundle trees verify. The readback executable SHA256 is
+`826c3558b8dec760807bb798c070202f38aceeef6ea88a50991b9a99bf7e36e3`.
+
+The clean-archive build, existing-identity signatures, Apple anchor/team,
+ARM64-only architectures, versions and exact source/artifact hashes passed
+independent static review. Both plist changes are version fields only. The
+readback fixture passed strict and sanitizer checks with 46 synthetic JSON
+snapshots each; review caught and fixed mixed successful/stale replies that
+conflicted with the observed generation. Only `--help` ran on the real client.
+Installer staging/rollback regressions passed without real service changes.
+
+Installed files and the mutable default `.build/native/drivers` still match
+build 8. Installation must use the frozen candidate's explicit `--source`
+directory. A byte-exact build-8 artifact copy is retained at
+`.build/native/package-history/build8-ed1813cf-before-build9/`.
+Later documentation/result commits do not change the prebuild source label or
+rebuild this signed artifact. No hardware result is claimed by these checks.
 
 ## Historical version-specific observations
 
