@@ -45,6 +45,52 @@ static inline OSStatus rk3_native_copy_spec(AudioObjectID device,
     }
     *value=current;return 0;
 }
+static inline OSStatus rk3_native_copy_usb_identity(AudioObjectID device,
+    const RK3NativeUSBIdentityQuery *query,RK3NativeUSBIdentity *value) {
+    if(!query||!value||query->version!=RK3_CONTROL_VERSION||query->reserved||!query->generation)
+        return kAudioHardwareIllegalOperationError;
+    RK3NativeUSBIdentity current;
+    OSStatus error=rk3_native_copy_blob(device,RK3_PROPERTY_USB_IDENTITY,query,sizeof(*query),&current,sizeof(current));
+    if(error)return error;
+    if(current.version!=RK3_CONTROL_VERSION||current.reserved0||current.reserved[0]||current.reserved[1]||current.reserved[2])
+        return kAudioHardwareIllegalOperationError;
+    if(current.status==0) {
+        if(current.generation!=query->generation||
+           (current.attempted_mask&~RK3_USB_IDENTITY_ALL_MASK)||
+           (current.defined_mask&~current.attempted_mask)||
+           (current.attempted_mask&RK3_USB_IDENTITY_GETTER_MASK)!=RK3_USB_IDENTITY_GETTER_MASK)
+            return kAudioHardwareIllegalOperationError;
+        const uint32_t scalars[]={current.vendor_id,current.product_id,current.product_index,
+            current.manufacturer_index,current.serial_index};
+        for(unsigned i=0;i<RK3_USB_IDENTITY_PRODUCT_READER;++i) {
+            int defined=(current.defined_mask&(UINT32_C(1)<<i))!=0;
+            if(defined!=(current.step_status[i]==0)||(!defined&&scalars[i]))
+                return kAudioHardwareIllegalOperationError;
+        }
+        const uint8_t *strings[]={current.product,current.manufacturer,current.serial};
+        for(unsigned i=0;i<3;++i) {
+            unsigned step=RK3_USB_IDENTITY_PRODUCT_READER+i;
+            int attempted=(current.attempted_mask&(UINT32_C(1)<<step))!=0;
+            int defined=(current.defined_mask&(UINT32_C(1)<<step))!=0;
+            int eligible=(current.defined_mask&(UINT32_C(1)<<(RK3_USB_IDENTITY_PRODUCT_INDEX+i)))!=0;
+            if(attempted!=eligible||(!attempted&&current.step_status[step])||
+               (attempted&&current.step_status[step]&&!defined))
+                return kAudioHardwareIllegalOperationError;
+            if(!defined||current.step_status[step]) {
+                for(size_t j=0;j<RK3_USB_IDENTITY_STRING_BYTES;++j)
+                    if(strings[i][j])return kAudioHardwareIllegalOperationError;
+            } else if(!memchr(strings[i],0,RK3_USB_IDENTITY_STRING_BYTES))
+                return kAudioHardwareIllegalOperationError;
+        }
+    } else {
+        if((current.status!=ENODEV&&current.status!=ESTALE)||current.generation)
+            return kAudioHardwareIllegalOperationError;
+        const uint8_t *body=(const uint8_t *)&current;
+        for(size_t i=offsetof(RK3NativeUSBIdentity,attempted_mask);i<sizeof(current);++i)
+            if(body[i])return kAudioHardwareIllegalOperationError;
+    }
+    *value=current;return 0;
+}
 static inline OSStatus rk3_native_copy_input_gain(AudioObjectID device,
     const RK3NativeGainQuery *query,RK3NativeGainValue *value) {
     if(!query||!value)return kAudioHardwareIllegalOperationError;

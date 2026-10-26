@@ -198,7 +198,7 @@ static bool has(AudioObjectID o, const AudioObjectPropertyAddress *a) {
             case kAudioDevicePropertyPreferredChannelsForStereo: case kAudioDevicePropertyZeroTimeStampPeriod:
             case kAudioDevicePropertyClockAlgorithm: case kAudioDevicePropertyClockIsStable:
             case kAudioDevicePropertyStreamConfiguration: case kAudioObjectPropertyCustomPropertyInfoList:return true;
-            case RK3_PROPERTY_SPEC:return a->mScope==kAudioObjectPropertyScopeGlobal;
+            case RK3_PROPERTY_SPEC:case RK3_PROPERTY_USB_IDENTITY:return a->mScope==kAudioObjectPropertyScopeGlobal;
             case RK3_PROPERTY_INPUT_GAIN:return a->mScope==kAudioObjectPropertyScopeGlobal;
             case RK3_PROPERTY_INFO: case RK3_PROPERTY_REPORTS: case RK3_PROPERTY_COMMAND: return true;
             default:return false;
@@ -247,8 +247,8 @@ static UInt32 size_for(AudioObjectID o,const AudioObjectPropertyAddress *a) {
         case kAudioDevicePropertyStreamConfiguration:return sizeof(AudioBufferList);
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:return sizeof(AudioStreamBasicDescription);
         case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:return sizeof(AudioStreamRangedDescription);
-        case kAudioObjectPropertyCustomPropertyInfoList:return 5*sizeof(AudioServerPlugInCustomPropertyInfo);
-        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:case RK3_PROPERTY_SPEC:return sizeof(CFPropertyListRef);
+        case kAudioObjectPropertyCustomPropertyInfoList:return 6*sizeof(AudioServerPlugInCustomPropertyInfo);
+        case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:case RK3_PROPERTY_SPEC:case RK3_PROPERTY_USB_IDENTITY:return sizeof(CFPropertyListRef);
         default:return sizeof(UInt32);
     }
 }
@@ -310,8 +310,20 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
                 {RK3_PROPERTY_REPORTS,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
                 {RK3_PROPERTY_COMMAND,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
                 {RK3_PROPERTY_INPUT_GAIN,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
-                {RK3_PROPERTY_SPEC,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
+                {RK3_PROPERTY_SPEC,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
+                {RK3_PROPERTY_USB_IDENTITY,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
             memcpy(out,custom,sizeof(custom));return 0;}
+        case RK3_PROPERTY_USB_IDENTITY:{
+            RK3NativeUSBIdentityQuery query;OSStatus error=read_cfdata(qs,q,&query,sizeof(query));if(error)return error;
+            if(query.version!=RK3_CONTROL_VERSION||query.reserved||!query.generation)return kAudioHardwareIllegalOperationError;
+            RK3NativeUSBIdentity value={.version=RK3_CONTROL_VERSION,.generation=query.generation};
+            pthread_mutex_lock(&control);
+            int32_t result=usb?rk3_usb_copy_identity(usb,query.generation,&value):ENODEV;
+            pthread_mutex_unlock(&control);
+            if(result!=0&&result!=ENODEV&&result!=ESTALE)return kAudioHardwareUnspecifiedError;
+            if(result)value=(RK3NativeUSBIdentity){.version=RK3_CONTROL_VERSION,.status=result};
+            return return_cfdata(&value,sizeof(value),out);
+        }
         case RK3_PROPERTY_SPEC:{
             RK3NativeSpecQuery query;OSStatus error=read_cfdata(qs,q,&query,sizeof(query));if(error)return error;
             if(query.version!=RK3_CONTROL_VERSION||query.reserved||!query.generation)return kAudioHardwareIllegalOperationError;

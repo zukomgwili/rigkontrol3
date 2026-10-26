@@ -204,6 +204,113 @@ and implementation/results are tracked in Beads `rigkontrol3-40h.24`. Passing
 these software checks does not establish installed-driver or NI application
 acceptance; those remain separate project work.
 
+## Physical USB identity snapshot
+
+The read-only **`nusb`** (`0x6e757362`) DEVICE/global/main custom property
+publishes physical VID/PID and product, manufacturer and serial metadata from
+one USB connection attempt. The existing worker captures it immediately after
+its successful parent-device open and before the existing SetConfiguration,
+parent close, readback and sole child-interface claim. It adds no owner or open.
+The existing connection and audio admission rules do not depend on identity
+capture succeeding. Native UID, registry IDs, product labels and matching
+constants never supply the returned physical values.
+
+The capture uses the typed parent descriptor getters, then interleaves product
+index/read, manufacturer index/read and serial index/read. A successful index
+of zero still invokes the reader. A failed index getter leaves only its reader
+unattempted; it does not supply a guessed zero index or suppress later fields.
+The reader preserves the selected NI-supported OS X 10.9.5 / IOUSBFamily 686.4.1
+contract recovered in [the source report](NIUSBIdentityAcquisitionContract.md):
+count 31, language `0x0409`, initial 2-byte request, conditional 256-byte fallback,
+and final original-length request, with the original status/type/length order,
+5000/0 timeout fields and synchronous lifetime. It performs no added retry,
+readiness check, language query, overall timeout or cancellation policy.
+
+Encoding follows the original independent little-endian U16 units, including
+surrogate units, with whole-unit output bounded to 30 bytes and a NUL inside
+the 31-byte destination. It uses neither a modern text converter nor a
+`wLenDone` equality check. The original loop reads/encodes the next unit before
+checking its output budget. Original ignored reader errors remain ignored by
+connection control and retain their raw result plus defined cleared bytes.
+
+Each request's exact prefix is cleared before submission, so the largest
+preceding clear defines the known scratch prefix. A 256-byte fallback makes
+its retained suffix known even after a smaller final clear. If conversion
+would reach an unspecified old scratch unit, the native record marks only that
+string undefined and publishes canonical invalid zero bytes. The provable
+reader return remains zero; this creates no NI error or startup condition.
+Those invalid bytes are not an empty NI string. This explicit availability
+boundary avoids fabricating undefined historical memory as physical identity.
+
+CFData wraps the exact fixed-width, host-endian records below. Property-size
+discovery is metadata-only and returns `sizeof(CFPropertyListRef)` without a
+qualifier. Existing `ninf`, `nrpt`, `ncmd`, `ngai` and `nspc` ABIs are unchanged.
+
+| Record / offset | Field |
+| --- | --- |
+| Query16 / 0, 4, 8 | U32 version 1, U32 reserved 0, U64 nonzero expected generation |
+| Reply160 / 0, 4, 8 | U32 version 1, I32 native errno status, U64 generation |
+| Reply / 16, 20 | U32 attempted mask, U32 defined mask |
+| Reply / 24, 26 | Physical U16 vendor ID, product ID |
+| Reply / 28–31 | U8 product/manufacturer/serial indices and one reserved zero byte |
+| Reply / 32–63 | Eight I32 raw whole-operation IOReturn results |
+| Reply / 64, 95, 126 | Product, manufacturer, serial: 31 opaque bytes each |
+| Reply / 157–159 | Three reserved zero bytes |
+
+Mask bits and result slots use this **storage order**: vendor ID, product ID,
+product index, manufacturer index, serial index, product reader, manufacturer
+reader, serial reader. Execution still interleaves each index and its reader.
+The results are five typed-getter and three whole-reader returns, not each
+intermediate USB request result. Defined bits are a subset of attempted bits.
+
+Native status zero means a coherent capture record exists at the requested
+committed generation; it may contain partial results. A failed scalar getter
+retains its raw result while its value is undefined and canonically zero.
+Unattempted steps have both bits clear and an unused zero result. An attempted
+reader's nonzero result still has **defined** cleared 31-byte output. An
+attempted reader with result zero can instead be undefined under the scratch
+rule above. Consumers must honor these distinctions and must not turn invalid
+zero bytes into a successful empty serial or a fabricated NI identity.
+
+Pending capture publishes atomically at the existing generation commit,
+independently of whether SPEC14 has received INFO. Later INFO can refresh
+SPEC14 without recapturing or changing identity. Both use the same collecting
+and committed USB-attempt markers. Every existing physical-loss, retirement,
+disconnect and close revocation invalidates identity before teardown/drain;
+audio-only stop/start, panic/recovery and generic diagnostics retain it.
+Getters send zero USB requests and cannot refresh capture. A consumer combining
+`nusb` and `nspc` uses one expected generation and discards the group on stale or
+unavailable results; snapshots do not promise that a connection stays live.
+
+`rk3_usb_copy_identity` copies the whole record under the existing session
+mutex. It returns EINVAL for bad private arguments, ENODEV for no committed
+capture/closing, then ESTALE for an available different generation. Failure
+leaves the output unchanged. The HAL uses its existing control gate to pin the
+selected session, then releases both locks before allocating CFData. Capture
+itself holds neither gate across synchronous USB calls. Concurrent close
+revokes publication while existing worker ownership retains the parent,
+session and request buffers until the call returns; no new forced release or
+finite close-completion guarantee is introduced.
+
+ENODEV/ESTALE envelopes contain generation zero and an entirely zero body,
+explicitly invalid data. Native errno, raw IOReturn and CoreAudio OSStatus are
+separate domains. Malformed qualifiers/replies and CF allocation errors leave
+the caller's payload unchanged; a validated partial or domain-error envelope
+can be returned with CoreAudio noErr. `rk3_native_copy_usb_identity` validates a
+temporary's exact shape, generation, masks, reserved/canonical fields and
+bounded NUL for defined strings before assigning the caller's result. It does
+not validate UTF-8, normalize bytes or require all raw results to succeed.
+
+Beads `rigkontrol3-40h.26` records the exact pre-code plan, implementation and
+offline test evidence. The tests use the production reader/capture on a typed
+USB fake and the actual NativeClient → HAL → NativeUSB path. This is an
+additive native functional operation, not NI's 110-byte selector3, an ARM
+hardware agent or unchanged NI application recognition. SPEC14 remains a
+separate property; later NI record assembly must preserve its original field
+ordering, ignored errors and unwritten gaps. Installed-driver and hardware
+acceptance remain separate work; this slice changes no SIP or NI audio timing
+and recovery settings.
+
 ## Audio and lifetime
 
 Audio start requires NI parameter acknowledgement, real completed-output

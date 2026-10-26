@@ -78,6 +78,8 @@ struct rk3_usb_session {
     bool spec_collecting, spec_pending_valid, spec_available;
     uint64_t spec_generation;
     uint8_t spec_pending[RK3_INFO_BYTES], spec_raw[RK3_INFO_BYTES];
+    RK3NativeUSBIdentity identity_pending,identity_current;
+    bool identity_pending_valid,identity_available;
     bool digital_known;
     uint16_t digital_snapshot;
     int ack_result;
@@ -95,6 +97,7 @@ struct rk3_usb_session {
 static void spec_revoke_locked(rk3_usb_session *session) {
     session->spec_collecting=false;session->spec_pending_valid=false;
     session->spec_available=false;session->spec_generation=0;
+    session->identity_pending_valid=false;session->identity_available=false;
 }
 static void spec_revoke(rk3_usb_session *session) {
     pthread_mutex_lock(&session->mutex);spec_revoke_locked(session);pthread_mutex_unlock(&session->mutex);
@@ -108,6 +111,11 @@ static void spec_commit_locked(rk3_usb_session *session) {
     session->spec_generation=session->generation;
     session->spec_available=session->spec_pending_valid;
     if (session->spec_available) memcpy(session->spec_raw,session->spec_pending,RK3_INFO_BYTES);
+    session->identity_available=session->identity_pending_valid;
+    if (session->identity_available) {
+        session->identity_current=session->identity_pending;
+        session->identity_current.generation=session->spec_generation;
+    }
 }
 static void spec_stage_locked(rk3_usb_session *session,const uint8_t raw[RK3_INFO_BYTES]) {
     if (!session->spec_collecting || atomic_load(&session->closing)) return;
@@ -704,6 +712,84 @@ static bool wait_audio_clock(rk3_usb_session *session, rk3_native_audio_iso *aud
     }
 }
 
+/* Selected IOUSBFamily 686 reader; capture always requests 31 output bytes. */
+static int32_t read_identity_string(IOUSBDeviceInterface300 **device,uint8_t index,
+    uint8_t *output,int count,uint16_t language,bool *defined) {
+    *defined=false;
+    if (count<6) return (int32_t)UINT32_C(0xe00002c2);
+    memset(output,0,(size_t)count);*defined=true;
+    /* Retain the original exact clears and suffix, without reading unspecified
+     * stack bytes. A prior fallback clear makes the whole scratch defined. */
+    uint8_t scratch[256];size_t known=2;memset(scratch,0,2);
+    IOUSBDevRequestTO request={.bmRequestType=0x80,.bRequest=6,
+        .wValue=(uint16_t)(0x300|index),.wIndex=language,.wLength=2,
+        .pData=scratch,.noDataTimeout=5000,.completionTimeout=0};
+    int32_t result=(*device)->DeviceRequestTO(device,&request);
+    if (result && !((uint32_t)result==UINT32_C(0xe00002e8)&&scratch[1]==3)) {
+        memset(scratch,0,256);known=256;request.wLength=256;request.wLenDone=0;
+        result=(*device)->DeviceRequestTO(device,&request);
+        if (result && (uint32_t)result!=UINT32_C(0xe00002e7)) return result;
+    }
+    unsigned length=scratch[0];
+    if (!length) return 0;
+    if (scratch[1]!=3) return (int32_t)UINT32_C(0xe00002e9);
+    scratch[0]&=0xfe;memset(scratch,0,length);if(length>known)known=length;
+    request.wLength=(uint16_t)length;request.wLenDone=0;
+    result=(*device)->DeviceRequestTO(device,&request);
+    if (result) return result;
+    if (scratch[1]!=3) return (int32_t)UINT32_C(0xe00002e9);
+    unsigned end=(unsigned)(scratch[0]&0xfe),written=0;
+    for (unsigned offset=2;offset+1<end;offset+=2) {
+        /* The original loads this unit before checking the output budget. */
+        if (offset+1>=known) {*defined=false;memset(output,0,(size_t)count);return 0;}
+        uint16_t unit=(uint16_t)(scratch[offset]|((uint16_t)scratch[offset+1]<<8));
+        if (!unit) break;
+        uint8_t encoded[3];unsigned bytes;
+        if (unit<0x80) {encoded[0]=(uint8_t)unit;bytes=1;}
+        else if (unit<0x800) {
+            encoded[0]=(uint8_t)(0xc0|(unit>>6));encoded[1]=(uint8_t)(0x80|(unit&0x3f));bytes=2;
+        } else {
+            encoded[0]=(uint8_t)(0xe0|(unit>>12));encoded[1]=(uint8_t)(0x80|((unit>>6)&0x3f));
+            encoded[2]=(uint8_t)(0x80|(unit&0x3f));bytes=3;
+        }
+        written+=bytes;
+        if (written>(unsigned)(count-1)) break;
+        memcpy(output+written-bytes,encoded,bytes);
+    }
+    return 0;
+}
+
+/* NI ignores string-reader failures for startup. Preserve each raw result and
+ * defined bytes without making metadata acquisition a new readiness gate. */
+static void capture_identity(IOUSBDeviceInterface300 **device,RK3NativeUSBIdentity *value) {
+    *value=(RK3NativeUSBIdentity){.version=RK3_CONTROL_VERSION,.attempted_mask=RK3_USB_IDENTITY_GETTER_MASK};
+    UInt16 word=0;
+    value->step_status[RK3_USB_IDENTITY_VENDOR_ID]=(*device)->GetDeviceVendor(device,&word);
+    if (!value->step_status[RK3_USB_IDENTITY_VENDOR_ID]) {
+        value->vendor_id=word;value->defined_mask|=1u<<RK3_USB_IDENTITY_VENDOR_ID;
+    }
+    word=0;value->step_status[RK3_USB_IDENTITY_PRODUCT_ID]=(*device)->GetDeviceProduct(device,&word);
+    if (!value->step_status[RK3_USB_IDENTITY_PRODUCT_ID]) {
+        value->product_id=word;value->defined_mask|=1u<<RK3_USB_IDENTITY_PRODUCT_ID;
+    }
+    IOReturn (*indices[3])(void *,UInt8 *)={(*device)->USBGetProductStringIndex,
+        (*device)->USBGetManufacturerStringIndex,(*device)->USBGetSerialNumberStringIndex};
+    uint8_t *index_values[3]={&value->product_index,&value->manufacturer_index,&value->serial_index};
+    uint8_t *strings[3]={value->product,value->manufacturer,value->serial};
+    for (unsigned field=0;field<3;++field) {
+        unsigned index_step=RK3_USB_IDENTITY_PRODUCT_INDEX+field;
+        unsigned reader_step=RK3_USB_IDENTITY_PRODUCT_READER+field;
+        UInt8 index=0;value->step_status[index_step]=indices[field](device,&index);
+        if (value->step_status[index_step]) continue;
+        *index_values[field]=index;value->defined_mask|=1u<<index_step;
+        value->attempted_mask|=1u<<reader_step;
+        bool defined=false;
+        value->step_status[reader_step]=read_identity_string(device,index,strings[field],
+            RK3_USB_IDENTITY_STRING_BYTES,0x0409,&defined);
+        if (defined)value->defined_mask|=1u<<reader_step;
+    }
+}
+
 static bool configure_device(rk3_usb_session *session) {
     UInt8 configuration = 0;
     IOReturn result = (*session->device)->GetConfiguration(session->device, &configuration);
@@ -715,6 +801,12 @@ static bool configure_device(rk3_usb_session *session) {
         if (!advertised_configuration(session->device, 1)) { set_error(session, EPROTO, "Configuration1/interface0/alt1 unavailable"); return false; }
         result = (*session->device)->USBDeviceOpen(session->device);
         if (result != kIOReturnSuccess) { set_error(session, result, "Cannot open RK3 device without seizure"); return false; }
+        RK3NativeUSBIdentity identity;capture_identity(session->device,&identity);
+        pthread_mutex_lock(&session->mutex);
+        if (session->spec_collecting&&!atomic_load(&session->closing)) {
+            session->identity_pending=identity;session->identity_pending_valid=true;
+        }
+        pthread_mutex_unlock(&session->mutex);
         result = (*session->device)->SetConfiguration(session->device, 1);
         IOReturn closed = (*session->device)->USBDeviceClose(session->device);
         if (result != kIOReturnSuccess || closed != kIOReturnSuccess) { set_error(session, result != kIOReturnSuccess ? result : closed, "USB configuration selection failed"); return false; }
@@ -1200,6 +1292,17 @@ int32_t rk3_usb_copy_spec(rk3_usb_session *session, uint64_t generation,
     if (!result) memcpy(out14,session->spec_raw,RK3_INFO_BYTES);
     pthread_mutex_unlock(&session->mutex);
     return result;
+}
+
+int32_t rk3_usb_copy_identity(rk3_usb_session *session,uint64_t generation,
+                              RK3NativeUSBIdentity *output) {
+    if (!session || !generation || !output) return EINVAL;
+    pthread_mutex_lock(&session->mutex);
+    int32_t result=atomic_load(&session->closing)||!session->identity_available||
+        !session->spec_generation||session->spec_generation!=session->generation?ENODEV:
+        generation!=session->spec_generation?ESTALE:0;
+    if (!result)*output=session->identity_current;
+    pthread_mutex_unlock(&session->mutex);return result;
 }
 
 bool rk3_usb_reports(rk3_usb_session *session, const RK3NativeReportQuery *query, RK3NativeReports *reports) {

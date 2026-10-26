@@ -11,6 +11,7 @@
 enum {
     RK3_CONTROL_VERSION = 1,
     RK3_PROPERTY_INPUT_GAIN = 0x6e676169, /* ngai; raw Float32 software input gain */
+    RK3_PROPERTY_USB_IDENTITY = 0x6e757362, /* nusb; physical USB metadata snapshot */
     RK3_PROPERTY_SPEC = 0x6e737063,     /* nspc; cached raw14 specification */
     RK3_PROPERTY_INFO = 0x6e696e66,     /* ninf; get RK3NativeInfo */
     RK3_PROPERTY_REPORTS = 0x6e727074,  /* nrpt; get RK3NativeReports */
@@ -55,6 +56,59 @@ _Static_assert(offsetof(RK3NativeSpec,status)==4,"Spec status ABI");
 _Static_assert(offsetof(RK3NativeSpec,generation)==8,"Spec generation ABI");
 _Static_assert(offsetof(RK3NativeSpec,raw)==16,"Spec raw ABI");
 _Static_assert(offsetof(RK3NativeSpec,reserved)==30,"Spec reserved ABI");
+
+/* Whole-operation status indices; storage order does not reorder USB calls. */
+enum {
+    RK3_USB_IDENTITY_VENDOR_ID = 0,
+    RK3_USB_IDENTITY_PRODUCT_ID,
+    RK3_USB_IDENTITY_PRODUCT_INDEX,
+    RK3_USB_IDENTITY_MANUFACTURER_INDEX,
+    RK3_USB_IDENTITY_SERIAL_INDEX,
+    RK3_USB_IDENTITY_PRODUCT_READER,
+    RK3_USB_IDENTITY_MANUFACTURER_READER,
+    RK3_USB_IDENTITY_SERIAL_READER,
+    RK3_USB_IDENTITY_STEP_COUNT,
+    RK3_USB_IDENTITY_STRING_BYTES = 31,
+    RK3_USB_IDENTITY_GETTER_MASK = 0x1f,
+    RK3_USB_IDENTITY_ALL_MASK = 0xff
+};
+/* Native errno describes snapshot availability; raw step statuses are IOReturn.
+ * A status0 record may have undefined fields. Only defined bytes are data. */
+typedef struct { uint32_t version,reserved; uint64_t generation; } RK3NativeUSBIdentityQuery;
+typedef struct {
+    uint32_t version;
+    int32_t status;
+    uint64_t generation;
+    uint32_t attempted_mask,defined_mask;
+    uint16_t vendor_id,product_id;
+    uint8_t product_index,manufacturer_index,serial_index,reserved0;
+    int32_t step_status[RK3_USB_IDENTITY_STEP_COUNT];
+    uint8_t product[RK3_USB_IDENTITY_STRING_BYTES];
+    uint8_t manufacturer[RK3_USB_IDENTITY_STRING_BYTES];
+    uint8_t serial[RK3_USB_IDENTITY_STRING_BYTES];
+    uint8_t reserved[3];
+} RK3NativeUSBIdentity;
+_Static_assert(sizeof(RK3NativeUSBIdentityQuery)==16,"USB identity query ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentityQuery,version)==0,"USB identity query version ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentityQuery,reserved)==4,"USB identity query reserved ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentityQuery,generation)==8,"USB identity query generation ABI");
+_Static_assert(sizeof(RK3NativeUSBIdentity)==160,"USB identity reply ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,version)==0,"USB identity version ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,status)==4,"USB identity status ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,generation)==8,"USB identity generation ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,attempted_mask)==16,"USB identity attempted ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,defined_mask)==20,"USB identity defined ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,vendor_id)==24,"USB identity vendor ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,product_id)==26,"USB identity product ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,product_index)==28,"USB identity product index ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,manufacturer_index)==29,"USB identity manufacturer index ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,serial_index)==30,"USB identity serial index ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,reserved0)==31,"USB identity reserved byte ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,step_status)==32,"USB identity operation status ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,product)==64,"USB identity product bytes ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,manufacturer)==95,"USB identity manufacturer bytes ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,serial)==126,"USB identity serial bytes ABI");
+_Static_assert(offsetof(RK3NativeUSBIdentity,reserved)==157,"USB identity reserved ABI");
 
 typedef struct {
     uint32_t version;

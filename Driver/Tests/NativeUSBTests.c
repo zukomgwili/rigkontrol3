@@ -396,6 +396,7 @@ static void trace_configuration(unsigned int event) {
     assert(configuration_trace_length < 16);
     configuration_trace[configuration_trace_length++] = event;
 }
+static void identity_configuration_event(unsigned int event);
 static IOReturn fake_configuration_get(void *self, UInt8 *value) {
     (void)self; trace_configuration(CONFIG_GET); *value = fake_configuration; return kIOReturnSuccess;
 }
@@ -409,21 +410,33 @@ static IOReturn fake_configuration_descriptor(void *self, UInt8 index, IOUSBConf
 }
 static IOReturn fake_configuration_open(void *self) {
     (void)self; trace_configuration(CONFIG_OPEN); assert(!configuration_open);
-    configuration_open = true; ++configuration_opens; return kIOReturnSuccess;
+    configuration_open = true;identity_configuration_event(CONFIG_OPEN); ++configuration_opens; return kIOReturnSuccess;
 }
 static IOReturn fake_configuration_set(void *self, UInt8 value) {
-    (void)self; trace_configuration(CONFIG_SET); assert(configuration_open && value == 1);
+    (void)self; trace_configuration(CONFIG_SET); assert(configuration_open && value == 1);identity_configuration_event(CONFIG_SET);
     ++configuration_sets;
     if (configuration_result == kIOReturnSuccess) fake_configuration = value;
     return configuration_result;
 }
 static IOReturn fake_configuration_close(void *self) {
-    (void)self; trace_configuration(CONFIG_CLOSE); assert(configuration_open);
+    (void)self; trace_configuration(CONFIG_CLOSE); assert(configuration_open);identity_configuration_event(CONFIG_CLOSE);
     configuration_open = false; ++configuration_closes; return kIOReturnSuccess;
+}
+static IOReturn fake_identity_request(void *,IOUSBDevRequestTO *);
+static IOReturn fake_identity_vendor(void *,UInt16 *);
+static IOReturn fake_identity_product(void *,UInt16 *);
+static IOReturn fake_identity_product_index(void *,UInt8 *);
+static IOReturn fake_identity_manufacturer_index(void *,UInt8 *);
+static IOReturn fake_identity_serial_index(void *,UInt8 *);
+static void identity_parent_api(IOUSBDeviceInterface300 *functions) {
+    functions->GetDeviceVendor=fake_identity_vendor;functions->GetDeviceProduct=fake_identity_product;
+    functions->USBGetProductStringIndex=fake_identity_product_index;
+    functions->USBGetManufacturerStringIndex=fake_identity_manufacturer_index;
+    functions->USBGetSerialNumberStringIndex=fake_identity_serial_index;functions->DeviceRequestTO=fake_identity_request;
 }
 static void configuration_test(void) {
     rk3_usb_session session; initialize(&session);
-    IOUSBDeviceInterface300 functions = {0};
+    IOUSBDeviceInterface300 functions = {0};identity_parent_api(&functions);
     functions.GetConfiguration = fake_configuration_get;
     functions.GetNumberOfConfigurations = fake_configuration_count;
     functions.GetConfigurationDescriptorPtr = fake_configuration_descriptor;
@@ -1298,7 +1311,7 @@ typedef struct {
     rk3_usb_session *session;
     pthread_mutex_t mutex;pthread_cond_t condition;
     CFRunLoopRef loop;CFRunLoopSourceRef source;
-    bool entered,done;
+    bool entered,done,check_identity;
 } SpecDrain;
 static SpecDrain *spec_drain;
 static int32_t spec_abort_pending(void *interface,uint8_t pipe) {
@@ -1311,6 +1324,10 @@ static void spec_deliver_retiring_info(void *context) {
     SpecDrain *drain=context;uint8_t out[14],unchanged[14];memset(out,0xa5,14);memcpy(unchanged,out,14);
     spec_info(drain->session,spec_startup_info+1);
     assert(rk3_usb_copy_spec(drain->session,10,out)==ENODEV&&!memcmp(out,unchanged,14));
+    if(drain->check_identity) {
+        RK3NativeUSBIdentity value,sentinel;memset(&sentinel,0xa5,sizeof(sentinel));value=sentinel;
+        assert(rk3_usb_copy_identity(drain->session,10,&value)==ENODEV&&!memcmp(&value,&sentinel,sizeof(value)));
+    }
 }
 static void *spec_disconnect_pending(void *context) {
     SpecDrain *drain=context;CFRunLoopRef loop=CFRunLoopGetCurrent();
@@ -1321,6 +1338,10 @@ static void *spec_disconnect_pending(void *context) {
     disconnect_device(drain->session);
     /* This new publication cannot execute while the old callback retains its I/O. */
     spec_attempt(drain->session);spec_commit(drain->session);
+    if(drain->check_identity) {
+        RK3NativeUSBIdentity value,sentinel;memset(&sentinel,0xa5,sizeof(sentinel));value=sentinel;
+        assert(rk3_usb_copy_identity(drain->session,11,&value)==ENODEV&&!memcmp(&value,&sentinel,sizeof(value)));
+    }
     pthread_mutex_lock(&drain->mutex);drain->done=true;pthread_cond_broadcast(&drain->condition);pthread_mutex_unlock(&drain->mutex);
     CFRunLoopRemoveSource(loop,source,kCFRunLoopDefaultMode);CFRelease(source);
     return NULL;
@@ -1451,7 +1472,386 @@ static void spec_snapshot_race_test(void) {
     assert(rk3_usb_copy_spec(&session,42,out)==0&&!memcmp(out,current,14));
     pthread_cond_destroy(&race.barrier.condition);pthread_mutex_destroy(&race.barrier.mutex);finish(&session);
 }
+typedef struct {
+    uint16_t length;uint8_t index;int32_t status;uint32_t actual;
+    size_t copied;uint8_t bytes[256];
+} IdentityReply;
+typedef struct {
+    pthread_mutex_t mutex;pthread_cond_t condition;
+    bool entered,resume,returned;
+} IdentityRequestGate;
+typedef struct {
+    IdentityReply replies[9];size_t count,used;
+    int32_t getter_status[5];uint16_t vendor,product;uint8_t indices[3];
+    unsigned trace[32],trace_count;rk3_usb_session *session;bool require_open;
+    IdentityRequestGate *gate;
+} IdentityIO;
+static IdentityIO *identity_io;
+static void identity_boundary(unsigned step) {
+    IdentityIO *io=identity_io;if(!io)return;
+    if(io->require_open)assert(configuration_open);
+    if(io->session){assert(pthread_mutex_trylock(&io->session->mutex)==0);pthread_mutex_unlock(&io->session->mutex);}
+    assert(io->trace_count<32);io->trace[io->trace_count++]=step;
+}
+static void identity_configuration_event(unsigned int event){if(identity_io)identity_boundary(100+event);}
+static unsigned identity_release_calls;
+static ULONG fake_identity_release(void *self) {
+    (void)self;assert(!configuration_open);
+    if(identity_io&&identity_io->gate)assert(identity_io->gate->returned);
+    ++identity_release_calls;return 0;
+}
+static IOReturn fake_identity_vendor(void *self,UInt16 *value) {
+    (void)self;identity_boundary(0);*value=identity_io?identity_io->vendor:0;return identity_io?identity_io->getter_status[0]:0;
+}
+static IOReturn fake_identity_product(void *self,UInt16 *value) {
+    (void)self;identity_boundary(1);*value=identity_io?identity_io->product:0;return identity_io?identity_io->getter_status[1]:0;
+}
+static IOReturn fake_identity_index(unsigned slot,UInt8 *value) {
+    identity_boundary(slot+2);*value=identity_io?identity_io->indices[slot]:0;return identity_io?identity_io->getter_status[slot+2]:0;
+}
+static IOReturn fake_identity_product_index(void *self,UInt8 *value){(void)self;return fake_identity_index(0,value);}
+static IOReturn fake_identity_manufacturer_index(void *self,UInt8 *value){(void)self;return fake_identity_index(1,value);}
+static IOReturn fake_identity_serial_index(void *self,UInt8 *value){(void)self;return fake_identity_index(2,value);}
+static IOReturn fake_identity_request(void *self,IOUSBDevRequestTO *request) {
+    (void)self;IdentityIO *io=identity_io;if(!io)return 0;
+    assert(io->used<io->count);identity_boundary(16+(request->wValue&0xff));
+    IdentityReply *reply=&io->replies[io->used++];
+    assert(request->bmRequestType==0x80&&request->bRequest==6);
+    assert(request->wValue==(uint16_t)(0x300|reply->index)&&request->wIndex==0x0409);
+    assert(request->wLength==reply->length&&request->wLenDone==0);
+    assert(request->noDataTimeout==5000&&request->completionTimeout==0);
+    const uint8_t *before=request->pData;
+    for(unsigned i=0;i<request->wLength;++i)assert(before[i]==0);
+    if(io->gate&&io->used==1) {
+        IdentityRequestGate *gate=io->gate;pthread_mutex_lock(&gate->mutex);
+        gate->entered=true;pthread_cond_broadcast(&gate->condition);
+        while(!gate->resume)pthread_cond_wait(&gate->condition,&gate->mutex);
+        /* The original stack request and scratch remain owned until return. */
+        assert(request->pData==before&&configuration_open);
+        gate->returned=true;pthread_cond_broadcast(&gate->condition);pthread_mutex_unlock(&gate->mutex);
+    }
+    assert(reply->copied<=request->wLength);memcpy(request->pData,reply->bytes,reply->copied);
+    request->wLenDone=reply->actual;return reply->status;
+}
+static void identity_reader_first_test(void) {
+    IdentityIO io={.count=2,.replies={{.length=2,.index=7,.actual=2,.copied=2,.bytes={4,3}},
+        {.length=4,.index=7,.actual=4,.copied=4,.bytes={4,3,0x41,0}}}};
+    identity_io=&io;IOUSBDeviceInterface300 functions={.DeviceRequestTO=fake_identity_request};
+    IOUSBDeviceInterface300 *device=&functions;uint8_t out[32];memset(out,0xa5,32);bool defined=false;
+    assert(read_identity_string(&device,7,out,31,0x0409,&defined)==0);
+    assert(defined&&out[0]==0x41&&out[1]==0&&out[30]==0&&out[31]==0xa5&&io.used==2);
+    identity_io=NULL;
+}
+static void identity_reader_fallback_test(void) {
+    for(unsigned kind=0;kind<2;++kind) {
+        IdentityIO io={.count=2,.replies={{.length=2,.index=7,.status=(int32_t)UINT32_C(0xe00002e8),.copied=2,.bytes={4,3}},
+            {.length=4,.index=7,.copied=4,.bytes={4,3,0x41,0}}}};
+        if(kind){io.replies[0].bytes[1]=0;io.replies[1]=(IdentityReply){.length=256,.index=7,.status=(int32_t)UINT32_C(0xe00002bc)};}
+        identity_io=&io;IOUSBDeviceInterface300 functions={.DeviceRequestTO=fake_identity_request};IOUSBDeviceInterface300 *device=&functions;
+        uint8_t out[32];memset(out,0xa5,32);bool defined=false;
+        int32_t expected=kind?(int32_t)UINT32_C(0xe00002bc):0;
+        assert(read_identity_string(&device,7,out,31,0x0409,&defined)==expected&&defined);
+        assert(out[0]==(kind?0:0x41)&&out[1]==0&&out[30]==0&&out[31]==0xa5&&io.used==2);
+    }
+    identity_io=NULL;
+}
+static void identity_reader_unicode_test(void) {
+    const uint8_t inputs[][6]={{6,3,0xe9,0,0,0},{6,3,0x3d,0xd8,0,0xde},{6,3,0xac,0x20,0,0}};
+    const uint8_t expected[][6]={{0xc3,0xa9,0,0,0,0},{0xed,0xa0,0xbd,0xed,0xb8,0x80},{0xe2,0x82,0xac,0,0,0}};
+    for(unsigned kind=0;kind<3;++kind) {
+        IdentityIO io={.count=2,.replies={{.length=2,.index=7,.copied=2,.bytes={6,3}},
+            {.length=6,.index=7,.copied=6}}};memcpy(io.replies[1].bytes,inputs[kind],6);
+        identity_io=&io;IOUSBDeviceInterface300 functions={.DeviceRequestTO=fake_identity_request};IOUSBDeviceInterface300 *device=&functions;
+        uint8_t out[32];memset(out,0xa5,32);bool defined=false;
+        assert(read_identity_string(&device,7,out,31,0x0409,&defined)==0&&defined);
+        assert(!memcmp(out,expected[kind],6)&&out[30]==0&&out[31]==0xa5&&io.used==2);
+    }
+    identity_io=NULL;
+}
+static void expect_identity_reader(IdentityIO *io,uint8_t index,int count,int32_t status,
+    bool expected_defined,const uint8_t expected[31]) {
+    identity_io=io;IOUSBDeviceInterface300 functions={.DeviceRequestTO=fake_identity_request};IOUSBDeviceInterface300 *device=&functions;
+    uint8_t out[32];memset(out,0xa5,32);bool defined=true;
+    assert(read_identity_string(&device,index,out,count,0x0409,&defined)==status&&defined==expected_defined);
+    if(count==31)assert(!memcmp(out,expected,31));else for(unsigned i=0;i<32;++i)assert(out[i]==0xa5);
+    assert(out[31]==0xa5&&io->used==io->count);identity_io=NULL;
+}
+static IdentityIO identity_two_replies(uint16_t length,uint8_t index) {
+    IdentityIO io={.count=2,.replies={{.length=2,.copied=2},{.copied=length}}};
+    io.replies[0].index=io.replies[1].index=index;io.replies[0].bytes[0]=(uint8_t)length;io.replies[0].bytes[1]=3;
+    io.replies[1].length=length;io.replies[1].bytes[0]=(uint8_t)length;io.replies[1].bytes[1]=3;
+    return io;
+}
+static void identity_reader_oracles_test(void) {
+    const uint8_t zero[31]={0};uint8_t expected[31];IdentityIO io={0};
+    /* Count guard; initial zero length; initial success with wrong type. */
+    expect_identity_reader(&io,7,5,(int32_t)UINT32_C(0xe00002c2),false,zero);
+    io=(IdentityIO){.count=1,.replies={{.length=2,.index=7,.copied=2}}};expect_identity_reader(&io,7,31,0,true,zero);
+    io=(IdentityIO){.count=1,.replies={{.length=2,.index=7,.copied=2,.bytes={4,0}}}};
+    expect_identity_reader(&io,7,31,(int32_t)UINT32_C(0xe00002e9),true,zero);
+    /* Error fallback may return Underrun with zero length and still succeed. */
+    io=(IdentityIO){.count=2,.replies={{.length=2,.index=7,.status=kIOReturnIOError},
+        {.length=256,.index=7,.status=(int32_t)UINT32_C(0xe00002e7)}}};expect_identity_reader(&io,7,31,0,true,zero);
+    /* Odd original length is submitted unchanged, final even length controls conversion. */
+    io=identity_two_replies(5,7);io.replies[1].bytes[2]=0x41;io.replies[1].bytes[4]=0xff;
+    memset(expected,0,31);expected[0]=0x41;expect_identity_reader(&io,7,31,0,true,expected);
+    for(unsigned length=0;length<=2;length+=2){
+        io=identity_two_replies(4,7);io.replies[1].bytes[0]=(uint8_t)length;
+        expect_identity_reader(&io,7,31,0,true,zero);
+    }
+    io=identity_two_replies(4,7);io.replies[1].status=kIOReturnIOError;
+    expect_identity_reader(&io,7,31,kIOReturnIOError,true,zero);
+    /* Fully supplied content remains defined even when every actual count is0. */
+    io=identity_two_replies(4,7);io.replies[1].bytes[2]=0x41;
+    memset(expected,0,31);expected[0]=0x41;expect_identity_reader(&io,7,31,0,true,expected);
+    /* Whole-unit output budget, not a byte-wise truncation or character count. */
+    io=identity_two_replies(62,7);
+    for(unsigned i=0;i<29;++i)io.replies[1].bytes[2+2*i]=0x41;
+    io.replies[1].bytes[60]=0xe9;memset(expected,0,31);memset(expected,0x41,29);
+    expect_identity_reader(&io,7,31,0,true,expected);
+    io=identity_two_replies(34,7);for(unsigned i=0;i<16;++i)io.replies[1].bytes[2+2*i]=0xe9;
+    memset(expected,0,31);for(unsigned i=0;i<15;++i){expected[2*i]=0xc3;expected[2*i+1]=0xa9;}
+    expect_identity_reader(&io,7,31,0,true,expected);
+    /* Index0 is sent, and a supplied language-list unit is encoded as data. */
+    io=identity_two_replies(4,0);io.replies[1].bytes[2]=9;io.replies[1].bytes[3]=4;
+    memset(expected,0,31);expected[0]=0xd0;expected[1]=0x89;expect_identity_reader(&io,0,31,0,true,expected);
+    io=identity_two_replies(8,7);io.replies[1].bytes[2]=0x41;io.replies[1].bytes[6]=0x42;
+    memset(expected,0,31);expected[0]=0x41;expect_identity_reader(&io,7,31,0,true,expected);
+}
+static void identity_reader_definedness_test(void) {
+    uint8_t expected[31]={0};IdentityIO io={.count=3,.replies={{.length=2,.index=7,.status=kIOReturnIOError},
+        {.length=256,.index=7,.copied=6,.bytes={4,3,0,0,0x42,0}},
+        {.length=4,.index=7,.copied=4,.bytes={6,3,0x41,0}}}};
+    expected[0]=0x41;expected[1]=0x42;expect_identity_reader(&io,7,31,0,true,expected);
+    /* The same final response without fallback needs bytes never initialized. */
+    io=identity_two_replies(4,7);io.replies[1].bytes[0]=6;io.replies[1].bytes[2]=0x41;
+    memset(expected,0,31);expect_identity_reader(&io,7,31,0,false,expected);
+    /* Known NUL stops before the unknown unit. */
+    io=identity_two_replies(4,7);io.replies[1].bytes[0]=6;expect_identity_reader(&io,7,31,0,true,expected);
+    /* A full30-byte output still requires the next unit before the capacity test. */
+    io=identity_two_replies(62,7);io.replies[1].bytes[0]=64;
+    for(unsigned i=0;i<30;++i)io.replies[1].bytes[2+2*i]=0x41;
+    expect_identity_reader(&io,7,31,0,false,expected);
+}
+static void identity_configure_fixture(rk3_usb_session *session,IOUSBDeviceInterface300 *functions,
+    IOUSBDeviceInterface300 **device,IdentityIO *io) {
+    *functions=(IOUSBDeviceInterface300){.Release=fake_identity_release,.GetConfiguration=fake_configuration_get,
+        .GetNumberOfConfigurations=fake_configuration_count,.GetConfigurationDescriptorPtr=fake_configuration_descriptor,
+        .USBDeviceOpen=fake_configuration_open,.SetConfiguration=fake_configuration_set,.USBDeviceClose=fake_configuration_close};
+    identity_parent_api(functions);*device=functions;session->device=device;identity_io=io;
+    io->session=session;io->require_open=true;fake_configuration=1;configuration_open=false;
+    configuration_result=0;configuration_trace_length=configuration_sets=configuration_opens=configuration_closes=0;
+}
+static IdentityIO identity_capture_replies(void) {
+    IdentityIO io={.count=6,.vendor=0x1234,.product=0xabcd,.indices={7,8,0}};
+    for(unsigned field=0;field<3;++field){
+        io.replies[2*field]=(IdentityReply){.length=2,.index=io.indices[field],.copied=2,.bytes={4,3}};
+        io.replies[2*field+1]=(IdentityReply){.length=4,.index=io.indices[field],.copied=4,.bytes={4,3,(uint8_t)(0x50+field),0}};
+    }
+    return io;
+}
+static void identity_capture_publication_test(void) {
+    rk3_usb_session session;initialize(&session);spec_attempt(&session);
+    IOUSBDeviceInterface300 functions,*device;IdentityIO io=identity_capture_replies();
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));
+    RK3NativeUSBIdentity value,saved;memset(&value,0xa5,sizeof(value));saved=value;
+    assert(rk3_usb_copy_identity(&session,9,&value)==ENODEV&&!memcmp(&value,&saved,sizeof(value)));
+    spec_commit(&session);
+    assert(rk3_usb_copy_identity(&session,10,&value)==0);
+    assert(value.version==1&&value.status==0&&value.generation==10&&value.attempted_mask==0xff&&value.defined_mask==0xff);
+    assert(value.vendor_id==0x1234&&value.product_id==0xabcd&&value.product_index==7&&value.manufacturer_index==8&&value.serial_index==0);
+    assert(value.product[0]==0x50&&value.manufacturer[0]==0x51&&value.serial[0]==0x52&&io.used==6);
+    const unsigned expected[]={103,0,1,2,23,23,3,24,24,4,16,16,104,105};
+    assert(io.trace_count==sizeof(expected)/sizeof(*expected)&&!memcmp(io.trace,expected,sizeof(expected)));
+    session.device=NULL;identity_io=NULL;finish(&session);
+}
+static void identity_partial_capture_test(void) {
+    rk3_usb_session session;initialize(&session);spec_attempt(&session);session.status.error_code=EINPROGRESS;
+    IOUSBDeviceInterface300 functions,*device;IdentityIO io={.vendor=0xdead,.product=0,.indices={7,8,0},
+        .getter_status={kIOReturnIOError,0,kIOReturnNoDevice,0,0},.count=4,
+        .replies={{.length=2,.index=8,.status=kIOReturnIOError},{.length=256,.index=8,.status=kIOReturnIOError},
+            {.length=2,.index=0,.copied=2,.bytes={4,3}},{.length=4,.index=0,.copied=4,.bytes={4,3,0x53,0}}}};
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));spec_commit(&session);
+    RK3NativeUSBIdentity value;assert(rk3_usb_copy_identity(&session,10,&value)==0);
+    assert(value.attempted_mask==0xdf&&value.defined_mask==0xda&&value.status==0&&value.generation==10);
+    assert(value.vendor_id==0&&value.product_id==0&&value.product_index==0&&value.manufacturer_index==8&&value.serial_index==0);
+    assert(value.step_status[0]==kIOReturnIOError&&value.step_status[2]==kIOReturnNoDevice&&value.step_status[5]==0&&value.step_status[6]==kIOReturnIOError);
+    for(unsigned i=0;i<31;++i)assert(value.product[i]==0&&value.manufacturer[i]==0);
+    assert(value.serial[0]==0x53&&io.used==4&&!session.transport_failed&&session.status.error_code==EINPROGRESS);
+    assert(configuration_sets==1&&configuration_closes==1&&!configuration_open);
+    usb=&session;RK3NativeUSBIdentityQuery query={1,0,10};RK3NativeUSBIdentity transported;
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&transported)==0&&!memcmp(&transported,&value,sizeof(value)));usb=NULL;
+    identity_io=NULL;session.device=NULL;finish(&session);
+    /* Reader raw0 with undefined native bytes remains a valid partial snapshot. */
+    initialize(&session);spec_attempt(&session);io=identity_capture_replies();io.replies[1].bytes[0]=6;
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));spec_commit(&session);
+    assert(rk3_usb_copy_identity(&session,10,&value)==0&&value.attempted_mask==0xff&&value.defined_mask==0xdf&&value.step_status[5]==0);
+    for(unsigned i=0;i<31;++i)assert(value.product[i]==0);
+    assert(value.manufacturer[0]==0x51&&value.serial[0]==0x52&&io.used==6);
+    usb=&session;assert(rk3_native_copy_usb_identity(DEVICE,&query,&transported)==0&&!memcmp(&transported,&value,sizeof(value)));usb=NULL;
+    identity_io=NULL;session.device=NULL;finish(&session);
+}
+static void identity_property_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;spec_attempt(&session);
+    IOUSBDeviceInterface300 functions,*device;IdentityIO io=identity_capture_replies();
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));spec_commit(&session);usb=&session;
+    RK3NativeUSBIdentityQuery query={1,0,10};RK3NativeUSBIdentity value,saved;
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&value.status==0&&value.generation==10);
+    assert(value.vendor_id==0x1234&&value.product_id==0xabcd&&value.product[0]==0x50&&value.attempted_mask==0xff&&value.defined_mask==0xff);
+    RK3NativeInfo info;assert(rk3_usb_info(&session,&info)&&strcmp(info.product_name,(char *)value.product)!=0);
+    saved=value;uint8_t spec[14];assert(rk3_usb_copy_spec(&session,10,spec)==ENODEV);
+    unsigned reads=read_arms,writes=command_writes,starts=fake_start_calls,services=fake_service_calls,requests=(unsigned)io.used;
+    for(unsigned i=0;i<3;++i)assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&!memcmp(&value,&saved,sizeof(value)));
+    spec_info(&session,spec_startup_info+1);
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&!memcmp(&value,&saved,sizeof(value)));
+    assert(rk3_usb_copy_spec(&session,10,spec)==0);
+    assert(read_arms==reads&&command_writes==writes&&fake_start_calls==starts&&fake_service_calls==services&&io.used==requests);
+    RK3NativeUSBIdentity unchanged;memset(&unchanged,0xa5,sizeof(unchanged));value=unchanged;
+    assert(rk3_usb_copy_identity(NULL,10,&value)==EINVAL&&!memcmp(&value,&unchanged,sizeof(value)));
+    assert(rk3_usb_copy_identity(&session,0,&value)==EINVAL&&!memcmp(&value,&unchanged,sizeof(value)));
+    assert(rk3_usb_copy_identity(&session,10,NULL)==EINVAL);
+    assert(rk3_usb_copy_identity(&session,9,&value)==ESTALE&&!memcmp(&value,&unchanged,sizeof(value)));
+    query.generation=9;assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&value.status==ESTALE&&value.generation==0&&value.attempted_mask==0);
+    query.generation=10;
+    rk3_native_audio_iso audio={0};test_audio(&session,&audio);session.status.state=RK3_USB_READY;
+    fake_start_result=0;fake_clock_valid=true;
+    Request *request=enqueue_test_request(&session,REQUEST_START,NULL,0);process_one_request(&session,true);
+    assert(request->complete&&request->result==0);free_test_request(request);
+    fake_panic_pending=true;fake_panic_delay=0;fake_panic_error=kIOReturnIsoTooOld;audio_panic_tick(&session,100);
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&!memcmp(&value,&saved,sizeof(value)));
+    request=enqueue_test_request(&session,REQUEST_STOP,NULL,0);process_one_request(&session,true);assert(request->complete&&request->result==0);free_test_request(request);
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&!memcmp(&value,&saved,sizeof(value)));
+    set_error(&session,EIO,"Unrelated diagnostic");assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&!memcmp(&value,&saved,sizeof(value)));
+    report_complete(&session,kIOReturnNoDevice,0);value=unchanged;
+    assert(rk3_usb_copy_identity(&session,9,&value)==ENODEV&&!memcmp(&value,&unchanged,sizeof(value)));
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&value.status==ENODEV&&value.generation==0&&value.defined_mask==0);
+    disconnect_device(&session);identity_io=NULL;usb=NULL;finish(&session);
+    /* All zero physical values/real index0/empty text are valid, not absent. */
+    initialize(&session);spec_attempt(&session);io=(IdentityIO){.count=3,.replies={{.length=2},{.length=2},{.length=2}}};
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));spec_commit(&session);usb=&session;
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&value.status==0&&value.vendor_id==0&&value.product_id==0&&value.defined_mask==0xff&&io.used==3);
+    for(unsigned i=0;i<31;++i)assert(value.product[i]==0&&value.manufacturer[i]==0&&value.serial[i]==0);
+    identity_io=NULL;session.device=NULL;usb=NULL;finish(&session);
+}
+static void identity_pending_drain_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;spec_attempt(&session);
+    IOUSBDeviceInterface300 functions,*device;IdentityIO io=identity_capture_replies();
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));
+    spec_info(&session,spec_startup_info+1);spec_commit(&session);
+    RK3NativeUSBIdentity value,sentinel;memset(&sentinel,0xa5,sizeof(sentinel));
+    assert(rk3_usb_copy_identity(&session,10,&value)==0);
+    RK3HostInterface interface={.abort_pipe=spec_abort_pending};session.interface=&interface;
+    session.opened=session.pending=true;session.command_in=4;
+    SpecDrain drain={.session=&session,.check_identity=true};assert(!pthread_mutex_init(&drain.mutex,NULL));
+    assert(!pthread_cond_init(&drain.condition,NULL));spec_drain=&drain;
+    pthread_t thread;assert(!pthread_create(&thread,NULL,spec_disconnect_pending,&drain));
+    pthread_mutex_lock(&drain.mutex);while(!drain.entered)pthread_cond_wait(&drain.condition,&drain.mutex);
+    assert(!drain.done);value=sentinel;
+    assert(rk3_usb_copy_identity(&session,10,&value)==ENODEV&&!memcmp(&value,&sentinel,sizeof(value)));
+    RK3NativeInfo info;assert(rk3_usb_info(&session,&info)&&info.generation==10);
+    CFRunLoopSourceSignal(drain.source);CFRunLoopWakeUp(drain.loop);pthread_mutex_unlock(&drain.mutex);
+    assert(!pthread_join(thread,NULL));assert(rk3_usb_info(&session,&info)&&info.generation==11);
+    value=sentinel;assert(rk3_usb_copy_identity(&session,11,&value)==ENODEV&&!memcmp(&value,&sentinel,sizeof(value)));
+    session.stopping_io=false;session.command_suspended=true;spec_info(&session,spec_startup_info+1);
+    assert(rk3_usb_copy_identity(&session,11,&value)==ENODEV&&!memcmp(&value,&sentinel,sizeof(value)));
+    identity_io=NULL;spec_drain=NULL;pthread_cond_destroy(&drain.condition);pthread_mutex_destroy(&drain.mutex);finish(&session);
+}
+static void identity_opaque_transport_test(void) {
+    rk3_usb_session session;initialize(&session);spec_attempt(&session);IOUSBDeviceInterface300 functions,*device;
+    IdentityIO io=identity_capture_replies();io.replies[0].bytes[0]=6;
+    io.replies[1]=(IdentityReply){.length=6,.index=7,.copied=6,.bytes={6,3,0x3d,0xd8,0,0}};
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));spec_commit(&session);usb=&session;
+    RK3NativeUSBIdentityQuery query={1,0,10};RK3NativeUSBIdentity value;const uint8_t surrogate[]={0xed,0xa0,0xbd,0};
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&value.status==0&&value.defined_mask==0xff);
+    assert(!memcmp(value.product,surrogate,sizeof(surrogate))); /* Opaque original code-unit encoding. */
+    identity_io=NULL;session.device=NULL;usb=NULL;finish(&session);
+}
+/* The thread owns the existing worker reference; it never enumerates a device. */
+static void *identity_close_worker(void *context) {
+    rk3_usb_session *session=context;assert(configure_device(session));
+    spec_commit(session);RK3NativeUSBIdentity value,unchanged;memset(&unchanged,0xa5,sizeof(unchanged));value=unchanged;
+    assert(rk3_usb_copy_identity(session,10,&value)==ENODEV&&!memcmp(&value,&unchanged,sizeof(value)));
+    disconnect_device(session);
+    pthread_mutex_lock(&session->mutex);session->status.state=RK3_USB_CLOSED;
+    pthread_cond_broadcast(&session->wake);pthread_mutex_unlock(&session->mutex);
+    release_session(session);return NULL;
+}
+static void identity_held_request_close_test(void) {
+    for(unsigned wait=0;wait<2;++wait) {
+        rk3_usb_session *session=calloc(1,sizeof(*session));assert(session);initialize(session);spec_attempt(session);
+        IdentityRequestGate gate={0};assert(!pthread_mutex_init(&gate.mutex,NULL));assert(!pthread_cond_init(&gate.condition,NULL));
+        IdentityIO io=identity_capture_replies();io.gate=&gate;IOUSBDeviceInterface300 functions,*device;
+        identity_configure_fixture(session,&functions,&device,&io);unsigned released=identity_release_calls;
+        pthread_t thread;assert(!pthread_create(&thread,NULL,identity_close_worker,session));
+        pthread_mutex_lock(&gate.mutex);while(!gate.entered)pthread_cond_wait(&gate.condition,&gate.mutex);
+        RK3NativeUSBIdentity value,unchanged;memset(&unchanged,0xa5,sizeof(unchanged));value=unchanged;
+        assert(rk3_usb_copy_identity(session,9,&value)==ENODEV&&!memcmp(&value,&unchanged,sizeof(value)));
+        assert(configuration_open&&configuration_sets==0&&configuration_closes==0&&identity_release_calls==released);
+        if(wait)assert(!rk3_usb_close_wait(session,0));else rk3_usb_close(session);
+        /* Caller relinquished its handle. Only the retained worker may use it. */
+        assert(!gate.returned&&configuration_open&&identity_release_calls==released);
+        gate.resume=true;pthread_cond_broadcast(&gate.condition);pthread_mutex_unlock(&gate.mutex);
+        assert(!pthread_join(thread,NULL));assert(gate.returned&&io.used==6);
+        assert(configuration_sets==1&&configuration_closes==1&&identity_release_calls==released+1);
+        identity_io=NULL;pthread_cond_destroy(&gate.condition);pthread_mutex_destroy(&gate.mutex);
+    }
+}
+static void identity_cohort_test(void) {
+    rk3_usb_session session;initialize(&session);session.command_suspended=true;spec_attempt(&session);
+    IOUSBDeviceInterface300 functions,*device;IdentityIO io=identity_capture_replies();
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));spec_commit(&session);usb=&session;
+    RK3NativeUSBIdentityQuery query={1,0,10};RK3NativeUSBIdentity value,first,unchanged;memset(&unchanged,0xa5,sizeof(unchanged));
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&first)==0&&first.status==0);
+    disconnect_device(&session);session.stopping_io=false;spec_attempt(&session);spec_commit(&session);
+    value=unchanged;assert(rk3_usb_copy_identity(&session,11,&value)==ENODEV&&!memcmp(&value,&unchanged,sizeof(value)));
+    spec_info(&session,spec_startup_info+1);assert(rk3_usb_copy_identity(&session,11,&value)==ENODEV&&!memcmp(&value,&unchanged,sizeof(value)));
+    /* A distinct completed capture publishes only at the next existing generation commit. */
+    spec_attempt(&session);io=identity_capture_replies();io.vendor=0x4567;io.indices[0]=9;
+    io.replies[0].index=io.replies[1].index=9;io.replies[1].bytes[2]=0x55;
+    identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));
+    assert(rk3_usb_copy_identity(&session,11,&value)==ENODEV);spec_commit(&session);
+    assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&value.status==ESTALE&&value.generation==0);
+    query.generation=12;assert(rk3_native_copy_usb_identity(DEVICE,&query,&value)==0&&value.status==0&&value.generation==12);
+    assert(value.vendor_id==0x4567&&value.product_index==9&&value.product[0]==0x55&&value.manufacturer[0]==first.manufacturer[0]);
+    disconnect_device(&session);session.stopping_io=false;spec_attempt(&session);
+    io=identity_capture_replies();identity_configure_fixture(&session,&functions,&device,&io);configuration_result=kIOReturnIOError;
+    assert(!configure_device(&session)&&io.used==6);disconnect_device(&session);spec_commit(&session);
+    value=unchanged;assert(rk3_usb_copy_identity(&session,13,&value)==ENODEV&&!memcmp(&value,&unchanged,sizeof(value)));
+    identity_io=NULL;usb=NULL;finish(&session);
+}
+typedef struct {
+    rk3_usb_session *session;SpecBarrier barrier;uint64_t generation;int32_t result;RK3NativeUSBIdentity value;
+} IdentityRace;
+static void *identity_concurrent_getter(void *context) {
+    IdentityRace *race=context;
+    for(unsigned round=0;round<16;++round)for(unsigned operation=0;operation<2;++operation) {
+        spec_barrier(&race->barrier);memset(&race->value,0xa5,sizeof(race->value));
+        race->result=rk3_usb_copy_identity(race->session,race->generation,&race->value);spec_barrier(&race->barrier);
+    }
+    return NULL;
+}
+static void identity_snapshot_race_test(void) {
+    rk3_usb_session session;initialize(&session);spec_attempt(&session);IOUSBDeviceInterface300 functions,*device;
+    IdentityIO io=identity_capture_replies();identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));spec_commit(&session);
+    IdentityRace race={.session=&session};assert(!pthread_mutex_init(&race.barrier.mutex,NULL));assert(!pthread_cond_init(&race.barrier.condition,NULL));
+    pthread_t thread;assert(!pthread_create(&thread,NULL,identity_concurrent_getter,&race));
+    RK3NativeUSBIdentity current,unchanged;assert(rk3_usb_copy_identity(&session,10,&current)==0);memset(&unchanged,0xa5,sizeof(unchanged));
+    for(unsigned round=0;round<16;++round) {
+        race.generation=10+round;spec_barrier(&race.barrier);spec_attempt(&session);spec_barrier(&race.barrier);
+        assert((race.result==0&&!memcmp(&race.value,&current,sizeof(current)))||(race.result==ENODEV&&!memcmp(&race.value,&unchanged,sizeof(unchanged))));
+        io=identity_capture_replies();io.vendor=(uint16_t)(0x6000+round);io.replies[1].bytes[2]=(uint8_t)(0x61+round);
+        identity_configure_fixture(&session,&functions,&device,&io);assert(configure_device(&session));
+        race.generation=11+round;spec_barrier(&race.barrier);spec_commit(&session);spec_barrier(&race.barrier);
+        assert(rk3_usb_copy_identity(&session,11+round,&current)==0);
+        assert((race.result==0&&!memcmp(&race.value,&current,sizeof(current)))||(race.result==ENODEV&&!memcmp(&race.value,&unchanged,sizeof(unchanged))));
+    }
+    assert(!pthread_join(thread,NULL));identity_io=NULL;session.device=NULL;
+    pthread_cond_destroy(&race.barrier.condition);pthread_mutex_destroy(&race.barrier.mutex);finish(&session);
+}
 int main(void) {
+    identity_capture_publication_test();identity_partial_capture_test();identity_property_test();
+    identity_held_request_close_test();identity_cohort_test();identity_snapshot_race_test();identity_pending_drain_test();identity_opaque_transport_test();
+    identity_reader_first_test();identity_reader_fallback_test();identity_reader_unicode_test();identity_reader_oracles_test();identity_reader_definedness_test();
     spec_publication_test();spec_refresh_test();spec_retirement_test();spec_protocol_retirement_test();spec_drain_test();spec_close_test();spec_property_test();spec_snapshot_race_test();
     gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
     puts("NativeUSB: NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");

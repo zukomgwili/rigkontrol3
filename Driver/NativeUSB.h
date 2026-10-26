@@ -56,6 +56,11 @@ bool rk3_usb_info(rk3_usb_session *session, RK3NativeInfo *info);
  * No USB operation or audio-state requirement. Valid at the locked copy only. */
 int32_t rk3_usb_copy_spec(rk3_usb_session *session, uint64_t generation,
                           uint8_t out14[RK3_INFO_BYTES]);
+/* Non-RT completed USB capture snapshot, including partial raw step results.
+ * EINVAL/ENODEV/ESTALE leave output unchanged. Caller retains session ownership
+ * through this cache-only call and finishes concurrent calls before close. */
+int32_t rk3_usb_copy_identity(rk3_usb_session *session,uint64_t generation,
+                              RK3NativeUSBIdentity *output);
 bool rk3_usb_reports(rk3_usb_session *session, const RK3NativeReportQuery *query,
                      RK3NativeReports *reports);
 typedef struct {
