@@ -1,259 +1,242 @@
 # Physical USB identity acquisition contract
 
-Date: **2026-10-25 UTC**. Beads authority: **rigkontrol3-40h.25**, under `.2`.
+Source-contract completion: **2026-10-26 UTC**. Beads: **rigkontrol3-40h.25**,
+under `.2`. The 2026-10-25 partial assessment and plans remain historical evidence.
 
-**The physical-identity producer is not implementation-ready.** The existing
-NI evidence proves the required calls and consumers. Primary Apple source
-supplies a concrete older reader implementation and matching relative method
-order, but does not yet prove the six absolute NI slot identities or bridge
-that implementation to the NI build's historical runtime. These are explicit
-source gates, not permission to invent descriptor decoding or an identity.
+**The absolute six-slot ABI and reader-applicability gaps are resolved for one
+validated original reference: OS X 10.9.5, Apple IOUSBFamily 686.4.1.** Primary
+NI compatibility evidence selects the supported 10.9 family; Apple's signed
+update supplies the actual component, emitted table and reader. The older 540
+source is no longer used as a substitute for the target implementation.
 
-This report records source research only. No production/test code, build,
-executable fixture, USB/device/registry operation, NI application, installed
-bundle or security setting changed. SIP and NI audio timing/recovery stay fixed.
+This closes the bounded source gate, not physical capture code or live NI
+recognition. It does not establish identical behavior on every old OS or
+arbitrary subclass override. No driver/test code, build, installation, NI
+application, endpoint, USB operation or security setting changed. The official
+update was read-only mounted for static extraction and the owned mount was
+detached; no installer scripts ran. SIP and NI audio timing/recovery stay fixed.
 [Selected owner](NIARMRecognitionBindingDecision.md),
 [NI field/serial proof](NIIdentitySpecificationContract.md),
-[completed specification operation](NativeUSB.md#original-specification-snapshot-spec14).
+[completed SPEC14 operation](NativeUSB.md#original-specification-snapshot-spec14).
 
-## What the existing NI evidence establishes
+## Supported reference and primary provenance
 
-The original S3 writer obtains two low16 words through receiver slots
-`+0x8f0/+0x8f8`. Its serial/product/vendor sources are provider buffers
-`+0x178/+0x138/+0x158`, copied with `strncpy32`; S3's four gaps remain unwritten.
-The selected `initUSB` window obtains product/vendor/serial indices at
-`+0x918/+0x910/+0x920`, then calls `+0x958(index,destination,31,0x0409)` in that
-order and ignores all three returns. The window contains no explicit NUL or
-zeroing operation. [Original calls and coverage](NIIdentitySpecificationContract.md#selector3-all110-output-bytes).
+NI's download listing identifies RK3 Driver 2.8.0 for 10.9–10.11 and 2.7.0 for 10.8.
+Its hardware table explicitly recommends 2.8.0 under 10.9/10.10 and requires
+Controller Editor 1.7.4 or lower. We select 10.9.5 within that supported 10.9
+family; the pages do not separately certify every patch or every runtime.
+This is an explicit supported-reference choice, not SDK/date inference.
+[NI downloads](https://support.native-instruments.com/support/solutions/articles/69000882238-native-instruments-drivers-other-files),
+[NI compatibility](https://support.native-instruments.com/support/solutions/articles/69000879296-compatibility-of-native-instruments-products-on-macos).
 
-The actual instance-query string comes from this serial storage through the
-retained agent's proved chain; native UID, fixed labels and registry IDs are
-not substitutes. Named but unrecovered GP/string conversion leaves remain
-separate. [Original serial chain](NIIdentitySpecificationContract.md#concrete-real-serial-query-chain).
+Apple's first-party 10.9.5 Combo download contains package identifier
+`com.apple.pkg.update.os.10.9.5.13F34.combo`. Its verified Apple Software
+signature has a trusted 2019 timestamp. The selected component's Info.plist
+identifies `com.apple.iokit.IOUSBFamily`, version **686.4.1**, compatible version
+**1.8**; NI's previously reviewed dependency also requires 1.8. This directly
+links a supported reference and compatible component, without equating a
+minimum dependency with a runtime version. [Apple download](https://support.apple.com/en-us/106413).
 
-Root's reused NI package evidence identifies SDK `macosx10.9`/`13C64`, build
-`13F34`, RK3 `IOProviderClass=IOUSBDevice`, and an IOUSBFamily minimum of `1.8`.
-The latter is a minimum dependency, not an exact runtime or source-version pin.
-Original `audio-Info.plist` SHA256:
-`0e6ba261d8d6884bdcd848c940025815a887547a1bc287f37f86ab9080e2fb44`.
-The reviewed root packet links receiver field`+0xe0` to a nonnull
-`safeMetaCast` against `IOUSBDevice::metaClass`. This establishes the checked
-base-class relation; subclasses remain possible. It supplies neither an
-absolute vtable-slot layout nor proof that the actual runtime uses an
-unoverridden base implementation. The bounded head is reused existing ASM,
-with the report's original coverage qualifications. Root's separately admitted
-packet resolves only the selected original relocation associations; this
-research strand performed no fresh NI binary/metadata/instruction extraction.
-
-## Primary Apple evidence and the remaining ABI gate
-
-Apple's version-pinned IOUSBDevice declaration has this exact relative sequence:
-
-| NI raw slot | Apple declaration candidate; not an absolute-slot proof |
+| Exact artifact | Bytes / SHA256 |
 | --- | --- |
-| `8f0` | `UInt16 GetVendorID()` |
-| `8f8` | `UInt16 GetProductID()` |
-| `910` | `UInt8 GetManufacturerStringIndex()` |
-| `918` | `UInt8 GetProductStringIndex()` |
-| `920` | `UInt8 GetSerialNumberStringIndex()` |
-| `958` | `IOReturn GetStringDescriptor(UInt8,char*,int,UInt16)` |
+| Official `OSXUpdCombo10.9.5.dmg` | 982148796 / `a1623a91524cf086cb7689fc0b4b0a1cc8311435662f8a5b9d701d0fd2ed2b35` |
+| Signed package | 982693511 / `c3b9b560a46c7f9322913a624167a5f03bd3c4d12a28320edf19b8504a629519` |
+| Exact bzip2 Payload entry | 979476117 / `def896fec4aa17c2ba46437cc5b70f0760aaa0238958e9f38f1a76d320cac82b` |
+| Selected Info.plist | 1839 / `6288334b76405821f1d7b6c691786dc877dcaa5afce936b28e2eb5727c8493f9` |
+| Selected IOUSBFamily executable | 494048 / `af352cc23b086367c16124d023d7cc0b10d0ceef44de0fa7ddb91a527786f773` |
 
-Between these declarations are exactly the intervening methods implied by
-those eight-byte spacings: release, configuration count, pipe zero, MakePipe,
-two DeviceRequest overloads, configuration and device status. This is a
-**relative order/signature match**, not an inferred inherited-vtable origin.
-[540 declarations](https://github.com/apple-oss-distributions/IOUSBFamily/blob/21a163aef2192f568a11bcd2eded73dff6ed3290/IOUSBFamily/Headers/IOUSBDevice.h#L271-L346),
-[630 declarations](https://github.com/apple-oss-distributions/IOUSBFamily/blob/1398331b04a6bb9ea9b9f76248b8b584811ebcd0/IOUSBFamily/Headers/IOUSBDevice.h#L272-L347).
+Only those two component files were extracted: 495887 bytes total. Component
+SDK 13F17/Xcode 0501, NI's SDK 10.9/13C64/Xcode 0511 and the update's OS identifier
+13F34 are distinct facts. They are not proof of identical compiler patches.
+The public 630 source's empty implementation and the 10.9 source-manifest
+omission remain negative research history; neither is used to invent behavior.
 
-The separately admitted declaration-prefix inventory uses IOUSBFamily630.4.5
-and XNU2422.115.4, with the actual chain IOUSBDevice→IOUSBNub→IOService→
-IORegistryEntry→OSObject→OSMetaClassBase. It counts **265+D** inherited function
-entries, where D is the unproved number of callable destructor components,
-plus19 new IOUSBDevice declarations before GetVendorID. Only the conditional
-D=2/function-index0 address-point model yields indices286/287/290/291/292/299,
-matching the recorded operands. The fit is not independent proof of that
-compiler ABI or address point. This XNU tag is a declaration model, not proof
-of the exact SDK header set used for NI. No compiler, generated vtable or
-ancestor implementation was used. [Inherited declaration](https://github.com/apple-oss-distributions/xnu/blob/xnu-2422.115.4/iokit/IOKit/IOService.h),
-[macros and base declaration](https://github.com/apple-oss-distributions/xnu/blob/xnu-2422.115.4/libkern/libkern/c%2B%2B/OSMetaClass.h).
+## Original NI receiver and call order
 
-The complete inspected implementation is **IOUSBFamily-540.4.1**, commit
-`21a163aef2192f568a11bcd2eded73dff6ed3290`. Apple's later **630.4.5**, commit
-`1398331b04a6bb9ea9b9f76248b8b584811ebcd0`, retains the selected declarations
-but publishes an empty `IOUSBDevice.cpp`. The official Git tree also records
-that file as zero bytes. Declaration stability does not prove reader-body
-stability. The already-fetched 458.4.1 reference reader differs from540 only by
-a log statement; that likewise does not prove630 or NI-runtime behavior.
-[Official tags](https://github.com/apple-oss-distributions/IOUSBFamily/tags),
-[630 empty source](https://github.com/apple-oss-distributions/IOUSBFamily/blob/1398331b04a6bb9ea9b9f76248b8b584811ebcd0/IOUSBFamily/Classes/IOUSBDevice.cpp).
+Reused NI evidence links provider field `+0xe0` to a nonnull safeMetaCast against
+`IOUSBDevice::metaClass`; subclasses remain possible. Original S3 takes two
+low 16 bits returned at `+8f0/+8f8`. The `initUSB` string window obtains
+product/vendor/serial indices at `+918/+910/+920` and calls `+958` in that order
+with destination buffers `+138/+158/+178`, count **31**, language **0409**.
+All three returns are ignored, and these calls precede SetConfiguration.
+The real instance-query string ultimately derives from this serial storage,
+not native UID, registry ID or a generated label.
+[Original producer/consumer contract](NIIdentitySpecificationContract.md#selector3-all110-output-bytes),
+[real serial chain](NIIdentitySpecificationContract.md#concrete-real-serial-query-chain).
 
-In540, the candidate word getters read cached descriptor fields and apply
-`USBToHostWord`; index getters return the descriptor's `iManufacturer`,
-`iProduct` and `iSerialNumber` as UInt8. No USB request appears in those getter
-bodies. [540 getter implementations](https://github.com/apple-oss-distributions/IOUSBFamily/blob/21a163aef2192f568a11bcd2eded73dff6ed3290/IOUSBFamily/Classes/IOUSBDevice.cpp#L4673-L4725).
+## Absolute ABI and actual selected table
 
-## Exact540 reader behavior, conditionally applicable
+Primary Apple Clang 503.38 source establishes the 5.1 family rule: complete and
+deleting destructor components, declaration/override indexing, an address
+point after metadata, and an AppleKext final zero rather than an added slot at
+every ancestor. The exact NI 5.1.1 patch is not proved from that source alone.
+[Apple table rule](https://github.com/apple-oss-distributions/clang/blob/9cf9295528348ccacefcc90175be2c189d667f93/src/tools/clang/lib/AST/VTableBuilder.cpp#L1317),
+[address-point construction](https://github.com/apple-oss-distributions/clang/blob/9cf9295528348ccacefcc90175be2c189d667f93/src/tools/clang/lib/CodeGen/ItaniumCXXABI.cpp#L967).
 
-The following facts apply to the pinned540 implementation; they are **not yet
-asserted as the implementation behind NI's raw `+0x958` call**.
-[Reader body](https://github.com/apple-oss-distributions/IOUSBFamily/blob/21a163aef2192f568a11bcd2eded73dff6ed3290/IOUSBFamily/Classes/IOUSBDevice.cpp#L3206-L3375).
+The selected emitted component supplies an independent absolute anchor:
+C1 at `1434b` computes `14352+2715e=3b4b0`, then stores that pointer into saved
+input `this` at `14352`. The original ZTV symbol is `3b4a0`, so the actual stored
+address point is ZTV+16. At relative 0/8, the two cells target D1 `1429e` and
+D0 `1427c`. This does not solve for destructor count from a desired numeric fit.
+The constructor tail is bound to `OSMetaClass::instanceConstructed`; its body
+and final side effects were not expanded.
 
-- The count is destination **bytes**. Below6 returns `kIOReturnBadArgument`
-  before clearing it. Otherwise it clears exactly that count before I/O.
-  Thus count31 clears bytes0–30; byte31 lies outside this operation.
-- It sends standard IN/device GET_DESCRIPTOR for the supplied string index
-  and language. The initial request is two bytes, with those descriptor bytes
-  zeroed and `wLenDone=0`. `DeviceRequest(request,5000,0)` is synchronous:
-  no-data timeout5000ms, completion timeout0, omitted callback.
-  [Declared timeout/callback contract](https://github.com/apple-oss-distributions/IOUSBFamily/blob/21a163aef2192f568a11bcd2eded73dff6ed3290/IOUSBFamily/Headers/IOUSBDevice.h#L365-L386).
-- Initial success or Overrun proceeds. Any other initial result selects a
-  zeroed256-byte fallback request; fallback success or Underrun proceeds,
-  otherwise that result returns. These are original reader branches, not a
-  proposed new retry policy.
-- `len=desc[0]`; zero returns success with the cleared destination. A non-string
-  type returns DeviceError. An odd length clears the low bit of `desc[0]`,
-  while the separate `len` used for the next request remains unchanged.
-- It clears `len` descriptor bytes, requests `len`, and accepts only success
-  on this final request. Short-success counts are logged rather than rejected.
-  It checks type again and makes `desc[0]` even again. There is no separate
-  special case for index0, missing strings, or a language-list descriptor.
-- It endian-converts each little-endian UInt16 and encodes code units
-  independently into1/2/3 bytes. Zero code unit stops. It does not compose or
-  reject surrogate pairs. The header's ASCII description is less precise than
-  this body. [Exact helpers](https://github.com/apple-oss-distributions/IOUSBFamily/blob/21a163aef2192f568a11bcd2eded73dff6ed3290/IOUSBFamily/Classes/IOUSBDevice.cpp#L3599-L3668).
-- Whole encoded units are copied only while the cumulative size is at most
-  count−1. For count31, at most30 bytes are written and the prior clearing
-  leaves a NUL. Truncation still returns success. After the size guard, for
-  count31, failure before conversion retains the cleared destination,
-  including on a reused buffer.
+| Offset from stored vptr | Actual cell → target VA | Method / declared type; selected body source |
+| --- | --- | --- |
+| `8f0` | `3bda0 → 1b154` | GetVendorID, UInt16; zero-extends object word `+a8`. |
+| `8f8` | `3bda8 → 1b162` | GetProductID, UInt16; zero-extends word `+aa`. |
+| `910` | `3bdc0 → 1b1c4` | GetManufacturerStringIndex, UInt8; zero-extends byte `+ae`. |
+| `918` | `3bdc8 → 1b1d2` | GetProductStringIndex, UInt8; zero-extends byte `+af`. |
+| `920` | `3bdd0 → 1b1e0` | GetSerialNumberStringIndex, UInt8; zero-extends byte `+b0`. |
+| `958` | `3be08 → 1984e` | GetStringDescriptor(UInt8,char*,int,UInt16) → IOReturn. |
 
-There is no general guarantee for arbitrary inconsistent/malformed descriptors:
-conversion trusts the second descriptor's own length, not a new bound based on
-`wLenDone`. This research does not invent deterministic bytes for unsafe or
-uninitialized paths, normalize malformed input, or replace code-unit conversion
-with a standards-compliant Unicode codec. Upstream destination allocation and
-state outside the exact cleared range remain distinct from this method. On
-valid540 count31 paths, the NUL within bytes0–30 means S3's later `strncpy32`
-need not inspect provider byte31. Any outside-write state is a further
-prerequisite only if a later required observation actually depends on it.
+Original nlist identities, exact cells and constructor bytes agree. The five
+getters perform cached descriptor reads without USB/callee operations or an
+error-return branch. Their offsets describe the old object, not an ARM layout
+to transplant. [Published typed declarations](https://github.com/apple-oss-distributions/IOUSBFamily/blob/1398331b04a6bb9ea9b9f76248b8b584811ebcd0/IOUSBFamily/Headers/IOUSBDevice.h#L272-L347).
 
-## Source-derived reference cases, not executed tests
+This resolves the selected compatible IOUSBDevice ABI. NI's polymorphic call
+still permits overrides; the proof does not claim a live object's exact class,
+all-runtime implementation equality or exact NI compiler-patch identity.
 
-These cases specify the540 reference only, pending the ABI/runtime bridge.
+## Exact 686 reader, including errors and retained writes
 
-| Case | Reference observation |
+Reader `1984e..19b18` is 714 bytes. Four call relocations prove bzero; one proves
+bcopy(source, destination, count). The three indirect request calls use actual
+slot `+978`, cell `3be28 → 1a25c`, bound to
+`DeviceRequest(IOUSBDevRequest*,unsigned int,unsigned int,IOUSBCompletion*)`.
+The stack guard/failure imports are separately identified, not invented string
+policy. No lower request, bzero, bcopy or guard body was expanded.
+
+1. Signed destination count < 6 returns `e00002c2` before clearing. Otherwise
+   clear exactly count bytes before I/O. NI's 31 therefore clears bytes 0–30;
+   byte 31 is outside that operation. The count bounds **output bytes**, not
+   the descriptor's USB request length.
+2. Build standard IN/device string GET_DESCRIPTOR: type 80, request 06,
+   value `0300|index`, language verbatim, scratch pointer and actual-count 0.
+   First request length 2 follows scratch 2 clearing. Each request delegates
+   with no-data timeout 5000 ms, completion timeout 0, null callback/synchronous
+   operation. No finite overall/cancellation bound is inferred.
+   [Typed timeout contract](https://github.com/apple-oss-distributions/IOUSBFamily/blob/1398331b04a6bb9ea9b9f76248b8b584811ebcd0/IOUSBFamily/Headers/IOUSBDevice.h#L366-L387).
+3. First status 0 proceeds. Literal `e00002e8` proceeds **only if type byte 3**;
+   every other nonzero case selects the 256-byte zeroed-scratch fallback.
+   Fallback status 0 or `e00002e7` proceeds; another result returns unchanged.
+   This type-dependent first-error branch differs from the older 540 source.
+4. Read initial length L. L == 0 returns 0 before the common type check. Otherwise
+   type != 3 returns `e00002e9`. An odd header length is masked in storage, while
+   original L remains the next request length. Clear exactly L scratch bytes
+   and request L; final request requires status 0 or returns its error unchanged.
+5. Final type != 3 returns `e00002e9`. Make final length even. At `19a68..19a73`,
+   signed `(even_length−2)<2` returns 0: lengths 0/2 need no conversion. Do not
+   carry the older 540 empty/underflow behavior into this reference.
+6. Otherwise visit `(even_length−2)/2` little-endian U16 units. The direct
+   helper returns 0 for NUL, 1 for 1..007f, 2 for 0080..07ff and 3 for 0800..ffff.
+   It neither composes nor rejects surrogate pairs. Append whole encoded units
+   only while cumulative bytes <= count−1; NUL, truncation and normal end return 0.
+   `SwapUniWords` was decoded but is **not called by this reader**; the x86
+   reader loads units directly. No modern Unicode normalization is justified.
+
+`wLenDone` is reset but never used by the actual reader for equality/length
+validation or compiled logging. Index 0 has no special skip/empty-label branch.
+For valid count 31, conversion copies at most 30 bytes, leaving an in-range NUL;
+failure before conversion retains the cleared 31 bytes, including in reused
+storage. Original S3's subsequent 32-byte strncpy need not observe provider byte 31;
+its own four gap bytes remain untouched. No whole-object zeroing is inferred.
+
+Inconsistent final descriptor lengths can reference scratch beyond the bytes
+actually transferred/cleared. There is no new actual-span guard in this body.
+Do not fabricate deterministic uninitialized/malformed outputs or add repairs
+as if they were original behavior. Typed raw-transfer errors/partial writes,
+invalid pointers and lower USB-stack behavior are not expanded into invented
+vectors or a new retry/readiness/error policy.
+
+## Source-derived conformance cases, not executed tests
+
+Use valid allocated destination storage; count 31 fixtures start with at least
+32 A5 bytes and supply the stated response data. E denotes the stated nonzero
+request error. These are selected-reference oracles, not observed RK3 data.
+
+| Supplied case | Required selected 686 observation |
 | --- | --- |
-| Count5, destination prefilledA5 | BadArgument; destination unchanged. |
-| Count31, returned initial length0 | Success; bytes0–30 zero, byte31 outside count unchanged. |
-| Initial non-success/non-Overrun, fallback error | Requests2 then256; returns fallback error; destination0–30 remains zero. |
-| Initial/final success, short `wLenDone` | Logging alone does not create an error; content-dependent branches remain authoritative. |
-|29 ASCII `A` units followed by U+00E9 |29 `41` bytes; U+00E9 cannot fit whole; bytes29–30 remain zero; success. |
-|15 U+00E9 units followed by another |30 bytes `c3 a9` repeated15 times, byte30 zero; success. |
-| U+D83D then U+DE00 | Independent-unit bytes `ed a0 bd ed b8 80`, not a four-byte scalar encoding. |
-| Embedded U+0000 | Conversion stops there; remaining counted destination retains zeros. |
+| Count 5 | `e00002c2`; destination unchanged. |
+| Initial status 0/header length 0, even type 0 | One 2-byte request; success; bytes 0–30 zero, byte 31 unchanged. |
+| Initial `e00002e8`, header `04 03`; final success `04 03 41 00` | Requests 2 then 4; no 256 fallback; `41` then zeros. |
+| Initial `e00002e8`, header `04 00`; fallback error E other than `e00002e7` | Requests 2 then 256; return E, destination bytes 0–30 zero. A 540-based immediate type error is wrong. |
+| Initial status 0/nonzero length/type 0 | `e00002e9`; no 256/final request. |
+| Initial result other than 0 or `e00002e8`; fallback `e00002e7`/zero length | Requests 2 then 256; return 0 from zero-length branch. |
+| Initial valid L=5; final success/type 3/length 5, supplied bytes | Request 5, not 4; final conversion length 4 means one U16. |
+| Initial valid L=4; final success/type 3/length 0 or 2 | Signed guard returns 0 without conversion. |
+| Final request error E | Return E unchanged; counted destination remains zero. |
+| Final success/count mismatch, fully supplied coherent data | No actual-count equality rejection; normal header/unit rules apply. |
+| 29 ASCII A units followed by U+00e9 | 29 `41` bytes; whole next unit does not fit; bytes 29/30 zero; success. |
+| 15 U+00e9 units followed by another | 30 bytes `c3 a9` repeated 15 times; byte 30 zero; success. |
+| U+d83d then U+de00 | `ed a0 bd ed b8 80`, not a 4-byte scalar encoding. |
+| Index 0, supplied `04 03 09 04` response | Same algorithm; U+0409 becomes `d0 89`, not an invented empty value. |
+| Embedded U+0000 | Stops conversion; remaining counted destination stays zero. |
 
-No vector supplies a fabricated original GP conversion result or repairs the
-later S3 writer's untouched gap bytes.
+## One current ARM capture seam; implementation remains separate
 
-## Current binding disposition and stops
-
-The current source supplies one noncompeting capture interval: on the existing
-worker, immediately **after successful USBDeviceOpen and before the existing
-SetConfiguration**. Finish acquisition there, then retain the current
+Use the existing worker's retained IOUSBDeviceInterface300, immediately **after
+successful existing USBDeviceOpen and before existing SetConfiguration**.
+Acquire in product→vendor→serial order, then retain existing
 SetConfiguration→USBDeviceClose→readback/check→child-discovery/open order.
-NI's existing string window precedes its SetConfiguration call; an earlier
-post-configuration candidate is withdrawn. No extra parent open, seizure,
-parent/child simultaneous claim, or moved EP1/audio operation is selected.
-[Current parent interval](../Driver/NativeUSB.c:707),
+No added open, seizure, competing parent/child claim, or moved EP1/audio work
+is selected. [Owner interval](../Driver/NativeUSB.c:707),
 [original ordering](AudioDriver.md#usb-configuration-and-command-pipe-toggle-synchronization),
 [child ownership](../Driver/NativeHostUSB.h:37).
 
-Pinned SDK macosx27.0, Xcode27.1/27A9275, declares Interface300's UInt16 word
-outputs, UInt8 string-index outputs and synchronous `DeviceRequestTO`; it has
-no GetStringDescriptor decoder member. Its raw request has host-endian UInt16
-request scalars, bus-endian caller data, UInt32 actual-byte count and two UInt32
-millisecond timeouts. It can represent the540 reference's exact2/fallback256/
-length sequence, language0409 and no-data5000/completion0, preserving explicit
-scratch/destination handling. This is representability, not legacy equivalence.
-No NSString/registry-string substitution or single-GET255 follows.
-[Interface300 declaration][SDK-lib], [raw request fields][SDK-USB].
+Pinned SDK macosx27.0/Xcode 27.1 declares UInt16 descriptor-word outputs,
+UInt8 index outputs and synchronous DeviceRequestTO; there is no text-decoder
+member. Its host-endian scalars, bus-endian caller buffer, actual count and
+5000/0 timeout fields can represent the proved request sequence and byte
+transformation. No NSString/registry-string/single-GET255 substitution follows.
+[Interface300][SDK-lib], [raw request][SDK-USB].
 
-The installed declaration permits closed-device requests except possibly
-state-changing ones; Apple's web and released630 declaration require open.
-The selected already-open interval satisfies both and does not rely on closed
-parent control access. Raw-request documentation supplies no Unicode, NUL,
-zero-fill or untouched-on-error promise. Retain parent/buffers through the
-synchronous return; do not infer a finite cancellation bound, add retries, or
-normalize current errors into NI results. Acquisition adds initialization work;
-only later cached GETs can promise zero USB requests. Live transfer/permission/
-error/latency acceptance remains untested.
-[Current Apple request API](https://developer.apple.com/documentation/iokit/iousbdeviceinterface182/1559217-devicerequestto),
-[released open requirement](https://github.com/apple-oss-distributions/IOUSBFamily/blob/1398331b04a6bb9ea9b9f76248b8b584811ebcd0/IOUSBFamily/Headers/IOUSBLib.h#L1131).
+Installed and released/web open requirements differ; the chosen already-open
+interval satisfies both. Raw API documentation promises no automatic text
+conversion, NUL, zero fill or untouched-on-error output. Preserve the proved
+scratch/destination behavior explicitly, retain buffers/parent through return,
+and do not invent an overall timeout, retry, abort or readiness gate.
+[Apple request API](https://developer.apple.com/documentation/iokit/iousbdeviceinterface182/1559217-devicerequestto).
 
-The remaining essential source gates are an authoritative absolute
-slot/receiver ABI association and applicability of the shared reader to the
-selected supported original runtime/version. SDK10.9 does not itself select
-runtime630; minimum1.8 is not a runtime pin. The required evidence is a
-version-matched reader plus its two helpers and six-slot layout, or an explicit
-validated reference-target disposition. No540 equivalence is inferred. Later
-original/native error translation also remains required. Current declarations
-do not close these gates.
+A later, separately recorded code plan must define physical-metadata
+availability/partial/error shape, native-versus-NI status mapping, atomic
+same-attempt generation publication and revoke/drain/lifetime rules. It must
+preserve ignored string returns and original downstream connection behavior,
+prevent mixed/stale metadata, and test the actual client→HAL→owner seam.
+Acquisition adds initialization work; subsequent cached GETs add zero USB I/O.
+Current transfer/permission/latency acceptance, GP conversion, agent/events/
+policy and unchanged-NI application recognition remain open under `.2`.
+No new property/schema or code is admitted automatically by this source proof.
 
-The one bounded availability check used exactly two focused official-source
-search queries and returned no package result. Apple's old tarball index
-redirects to the official tags; the Apple download page was inaccessible via
-the web tool, so package availability and authentication requirements remain
-**unverified**, not disproved. No login, archive/binary download or further
-source search occurred. [Source index](https://opensource.apple.com/tarballs/IOUSBFamily/),
-[unchecked download catalogue](https://developer.apple.com/download/all/?q=IOUSBFamily).
-If either remains missing, stop at that exact source boundary and record the
-minimum additional evidence required in Beads before action. Do not broaden
-into an inherited-framework survey, another backend, guessed conversion,
-production capture/schema, new readiness gate or application stub. A later
-capture/publication plan must preserve original unchecked/error behavior,
-generation coherence, teardown/drain and cached-read zero-I/O behavior without
-changing audio configuration, activation, mapping, calibration or LEDs.
+## Evidence discipline and review
 
-## Private evidence and review
+Private root: `.build/ni/usb-identity-contract/proof-resolution/`. The partial
+report is retained at commit 3934861 and as an ignored hash-pinned copy. Only
+prose/pins are committed; no proprietary listing or downloaded source dump is.
 
-Ignored packet root: `.build/ni/usb-identity-contract/historical/`.
-`fetch-manifest.json` records official URLs, versions, byte lengths and hashes;
-`selected-source-evidence.json` hashes the selected line spans and limitations.
-Root's unchanged NI packets are retained under
-`.build/ni/usb-identity-contract/ni-metadata/`; its `manifest.json` SHA256 is
-`ee5e0e0355708b687578c8a3bf8d9d57d7f61640dda94ea4a08bd8b76321ad21`.
-The separate `absolute-prefix/` packet preserves the conditional ledger and
-its source pins; it is not an emitted vtable or an absolute-slot proof.
-
-| Artifact | SHA256 |
+| Reviewed packet | SHA256 |
 | --- | --- |
-|540 header | `c058dbf2df51ca70bcf45bb31782ee199d608774a94fc6c07f57c6e4170bc8e6` |
-|540 implementation | `2a144c076a5ce852c0a2940a50339bcccb07eba04592d69479f5eba68736e9aa` |
-|630 header | `a1a90c783a850679317cccbb5d7106e0dfbd8523e492c0bfe204b0b653e2149d` |
-|630 tree metadata | `c5e89538dda317372aede74431051cb239abc19b88714da0e786e9cb386a2ce4` |
-|Selected span packet | `2fe23178e8228685731f8fcfc7973aac7e346d460f0da77582777bbb062d8eda` |
-|Root selected relocation packetB | `201e2babc5f44a3483a299ba6b483337592918c3326097ea23e0ed2b4fac244a` |
-|Root qualified reused receiver head | `b8961454d80c6bacb16f717648b36133e0d588ba3e8827ecb89f66f27a236b7f` |
-|Conditional declaration-prefix evidence | `d4f033390beb0c8af0d734287c8f1db1cc6efc599f6f40de22c1cb2d770eb49a` |
-|Declaration-count ledger | `c35ff7063a725dcfc6dd51e1f34b6780dd6dc693d2e874b7e5e07212d517d9a1` |
+| NI support/reference evidence | `b732a5ba871f4bd955426ce1d25454ae93c4492bac29969fea1624ea557681c4` |
+| Apple component provenance | `9276ad137946d9b71615f6c5d6204e4b1ed36305d9cbeb2bdb2e129803f045c1` |
+| Apple 5.1-family ABI source supplement | `a7f4e0839a54d64cc0d52abf3d55319dbdd2e128d3589e270a75c0c48fdff947` |
+| C exact raw/decode packet | `d35110930c19f2a3d1226a7f194f1828206e82459130afe851a7468981a9322b` |
+| D exact call/data bindings | `0f9a00894096d83dbe526e7edba33494117da729f9c0112dc8b5123e033c864b` |
+| Actual constructor/table interpretation | `d693670deaee6e77033131b1d8ce98ca002b9cbbbdc79ab816d08251ae10fa54` |
+| Selected 686 semantic notes | `11b86f1abb8dbd16b6442cad1434f74ee161dc42ad78756be3f845f015a4d9e5` |
 
-Current API packet `.build/ni/usb-identity-contract/current-api/` records
-static SDK/version sources and selected excerpts. Its evidence JSON SHA256 is
-`63975eda0c5376056f398d8be40148c7386c2d54a53e21852de86fec6e3ed745`.
-Installed IOUSBLib.h SHA256:
-`16acc674ebc759d00904e8ae1cd2137b5f814d54fe237c5193cf6549131d542a`;
-USB.h SHA256:
-`db2fd1e52d669e4367e30bef6a099d6a3708c3a7b615cc1ece791daff46376d5`.
-Apple's released IOUSBDeviceClass.cpp is also empty; it supplies no current ARM
-implementation proof. [Released empty implementation](https://github.com/apple-oss-distributions/IOUSBFamily/blob/1398331b04a6bb9ea9b9f76248b8b584811ebcd0/IOUSBLib/Classes/IOUSBDeviceClass.cpp).
+C covers exactly 10 qwords/80 bytes and 9 disjoint function intervals/988 bytes,
+261 full-span instructions, with raw-byte/contiguous-coverage/source guards.
+D adds only 8 selected relocation associations and one 8-byte request cell;
+no new instruction body. This executable has no LC_FUNCTION_STARTS: caps use
+original next-defined-symbol and file-backed-text containment, not fabricated
+LC bounds or a whole-program function proof. Bounded LLVM only: no decompiler,
+automatic callee expansion or compiler build. The initial unsupported raw-byte
+flag failure is preserved; its corrected retry decoded the same admitted caps.
 
-Primary-source provenance, selected spans and the root receiver packets have
-independent technical review. Current-API integration has a separate read-only
-review. The bounded run ends with the required absolute-ABI and selected-runtime
-reader-applicability gates **still unproved**; `.25` remains incomplete. The540
-reference source, current raw primitive and conditional declaration fit do not
-supply the missing NI-target proof. No physical-identity parity, capture-code
-readiness or NI recognition is claimed.
+Independent technical and selected-reference semantic reviews passed for these
+packets and all 15 source oracles. Source-gate closure applies to this validated
+reference; it claims no installation, live capture or complete NI functionality.
 
 [SDK-lib]: </Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/IOKit.framework/Headers/usb/IOUSBLib.h:1618>
 [SDK-USB]: </Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/IOKit.framework/Headers/usb/USB.h:687>
