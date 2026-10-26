@@ -93,6 +93,20 @@ directory. A byte-exact build-8 artifact copy is retained at
 Later documentation/result commits do not change the prebuild source label or
 rebuild this signed artifact. No hardware result is claimed by these checks.
 
+### Installation handoff pending
+
+The admitted read-only preflight found SIP enabled, macOS 27.0.1, one matching
+RK3 USB registry record and one existing native driver owner. This establishes
+preconditions, not a successful read of the new capture property. The filtered
+registry record and raw serial stay in ignored local evidence.
+
+The exact noninteractive installer attempt stopped at `sudo: a password is
+required` before the installer ran. No new SESSION or service restart was
+created by the agent. The user has the explicit frozen `--source` Terminal
+command and must supply the installer's actual SESSION path after
+administrator authentication. Hardware validation remains unstarted; all
+prepared artifacts and rollback copies are retained unchanged.
+
 ## Historical version-specific observations
 
 The older candidate/installed states below are retained as historical records.
