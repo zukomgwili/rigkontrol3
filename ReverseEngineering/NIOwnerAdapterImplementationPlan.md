@@ -1,5 +1,174 @@
 # Smallest owner-adapter implementation plan
 
+## Current .28 decision after hardware identity validation
+
+Authoritative Beads plan SHA256: `68ef4c736e99ee5f2c4c270eb5a5fec97432fa3fea960dbba8b7ab16be0ea284` (10,395 bytes).
+Independent Spec and Scope/Standards reviews passed before this report update.
+The current decision below supersedes historical next-step/status wording.
+
+Date: 2026-10-26. Beads authority: rigkontrol3-40h.28; baseline 1c0a1d8.
+This is planning only. No production/test code, source-body extraction, build,
+signing, installation, NI application, endpoint, device/audio/MIDI/service or
+security action is admitted or executed by this planning pass. SIP stays enabled.
+
+### Decision and necessity
+
+Keep the selected single NativeUSB/HAL owner and unchanged NI frontends. The
+next eventual functional operation is the REAL const
+FX2Device::OSImpl::getDeviceInfo path 0x1002f0950 -> 0x1002f0970, which requests
+strings=true and fills the original USBDeviceInfo storage. Consume the existing
+nusb physical identity and nspc SPEC14 operations; add no driver property,
+110-byte IOConnect emulator, new USB owner, frontend server or runtime project.
+Do not substitute a strings=false-only milestone for the required path.
+
+The unavailable legacy kernel deployment/private service under the recorded
+SIP/signing constraints necessitated the already selected owner access seam.
+Native ARM typed objects/calls replace x86 C++ layouts at that seam; this is
+not evidence that ARM requires new identity, Unicode, retry or policy behavior.
+Original frontend wire framing and NI device behavior remain the contract.
+
+.24/.26 implemented these native inputs; .27 physically verified installed
+0.2.4/build9, exact12 files, same-owner generation1->2, full identity/SPEC14,
+unplug ENODEV and stale-generation rejection. Its result manifest is
+458515b4df24d5c7ccc9f804a3a6441fa740cddfa0fb37f6443e1f7743c1c751.
+That all-success ASCII run does not prove NI's downstream string conversion,
+NI errors, policy, frontend recognition or audio timing acceptance.
+
+### Exact next gate: .29 source proof before any binding code
+
+rigkontrol3-40h.29 will recover the selected StringUTF8 entry 0x1002ae6f0 and
+only indispensable conversion/owned-assignment behavior used by the actual
+strings=true information path. The original agent is NIHardwareAgent1.7.4/R199,
+SHA256 f0ae68ad29ed57163a8be022f3e60ca5a08fbf1ae47621129eb86e52fa134258,
+unslid base0x100000000. The separate serial-output wstrToUTF8 entry0x1002ae490
+remains an explicit LATER gate before instance/serial publication. It is not
+included merely because it appears in the same chain. The already-proved
+signed-byte ASCII widening 0x1002ae5f0/0x1002ae600 is reused, not re-recovered.
+
+.29 phase A is metadata-only: verify the exact original image and preserved
+manifest/index provenance, locate the root's existing aliases/LC_FUNCTION_STARTS
+start and next bound, and inventory any ALREADY recovered applicable packet.
+Do not read/decode a new instruction body, table or callee in this phase.
+Use original metadata bounds, never Ghidra-created starts or a guessed byte cap.
+Reused ASM needs its source/baseline/span/analysis-option guards verified before
+interpretation; a prior export name alone does not establish applicability.
+
+Before phase B, record an exact immutable packet in Beads: selected original
+address interval(s), full-instruction/file-backed bounds, source and baseline
+hashes, existing-ASM reuse or new-read disposition, exact tool/analysis-off
+options, output preservation/hash checks, allowed call/data bindings, questions
+and finite stop. Independently review that packet before body work. No new body
+read is authorized by this .28 plan or by .29's mere existence. A wrapper,
+indirect target, conversion or assignment/allocation callee outside the exact
+packet is a STOP: record the precise required operation and plan its own exact
+cap before following it. No automatic recursion, whole-GP recovery, decompiler
+or compiler/runtime project. No source-proof execution occurs this turn.
+
+Required .29 result: actual byte-to-16-bit-string behavior, length/NUL rules,
+high bytes/malformed units/truncation, empty input, destination replacement,
+copy/alias/move and destruction/ownership, allocation/error/exception behavior
+where applicable. Distinguish proved behavior, unchanged opaque boundaries and
+unresolved required leaves. Derive literal conformance vectors from actual
+selected branches; do not invent malformed/Unicode/error outputs from names.
+A precise unresolved gate is recorded as incomplete proof, never a no-op stub.
+
+### Retained original behavior at the eventual operation
+
+The original S3 words0/+2/+68 supply USBDeviceInfo header0/+2/+4. S3 cache-derived
+fields come from exact SPEC14, including little-endian raw0..1, zero-extended
+raw2, raw12 and raw11 in their recovered positions. The native UID, ninf label,
+registry ID and topology are not physical NI identity. An internal S3 field
+oracle may verify provenance; no selector-shaped public service is needed.
+
+For strings=true, original vendor->product->serial conversion/assignment order
+and actual owned GP storage must be preserved. strings=false leaves those
+string fields untouched but is not the const path's acceptance. False/handle0
+information results preserve caller output as recovered. No whole110-byte
+zeroing, invented padding writes or new strlen guard may be called NI behavior.
+The selected686 reader defines at most30 content bytes plus an in-range NUL
+inside31; its defined cleared empty result remains data even when NI ignored
+a reader error. Undefined/unattempted native fields are invalid, not empty or
+zero physical identity, and must not be fed into the original conversion.
+
+Use cache/cohort authority, not ninf flags/last_error/UID. Require coherent
+nonzero generation across successful native inputs; do not retry or silently
+acquire a fresh lease to conceal mixed/stale data. Exact native-unavailable,
+OSStatus and original NI Boolean/IOReturn translation is a separate required
+binding-contract decision before code, with no invented numeric equivalence.
+An injected success path is not a complete faithful functional adapter.
+
+NI's recovered info/spec helpers preclear only their sentinel, perform initial
+plus at most3 zero-sentinel reads with100/200/300ms sleeps, stop on nonzero
+status, and can returntrue after all zero sentinels if finalstatus0. Preserve
+that behavior when admitted; do not tune timing or graft these retries onto
+native getters. USBDevice::connect ignores the info-fill Boolean, calls the
+original hook and rereads connected. No new all-metadata-success startup gate.
+Its spec-failure/registry/domain branches and allocation/cleanup remain required
+original contracts; this planning pass does not invent their missing parts.
+
+### Later coding and distinguishing acceptance
+
+No production code card/files/interface are admitted yet. After .29 closes its
+actual required leaves, update .2 with a separately reviewed exact code plan
+for this one information/storage operation. Freeze any necessary status,
+generation, object lifetime and output-preservation mapping then; do not invent
+an interim GP abstraction, setter, notification loop or success-only adapter now.
+
+Future offline tests must exercise the actual admitted operation with literal
+source-derived vectors: real const strings=true conversion and assignment,
+header fields/order, false/handle0 output preservation, empty success,
+defined-cleared/error versus identical undefined bytes, strings=false retention,
+coherent versus mixed/stale input, original sentinel/sleep/error order and
+ignored-info-result/hook reread. High-byte/malformed/allocation/alias vectors
+wait for their actual recovered contracts. Semantic mutations must fail useful
+assertions; strict ARM and ASan/UBSan plus independent Spec/Standards review
+apply to any later code, not to this unexecuted proof plan.
+
+wstrToUTF8 roundtrip and serial/instance publication, original GP/NHL runtime,
+version/session/confirmation/teardown, activation/events/timestamps and one
+mapped-controller/LED policy authority remain required under .2. Existing
+nrpt history/default MIDI policy does not satisfy those original operations.
+Full unchanged Controller Editor/Guitar Rig recognition and audio reliability
+remain unproved. .27 and this planning completion close neither .2 nor .3/.11.
+
+### Stop, evidence and handoff
+
+Stop at any new owner/backend/class shim, fabricated identity/version,
+new schema/selector emulator, frontend patch, direct USB, runtime port,
+audio ring/calendar/clock/retry/recovery change, security/profile/trust action,
+or unproved required converter/error/lifetime. Record the smallest exact
+prerequisite in Beads before expansion. Preserve installedbuild9, its immutable
+sourcee16097a and actualSESSION20261026T110147Z-3be14ddc plus verified rollback.
+No install/rollback or new hardware run is needed for this source proof.
+
+.28 completion means this minimum-slice decision and exact NEXT source gate
+are reviewed and recorded; it does not mean a code-ready adapter or recognition.
+.29 remains OPEN/unexecuted, metadata-first; .2 depends on it. Raw proprietary
+ASM/unique serials stay ignored locally; commit prose, source pins and results
+only. Beads database stays in the originalcheckout, preserve stagedexportblob
+113d42992a0ee90acfb640fc694b469abba536a6, passiveexportactiveworktreeonly and sync
+Git and Dolt separately. No driver/test code or live action occurred here.
+
+### Existing input pins at baseline1c0a1d8
+
+- `ReverseEngineering/NIARMRecognitionBindingDecision.md`: `d20fd5e597eae062f67d37de29312c1789a217e04abcce798baf728c1d4f9475`
+- `ReverseEngineering/NIIdentitySpecificationContract.md`: `aa5d5ae5aa23b293f4bfe6818b24904c3be5d5aab4a762f9c8e4f83866ce3caf`
+- `ReverseEngineering/NIUSBIdentityAcquisitionContract.md`: `4a0fc576953cd085c9432a9e49e0b7c36f7fdbbc15f3314073f819be213139fe`
+- `ReverseEngineering/NIAgentRecognitionContract.md`: `f768651d043258cc232162e0a796c7c77947ff0f9852ba87c7f456c839d3b1bd`
+- `ReverseEngineering/NIFrontendRecognitionContract.md`: `39374b3e3ebf50f1d3a750e52ee850989411aba19a56f5b1a697ee28be7b01f7`
+- `ReverseEngineering/NIEventOwnershipContract.md`: `c83cfa2ab6d8f17eda56ba823666e8cce723c1a292a77c613a2ef4f3b8070990`
+- `ReverseEngineering/HardwareValidation.md`: `b51226b49f6a48185ad24157d4119f85afb18ad6db50735b33b0bdbb579106d5`
+- `Driver/NativeControl.h`: `e25bf632ef1146a9d51f295c6c0e274b07530d009ea26c88bde22f14bddf74d5`
+- `Driver/NativeClient.h`: `e9113b3d89a22e01c5f5237e0e6dd6e3b46db848e307d4d5e38126720506128c`
+- `Tools/NIIPCContract/README.md`: `62c691d979d0588e15695f41da19ba7a73ec117f94f04a128fce9823bfe1c606`
+
+
+## Historical .24 SPEC14 implementation plan
+
+This 2026-10-25 plan is retained for traceability. `.24` and `.26` are now
+implemented, and `.27` passed bounded installed identity/generation validation.
+Its old pending/deferred statements do not override the current decision above.
+
 Date: **2026-10-25 UTC**. Beads: **rigkontrol3-40h.2**;
 planned code card **rigkontrol3-40h.24**, depending on `.17` and `.23`.
 
@@ -15,7 +184,7 @@ remain unchanged. [Selected architecture](NIARMRecognitionBindingDecision.md),
 [proved byte provenance](NIIdentitySpecificationContract.md),
 [event/policy limits](NIEventOwnershipContract.md).
 
-## Why specification first
+### Why specification first
 
 `.23` proves command01 payload→original cache→S18 for RK3; the current decoder
 already retains those14 bytes. The2305-only correction does not apply to1940.
@@ -25,7 +194,7 @@ record. Neither native UID/product labels nor equal record lengths supply NI
 identity. The spec-only vertical slice is independently implementable.
 [Decoder](../Driver/DeviceProtocol.c), [owner](../Driver/NativeUSB.c).
 
-## Frozen native V1 contract
+### Frozen native V1 contract
 
 Add **`RK3_PROPERTY_SPEC = 0x6e737063` (`nspc`)**, GET-only on the audio device,
 global scope/main element. Keep ninf/nrpt/ncmd/gain unchanged. Fixed-width
@@ -63,7 +232,7 @@ checked. Client output stays unchanged on transport/shape failure; a valid
 structured domain-error reply may be copied as an error result.
 [Native records](../Driver/NativeControl.h), [client](../Driver/NativeClient.h).
 
-## Exact `.24` files and seams
+### Exact `.24` files and seams
 
 | File | Bounded change |
 | --- | --- |
@@ -79,7 +248,7 @@ No NativeHostUSB, DeviceProtocol, NativeAudioISO, Controller/MIDI policy,
 command, scheduler or audio-algorithm edits. Add no module, owner, worker,
 per-callback epoch framework, timer, notifier, utility or dependency.
 
-## Cohort and lifetime rules
+### Cohort and lifetime rules
 
 Current INFO arrives before generation increments; status.info survives
 disconnect. Neither it, info_received nor audio/state flags certify provenance.
@@ -119,7 +288,7 @@ rewrite. Standalone NativeUSB callers must finish calls before close
 relinquishes ownership; tests must not read a freed handle.
 [Actual owner lifetime](../Driver/NativeUSB.c), [HAL](../Driver/Audio/RK3AudioDriver.c).
 
-## HAL/client validation
+### HAL/client validation
 
 `GetPropertyDataSize` stays metadata-only: return sizeof(CFPropertyListRef)
 without fetching or requiring a qualifier. Actual GET uses read_cfdata to
@@ -137,7 +306,7 @@ custom CFPropertyList data/qualifier marshalling; no new IPC is necessary.
 [SDK header](/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioServerPlugIn.h:155),
 [existing actual fixture](../Driver/Tests/NativeUSBTests.c).
 
-## Distinguishing RED/GREEN and required checks
+### Distinguishing RED/GREEN and required checks
 
 Planned synthetic offline cases—not tests run or hardware results. RED is the
 absent property and incorrect status.info/flag composition; GREEN must exercise
@@ -166,7 +335,7 @@ gates: `sh Tools/build-native.sh test` and `sh Tools/build-native.sh sanitize`.
 These commands are plans only here. Independently review the completed change.
 [Gate script](../Tools/build-native.sh).
 
-## Stops and handoff
+### Stops and handoff
 
 Stop for new USB transfers, descriptors/string decoding, another owner,
 polling/notifications, activation, changed audio/USB error policy, a new lifetime
