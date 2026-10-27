@@ -29,6 +29,13 @@ rk3_native_audio_iso *rk3_native_audio_iso_create_with_clock(RK3HostInterface *,
 int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *);
 void rk3_native_audio_iso_stop(rk3_native_audio_iso *);
 void rk3_native_audio_iso_service(rk3_native_audio_iso *);
+/* Worker-only clock entry. The production provider uses Mach absolute ticks.
+ * Incarnation changes on each actual start, including replacement engines.
+ * Snapshot never runs clock maintenance; no schedule is exposed during start
+ * or a clock callback. The caller owns timer cancellation before retirement. */
+typedef struct { uint64_t incarnation,deadline; } rk3_native_audio_clock_schedule;
+bool rk3_native_audio_iso_clock_schedule(rk3_native_audio_iso *,rk3_native_audio_clock_schedule *);
+void rk3_native_audio_iso_clock_service(rk3_native_audio_iso *);
 size_t rk3_native_audio_iso_pending(const rk3_native_audio_iso *);
 bool rk3_native_audio_iso_is_quiescent(const rk3_native_audio_iso *);
 bool rk3_native_audio_iso_release_usb(rk3_native_audio_iso *);

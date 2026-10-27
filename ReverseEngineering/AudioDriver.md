@@ -665,3 +665,50 @@ ownership, new panic, stop/restart, abort/exhaustion/malformed/list-busy stops,
 and existing reversed raw-completion tests. They establish software order and
 ownership, not a cause or resolution of `.11`, physical timing parity or full
 `.16` completion. A7 readiness and A9 merged activation remain open.
+
+
+## Native clock timer entry — 2026-10-27
+
+Candidate 0.2.5/build10 separates the existing NI clock maintenance from ISO
+completion replenishment. `NativeAudioISO` exposes a worker-only deadline and
+start incarnation plus a clock-only entry. `NativeUSB` schedules one logical
+one-shot timer on its existing serial run loop. Each firing retires its CF
+one-shot object and schedules the next from the unchanged clock's deadline:
+128 ms relative to maintenance completion, with the original eight-tick anchor
+phase and no catch-up. Repeated general service does not postpone that deadline.
+The immediate clock call at successful audio start remains in its original place.
+
+This restores the separately registered timestamp-timer boundary documented in
+[the original callback comparison](CallbackWaitComparison.md). Input completion
+still requeues at oldStart+64 and then submits output, without invoking due clock
+sampling first. `AudioClock.c`, the ring, calendar, packing and recovery policies
+are unchanged. Native timer/context ownership replaces the kernel timer's host
+binding; no additional thread, polling cadence, QoS, queue lead or retry is added.
+The selected public run-loop binding does not prove an original kernel scheduling
+deadline or the original framework's thread relationship.
+
+Timer callbacks validate timer identity, engine, USB generation, globally unique
+start incarnation and deadline before running clock maintenance. Cancellation precedes
+stop, disconnect draining and reclamation. Callback-local ownership retains timer,
+context and session, while the ISO clock entry pins active-call lifetime and
+rejects reentry. A stopped or replaced engine cannot be rearmed by an old timer.
+Timer allocation failure is an explicit audio error rather than silently running
+without clock maintenance.
+
+The actual due-clock IN-completion regression failed before the correction and
+passes after it. Restoring the old inline clock call in a private source copy
+compiles successfully and fails that same assertion. The affected ISO21 and
+USB58 test groups pass strict ARM and ASan/UBSan, including at least two actual
+CF timer firings, no-postpone/early/stale/start-stop/retirement cases and real ISO
+clock-callback lifetime guards. All14 native suites also pass strict and
+ASan/UBSan; leak detection was disabled, so this is not a leak-sanitizer result.
+Independent Spec/lifetime and Standards/correctness reviews pass the same five
+source/fixture hashes. Detailed commands and logs remain in Beads M2 `.1` and
+ignored `.build/native/clock-timer-binding/` and `audio-midi-resume/` evidence.
+
+This is a proved call-order correction, **not a proved TooOld cause or fix**.
+The live baseline remains verified0.2.4/build9 until explicit candidate installation.
+No new live audio run was used for these source checks. Original rates, power,
+direct-monitor and sustained combined audio/MIDI qualification remain open.
+Controller Editor and private NI-agent recognition have been removed from the
+user's required scope; no such components are added by this patch.

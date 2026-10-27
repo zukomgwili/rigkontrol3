@@ -1,12 +1,42 @@
 /* Hardware-free transport tests. NativeAudioISO is mocked only in this file;
  * the production driver links the real ISO implementation. */
+#include <stdbool.h>
+#include <CoreFoundation/CoreFoundation.h>
+static bool fail_clock_timer_create;
+static unsigned clock_timer_create_calls;
+static CFRunLoopTimerRef test_clock_timer_create(CFAllocatorRef,CFAbsoluteTime,
+    CFTimeInterval,CFOptionFlags,CFIndex,CFRunLoopTimerCallBack,CFRunLoopTimerContext *);
+#define CFRunLoopTimerCreate test_clock_timer_create
 #define RK3_NATIVE_USB_TESTING 1
 #include "../NativeUSB.c"
+#undef CFRunLoopTimerCreate
 #include <assert.h>
 
-struct rk3_native_audio_iso { int unused; };
+static CFRunLoopTimerRef test_clock_timer_create(CFAllocatorRef allocator,
+    CFAbsoluteTime date,CFTimeInterval interval,CFOptionFlags flags,CFIndex order,
+    CFRunLoopTimerCallBack callback,CFRunLoopTimerContext *context) {
+    ++clock_timer_create_calls;
+    if(fail_clock_timer_create)return NULL;
+    return CFRunLoopTimerCreate(allocator,date,interval,flags,order,callback,context);
+}
+
+struct rk3_native_audio_iso {
+    uint64_t incarnation,deadline;
+    bool clock_armed;
+};
 typedef void (*TestHook)(void);
 static _Atomic(TestHook) capture_hook,gain_snapshot_hook;
+static TestHook clock_service_hook;
+static unsigned fake_clock_schedule_calls,fake_clock_service_calls;
+static uint64_t fake_clock_interval_ns=128000000;
+static const rk3_native_audio_iso *forbidden_clock_audio;
+static rk3_usb_session *stop_timer_session;
+static rk3_usb_session *destroy_timer_session;
+static uint64_t test_clock_ticks(uint64_t ns) {
+    mach_timebase_info_data_t scale;
+    assert(mach_timebase_info(&scale)==KERN_SUCCESS&&scale.numer&&scale.denom);
+    return ns*scale.denom/scale.numer;
+}
 void rk3_test_input_gain_snapshot(void){TestHook hook=atomic_load(&gain_snapshot_hook);if(hook)hook();}
 static unsigned audio_destroy_calls;
 static bool fake_audio_running, fake_clock_valid, fake_audio_quiescent=true;
@@ -23,15 +53,27 @@ rk3_native_audio_iso *rk3_native_audio_iso_create(RK3HostInterface *interface,
     (void)interface; (void)input; (void)output; (void)command; (void)context; return NULL;
 }
 int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *audio) {
-    (void)audio;++fake_start_calls;if(fake_start_result==0){fake_audio_running=true;fake_panic_pending=false;fake_audio_error=fake_stream_error=0;}return fake_start_result;
+    ++fake_start_calls;
+    if(fake_start_result==0){
+        fake_audio_running=true;fake_panic_pending=false;fake_audio_error=fake_stream_error=0;
+        ++audio->incarnation;audio->clock_armed=true;
+        audio->deadline=mach_absolute_time()+test_clock_ticks(fake_clock_interval_ns);
+    }
+    return fake_start_result;
 }
-void rk3_native_audio_iso_stop(rk3_native_audio_iso *audio) { (void)audio; fake_audio_running=false; ++fake_stop_calls; }
+void rk3_native_audio_iso_stop(rk3_native_audio_iso *audio) {
+    if(stop_timer_session)assert(stop_timer_session->clock_timer==NULL&&stop_timer_session->clock_timer_context==NULL);
+    audio->clock_armed=false;fake_audio_running=false;++fake_stop_calls;
+}
 size_t rk3_native_audio_iso_pending(const rk3_native_audio_iso *audio) { (void)audio; return fake_audio_quiescent?0:1; }
 bool rk3_native_audio_iso_is_quiescent(const rk3_native_audio_iso *audio) { return audio==NULL||fake_audio_quiescent; }
 bool rk3_native_audio_iso_release_usb(rk3_native_audio_iso *audio) {
     (void)audio;if(check_host_lifetime){++release_usb_calls;if(release_busy){--release_busy;return false;}mapped_released=true;}return true;
 }
-bool rk3_native_audio_iso_destroy(rk3_native_audio_iso *audio) { (void)audio; ++audio_destroy_calls;return true; }
+bool rk3_native_audio_iso_destroy(rk3_native_audio_iso *audio) {
+    if(destroy_timer_session)assert(!destroy_timer_session->clock_timer_context||destroy_timer_session->clock_timer_context->audio!=audio);
+    ++audio_destroy_calls;return true;
+}
 int32_t rk3_native_audio_iso_error(const rk3_native_audio_iso *audio) { (void)audio; return fake_audio_error; }
 int32_t rk3_native_audio_iso_stream_error(const rk3_native_audio_iso *audio) { (void)audio; return fake_stream_error; }
 bool rk3_native_audio_iso_running(const rk3_native_audio_iso *audio) { (void)audio; return fake_audio_running; }
@@ -48,6 +90,16 @@ bool rk3_native_audio_iso_panic(const rk3_native_audio_iso *audio,uint32_t *dela
     (void)audio;if(!fake_panic_pending)return false;*delay=fake_panic_delay;*error=fake_panic_error;return true;
 }
 void rk3_native_audio_iso_service(rk3_native_audio_iso *audio) { (void)audio;++fake_service_calls; }
+bool rk3_native_audio_iso_clock_schedule(rk3_native_audio_iso *audio,rk3_native_audio_clock_schedule *schedule) {
+    assert(audio&&audio!=forbidden_clock_audio);++fake_clock_schedule_calls;
+    if(!fake_audio_running||!audio->clock_armed)return false;
+    *schedule=(rk3_native_audio_clock_schedule){audio->incarnation,audio->deadline};return true;
+}
+void rk3_native_audio_iso_clock_service(rk3_native_audio_iso *audio) {
+    assert(audio&&audio!=forbidden_clock_audio);++fake_clock_service_calls;
+    audio->deadline=mach_absolute_time()+test_clock_ticks(fake_clock_interval_ns);
+    if(clock_service_hook)clock_service_hook();
+}
 void rk3_native_audio_iso_set_output_active(rk3_native_audio_iso *audio,bool active) {
     (void)audio;if(activity_publication)assert(atomic_load(&activity_publication->audio)==NULL);
     fake_output_active=active;++activity_calls;
@@ -182,8 +234,12 @@ static void initialize(rk3_usb_session *session) {
     atomic_init(&session->references, 2);
     session->status.info.midi_outputs = 1;
     session->generation = 9;
+    session->run_loop=CFRunLoopGetCurrent(); /* Borrowed fixture loop; no worker is created. */
     fake_audio_quiescent = true; fake_panic_pending = false;
     fake_audio_error = fake_stream_error = 0; fake_audio_running = fake_clock_valid = false; fake_stop_calls = fake_start_calls = 0; fake_start_result=ENODEV;
+    clock_service_hook=NULL;fake_clock_schedule_calls=fake_clock_service_calls=0;
+    fake_clock_interval_ns=128000000;forbidden_clock_audio=NULL;stop_timer_session=destroy_timer_session=NULL;
+    fail_clock_timer_create=false;
 }
 
 static RetiredAudio *test_context(rk3_usb_session *session,rk3_native_audio_iso *audio) {
@@ -196,6 +252,7 @@ static void test_audio(rk3_usb_session *session,rk3_native_audio_iso *audio) {
 }
 static void finish(rk3_usb_session *session) {
     assert(session->head == NULL && session->queued == 0 && session->stop_head == NULL && session->deferred_stops == 0);
+    cancel_audio_clock_timer(session);
     while(session->retired){RetiredAudio *next=session->retired->next;free(session->retired);session->retired=next;}
     pthread_cond_destroy(&session->wake);
     pthread_mutex_destroy(&session->mutex);
@@ -761,6 +818,207 @@ static Request *enqueue_test_request(rk3_usb_session *session,RequestKind kind,c
 static void free_test_request(Request *request) {
     assert(request->complete&&request->references==1);
     pthread_cond_destroy(&request->condition);free(request);
+}
+
+typedef struct { CFRunLoopTimerRef timer;AudioClockTimer *context; } HeldClockTimer;
+static HeldClockTimer hold_clock_timer(rk3_usb_session *session) {
+    assert(session->clock_timer&&session->clock_timer_context);
+    CFRetain(session->clock_timer);
+    return (HeldClockTimer){session->clock_timer,
+        (AudioClockTimer *)retain_audio_clock_timer_context(session->clock_timer_context)};
+}
+static void release_held_clock_timer(HeldClockTimer held) {
+    CFRelease(held.timer);release_audio_clock_timer_context(held.context);
+}
+static void arm_test_clock(rk3_usb_session *session,rk3_native_audio_iso *audio,uint64_t delay_ns) {
+    test_audio(session,audio);fake_audio_running=fake_clock_valid=true;
+    audio->incarnation=1;audio->clock_armed=true;
+    audio->deadline=mach_absolute_time()+test_clock_ticks(delay_ns);
+    assert(sync_audio_clock_timer(session)==0);
+    assert(session->clock_timer&&session->clock_timer_context);
+    assert(CFRunLoopTimerGetInterval(session->clock_timer)==0);
+}
+static void run_until_clock_services(unsigned target) {
+    double deadline=seconds_now()+1;
+    while(fake_clock_service_calls<target&&seconds_now()<deadline)
+        (void)CFRunLoopRunInMode(kCFRunLoopDefaultMode,0.005,true);
+    assert(fake_clock_service_calls>=target);
+}
+static void clock_timer_binding_test(void) {
+    rk3_usb_session session;initialize(&session);rk3_native_audio_iso audio={0};
+    arm_test_clock(&session,&audio,UINT64_C(1000000000));
+    HeldClockTimer first=hold_clock_timer(&session);
+    CFAbsoluteTime fire=CFRunLoopTimerGetNextFireDate(first.timer);
+    unsigned created=clock_timer_create_calls;
+    for(unsigned repeat=0;repeat<8;++repeat) {
+        service_audio(&session);
+        assert(session.clock_timer==first.timer&&session.clock_timer_context==first.context);
+        assert(CFRunLoopTimerGetNextFireDate(first.timer)==fire);
+        assert(clock_timer_create_calls==created&&fake_clock_service_calls==0);
+    }
+    /* Even an early entry uses a replacement one-shot with the original
+     * deadline; a loop wakeup cannot become a maintenance callback. */
+    audio_clock_timer_callback(first.timer,first.context);
+    assert(fake_clock_service_calls==0&&session.clock_timer!=first.timer);
+    assert(session.clock_timer_context->deadline==audio.deadline);
+    assert(session.clock_timer_context->incarnation==audio.incarnation);
+    assert(CFRunLoopTimerGetInterval(session.clock_timer)==0);
+    assert(!CFRunLoopTimerIsValid(first.timer));
+    release_held_clock_timer(first);
+    /* Short fake-ISO deadlines exercise actual CF one-shot delivery and
+     * replacement twice. The real ISO suite verifies NI's 128 ms cadence. */
+    fake_clock_interval_ns=UINT64_C(2000000);audio.deadline=mach_absolute_time();
+    assert(sync_audio_clock_timer(&session)==0);
+    run_until_clock_services(2);
+    assert(session.clock_timer&&session.clock_timer_context);
+    assert(CFRunLoopTimerGetInterval(session.clock_timer)==0);
+    assert(session.clock_timer_context->deadline==audio.deadline);
+    assert(atomic_load(&session.references)==3);
+    cancel_audio_clock_timer(&session);assert(atomic_load(&session.references)==2);
+    finish(&session);
+}
+static void clock_timer_stop_restart_test(void) {
+    rk3_usb_session session;initialize(&session);rk3_native_audio_iso audio={0};
+    arm_test_clock(&session,&audio,UINT64_C(1000000000));
+    HeldClockTimer old=hold_clock_timer(&session);stop_timer_session=&session;
+    Request *stop=enqueue_test_request(&session,REQUEST_STOP,NULL,0);
+    process_one_request(&session,true);assert(stop->complete&&stop->result==0);free_test_request(stop);
+    assert(!session.clock_timer&&!session.clock_timer_context&&!fake_audio_running);
+    unsigned snapshots=fake_clock_schedule_calls;
+    audio_clock_timer_callback(old.timer,old.context);
+    assert(fake_clock_schedule_calls==snapshots&&fake_clock_service_calls==0);
+    fake_start_result=0;
+    Request *start=enqueue_test_request(&session,REQUEST_START,NULL,0);
+    process_one_request(&session,true);assert(start->complete&&start->result==0);free_test_request(start);
+    assert(audio.incarnation==2&&session.clock_timer_context->incarnation==2);
+    CFRunLoopTimerRef restarted=session.clock_timer;
+    CFAbsoluteTime restarted_fire=CFRunLoopTimerGetNextFireDate(restarted);
+    snapshots=fake_clock_schedule_calls;
+    audio_clock_timer_callback(old.timer,old.context);
+    assert(fake_clock_schedule_calls==snapshots&&session.clock_timer==restarted);
+    start=enqueue_test_request(&session,REQUEST_START,NULL,0);
+    process_one_request(&session,true);assert(start->complete&&start->result==0);free_test_request(start);
+    assert(audio.incarnation==2&&session.clock_timer==restarted);
+    assert(CFRunLoopTimerGetNextFireDate(restarted)==restarted_fire);
+    assert(fake_clock_service_calls==0&&fake_start_calls==1);
+    release_held_clock_timer(old);stop_timer_session=NULL;finish(&session);
+}
+static void clock_timer_guard_test(void) {
+    for(unsigned scenario=0;scenario<7;++scenario) {
+        rk3_usb_session session;initialize(&session);rk3_native_audio_iso audio={0},replacement={0};
+        arm_test_clock(&session,&audio,UINT64_C(1000000000));
+        HeldClockTimer old=hold_clock_timer(&session);unsigned snapshots=fake_clock_schedule_calls;
+        if(scenario==0)atomic_store(&session.closing,true);
+        if(scenario==1)session.stopping_io=true;
+        if(scenario==2)session.transport_failed=true;
+        if(scenario==3)++session.generation;
+        if(scenario==4)test_audio(&session,&replacement);
+        if(scenario==5)++audio.incarnation;
+        if(scenario==6)++audio.deadline;
+        if(scenario<5)forbidden_clock_audio=&audio;
+        audio_clock_timer_callback(old.timer,old.context);
+        assert(!session.clock_timer&&!session.clock_timer_context&&fake_clock_service_calls==0);
+        assert(fake_clock_schedule_calls==snapshots+(scenario>=5?1u:0u));
+        forbidden_clock_audio=NULL;release_held_clock_timer(old);finish(&session);
+    }
+}
+static void clock_timer_retirement_test(void) {
+    rk3_usb_session session;initialize(&session);rk3_native_audio_iso old_audio={0},new_audio={0};
+    arm_test_clock(&session,&old_audio,UINT64_C(1000000000));
+    HeldClockTimer old=hold_clock_timer(&session);
+    ++session.generation;test_audio(&session,&new_audio);
+    new_audio.incarnation=1;new_audio.clock_armed=true;
+    new_audio.deadline=mach_absolute_time()+test_clock_ticks(UINT64_C(1000000000));
+    destroy_timer_session=&session;unsigned destroyed=audio_destroy_calls;
+    reclaim_retired(&session);
+    assert(audio_destroy_calls==destroyed+1&&session.retired_count==1);
+    assert(!session.clock_timer&&!session.clock_timer_context);
+    forbidden_clock_audio=&old_audio;unsigned snapshots=fake_clock_schedule_calls;
+    audio_clock_timer_callback(old.timer,old.context);
+    assert(fake_clock_schedule_calls==snapshots&&fake_clock_service_calls==0);
+    assert(sync_audio_clock_timer(&session)==0);
+    assert(session.clock_timer_context->audio==&new_audio&&session.clock_timer_context->generation==10);
+    release_held_clock_timer(old);forbidden_clock_audio=NULL;destroy_timer_session=NULL;finish(&session);
+}
+static rk3_usb_session *clock_hook_session;
+static CFRunLoopTimerRef restarted_during_clock_service;
+static unsigned restart_timer_create_count;
+static void restart_from_clock_source(void *info) {
+    assert(info==clock_hook_session);
+    Request *stop=enqueue_test_request(clock_hook_session,REQUEST_STOP,NULL,0);
+    process_one_request(clock_hook_session,true);assert(stop->complete&&stop->result==0);free_test_request(stop);
+    Request *start=enqueue_test_request(clock_hook_session,REQUEST_START,NULL,0);
+    process_one_request(clock_hook_session,true);assert(start->complete&&start->result==0);free_test_request(start);
+    restarted_during_clock_service=clock_hook_session->clock_timer;
+    restart_timer_create_count=clock_timer_create_calls;
+}
+static void restart_from_clock_service(void) {
+    clock_service_hook=NULL;
+    CFRunLoopSourceContext context={0};context.info=clock_hook_session;
+    context.perform=restart_from_clock_source;
+    CFRunLoopSourceRef source=CFRunLoopSourceCreate(NULL,0,&context);assert(source);
+    CFRunLoopAddSource(CFRunLoopGetCurrent(),source,kCFRunLoopDefaultMode);
+    CFRunLoopSourceSignal(source);
+    /* Exercise the adapter's stale-incarnation guard through a nested pump.
+     * This fake ISO permits immediate restart; the real ISO fixture separately
+     * proves that its active clock callback prevents quiescence and restart. */
+    pump_callbacks(clock_hook_session,0);
+    CFRunLoopRemoveSource(CFRunLoopGetCurrent(),source,kCFRunLoopDefaultMode);CFRelease(source);
+}
+static void clock_timer_reentrant_restart_test(void) {
+    rk3_usb_session session;initialize(&session);rk3_native_audio_iso audio={0};
+    arm_test_clock(&session,&audio,0);HeldClockTimer old=hold_clock_timer(&session);
+    clock_hook_session=stop_timer_session=&session;fake_start_result=0;
+    clock_service_hook=restart_from_clock_service;
+    audio_clock_timer_callback(old.timer,old.context);
+    assert(fake_clock_service_calls==1&&audio.incarnation==2&&session.clock_timer);
+    assert(session.clock_timer==restarted_during_clock_service&&clock_timer_create_calls==restart_timer_create_count);
+    assert(session.clock_timer_context->incarnation==2);
+    release_held_clock_timer(old);clock_hook_session=stop_timer_session=NULL;finish(&session);
+}
+static void complete_command_from_clock_service(void) {
+    clock_service_hook=NULL;
+    assert(clock_hook_session->pending_write&&deferred_write_callback&&deferred_write_context==clock_hook_session);
+    deferred_write_callback(deferred_write_context,kIOReturnSuccess,deferred_write_length);
+}
+static void clock_timer_command_pump_test(void) {
+    rk3_usb_session session;initialize(&session);rk3_native_audio_iso audio={0};
+    RK3HostInterface interface={.bulk_read=fake_read,.bulk_write=fake_write};
+    session.interface=&interface;session.opened=true;session.command_in=4;session.command_out=7;
+    arm_test_clock(&session,&audio,0);
+    clock_hook_session=&session;clock_service_hook=complete_command_from_clock_service;
+    command_write_result=command_callback_result=kIOReturnSuccess;
+    defer_write=true;signal_deferred=short_write_callback=false;deferred_write_callback=NULL;
+    Request active={.deadline=seconds_now()+1};session.active_request=&active;
+    const uint8_t command[]={7,0,1,0xf8};
+    assert(command_worker(&session,command,sizeof(command),1000));
+    assert(!session.pending_write&&fake_clock_service_calls==1&&session.clock_timer);
+    assert(session.status.commands_completed==1&&!session.transport_failed&&session.generation==9);
+    session.active_request=NULL;clock_hook_session=NULL;defer_write=false;finish(&session);
+}
+static void clock_timer_failure_test(void) {
+    rk3_usb_session session;initialize(&session);rk3_native_audio_iso audio={0};
+    test_audio(&session,&audio);fake_audio_running=fake_clock_valid=true;
+    audio.incarnation=1;audio.clock_armed=true;audio.deadline=mach_absolute_time();
+    session.run_loop=NULL;
+    assert(sync_audio_clock_timer(&session)==EINVAL&&!session.clock_timer&&!session.clock_timer_context);
+    session.run_loop=CFRunLoopGetCurrent();fail_clock_timer_create=true;
+    assert(sync_audio_clock_timer(&session)==ENOMEM&&!session.clock_timer&&!session.clock_timer_context);
+    assert(atomic_load(&session.references)==2&&session.generation==9&&!session.transport_failed);
+    fake_audio_running=false;fake_start_result=0;stop_timer_session=&session;
+    Request *start=enqueue_test_request(&session,REQUEST_START,NULL,0);
+    process_one_request(&session,true);assert(start->complete&&start->result==ENOMEM);free_test_request(start);
+    assert(fake_stop_calls==1&&!fake_audio_running&&session.status.state==RK3_USB_STOPPING);
+    assert(session.status.error_code==ENOMEM&&!session.want_audio&&!session.transport_failed&&session.generation==9);
+    assert(!session.clock_timer&&!session.clock_timer_context&&atomic_load(&session.references)==2);
+    fail_clock_timer_create=false;stop_timer_session=NULL;finish(&session);
+    initialize(&session);memset(&audio,0,sizeof(audio));arm_test_clock(&session,&audio,0);
+    HeldClockTimer old=hold_clock_timer(&session);fail_clock_timer_create=true;stop_timer_session=&session;
+    audio_clock_timer_callback(old.timer,old.context);
+    assert(fake_clock_service_calls==1&&fake_stop_calls==1&&!fake_audio_running);
+    assert(!session.clock_timer&&!session.clock_timer_context&&session.status.state==RK3_USB_STOPPING);
+    assert(session.status.error_code==ENOMEM&&!session.transport_failed&&session.generation==9);
+    release_held_clock_timer(old);fail_clock_timer_create=false;stop_timer_session=NULL;finish(&session);
 }
 static void panic_containment_test(void) {
     for(unsigned delay=0;delay<=100;delay+=100) {
@@ -1854,6 +2112,8 @@ int main(void) {
     identity_reader_first_test();identity_reader_fallback_test();identity_reader_unicode_test();identity_reader_oracles_test();identity_reader_definedness_test();
     spec_publication_test();spec_refresh_test();spec_retirement_test();spec_protocol_retirement_test();spec_drain_test();spec_close_test();spec_property_test();spec_snapshot_race_test();
     gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
-    puts("NativeUSB: NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
+    clock_timer_binding_test();clock_timer_stop_restart_test();clock_timer_guard_test();clock_timer_retirement_test();
+    clock_timer_reentrant_restart_test();clock_timer_command_pump_test();clock_timer_failure_test();
+    puts("NativeUSB: worker clock one-shots/lifetime, NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
     return 0;
 }

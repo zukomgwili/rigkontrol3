@@ -45,7 +45,8 @@ struct rk3_native_audio_iso {
     uint64_t output_sample[OUTPUT_SLOTS],output_usb_frame[OUTPUT_SLOTS];
     uint32_t output_bytes[OUTPUT_SLOTS];
     size_t pending_count;
-    bool usb_released,servicing,submit_diagnostic_logged,priming_pending;
+    bool usb_released,servicing,submit_diagnostic_logged,priming_pending,clock_starting,clock_servicing;
+    uint64_t clock_incarnation;
     NIAudioClock ni_clock;
     mach_timebase_info_data_t timebase;
     NIAudioClockProvider clock_provider;
@@ -56,6 +57,7 @@ struct rk3_native_audio_iso {
     atomic_int_least32_t fatal_error,panic_error,last_output_error;
     atomic_uint_fast64_t clock_sequence,clock_frame,clock_host,clock_seed,zero_frame,zero_host;
 };
+static atomic_uint_fast64_t next_clock_incarnation=1;
 static bool accepted(int32_t status) {return status==0||(uint32_t)status==UINT32_C(0xe00002e7);}
 static bool device_gone(int32_t status) {return status==kIOReturnNoDevice||status==kIOReturnNotOpen;}
 static void note_stream_error(rk3_native_audio_iso *e,int32_t error) {
@@ -314,8 +316,6 @@ static bool finish_priming(rk3_native_audio_iso *e) {
 void rk3_native_audio_iso_service(rk3_native_audio_iso *e) {
     if(!e||e->servicing||!atomic_load(&e->running)) return;
     e->servicing=true;
-    clock_error(e,ni_audio_clock_service(&e->ni_clock));
-    if(!atomic_load(&e->running)){e->servicing=false;return;}
     clear_inactive_output(e);
     publish_zero_events(e);
     /* A previously due phase also completes when IN set recoverable panic. */
@@ -442,7 +442,7 @@ rk3_native_audio_iso *rk3_native_audio_iso_create_with_clock(RK3HostInterface *i
     for(unsigned i=0;i<OUTPUT_SLOTS;++i)e->outputs[i]=(Transfer){e,i,false,0};
     return e;
 }
-int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
+static int32_t start_engine(rk3_native_audio_iso *e) {
     if(!e||e->usb_released)return kIOReturnBadArgument;
     if(atomic_load(&e->running))return 0;
     if(!rk3_native_audio_iso_is_quiescent(e))return kIOReturnBusy;
@@ -508,6 +508,27 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
     /*0x640e/0x6410 returns the format rejection via0x644a without arming a
      * new panic timer. Any earlier TooOld reason remains authoritative. */
     return kIOReturnIOError;
+}
+int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
+    if(!e||e->usb_released)return kIOReturnBadArgument;
+    if(atomic_load(&e->running))return 0;
+    if(!rk3_native_audio_iso_is_quiescent(e))return kIOReturnBusy;
+    uint64_t incarnation=atomic_fetch_add(&next_clock_incarnation,1);
+    if(!incarnation)return kIOReturnNoResources;
+    e->clock_incarnation=incarnation;e->clock_starting=true;
+    int32_t result=start_engine(e);
+    e->clock_starting=false;return result;
+}
+bool rk3_native_audio_iso_clock_schedule(rk3_native_audio_iso *e,rk3_native_audio_clock_schedule *schedule) {
+    if(!e||!schedule||e->clock_starting||e->clock_servicing||
+        !atomic_load(&e->running)||!e->ni_clock.armed)return false;
+    *schedule=(rk3_native_audio_clock_schedule){e->clock_incarnation,e->ni_clock.next_callback};return true;
+}
+void rk3_native_audio_iso_clock_service(rk3_native_audio_iso *e) {
+    if(!e||e->clock_starting||e->clock_servicing||!atomic_load(&e->running))return;
+    e->clock_servicing=true;atomic_fetch_add(&e->active_calls,1);
+    clock_error(e,ni_audio_clock_service(&e->ni_clock));
+    atomic_fetch_sub(&e->active_calls,1);e->clock_servicing=false;
 }
 void rk3_native_audio_iso_stop(rk3_native_audio_iso *e) {
     if(!e)return;e->priming_pending=false;atomic_store(&e->running,false);atomic_store(&e->pcm_ready,false);

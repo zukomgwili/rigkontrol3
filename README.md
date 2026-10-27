@@ -1,9 +1,16 @@
 # Rig Kontrol 3 — native ARM driver reconstruction
 
-**Current requirement:** original NI automatic recognition remains incomplete.
-The current HAL/CoreMIDI driver does not publish NI's original IOKit interface.
-The [binding decision](ReverseEngineering/KernelBindingDecision.md) is reopened;
-source/build/deployment gates remain unresolved, with SIP kept enabled.
+**Current target:** native ARM CoreAudio and CoreMIDI operation in Guitar Rig 6
+and other hosts, with SIP enabled. Controller Editor and NI's private automatic
+recognition interface are no longer requirements. The existing native
+audio/MIDI driver remains the selected implementation; no supporting NI agent
+or controller bridge is needed for this target.
+
+On 2026-10-27, all twelve installed files matched the frozen **0.2.4/build9**
+package and both signatures verified. The connected device reported generation
+2 and error 0 in a read-only metadata check. This does not establish audio
+stability: the recorded intermittent `kIOReturnIsoTooOld` fault remains open.
+The older build results below are historical checkpoints.
 
 Fresh Apple Silicon drivers reconstructed from Native Instruments’ original
 Intel **NIUSBAudioDriver 2.8.0** and **NIUSBMIDIDriver 2.8.0**. The earlier
@@ -66,7 +73,8 @@ worked reliably while playing; incoming feedback also produced the requested
 odd/even LED pattern. The full status log nevertheless revealed **five
 unsolicited audio-engine restarts with `kIOReturnIsoTooOld` before the deliberate
 USB unplug**, while USB generation stayed 1. Sustained acceptance remains open
-as P1 `rigkontrol3-40h.11`; clear listening and successful callbacks do not make
+under M2 `rigkontrol3-40h.1` (retaining historical `.11` evidence); clear
+listening and successful callbacks do not make
 that run error-free. This is a subjective physical pass, not a measured
 round-trip latency or proof of zero signal loss. No effects host was tested.
 
@@ -94,16 +102,18 @@ storage until ordered delivery. A production-engine regression demonstrates
 the previous stall and sustained progress with the ordered contract. This
 changes neither the NI queue calendar nor sample placement. Temporary,
 failure-only timing observations are included for the remaining live fault.
-**Build 6 is now installed**, with all 12 files and signatures verified. A
+At that checkpoint, **build 6 was installed**, with all 12 files and signatures verified. A
 120-second silent run passed, but a longer MIDI-active run failed after
 227.593 seconds. The ordering fix does not resolve that observed late request.
 
 **The primary lift-and-shift is incomplete.** Current functional successes
-cover a subset of original behavior. The completed [parity audit](ReverseEngineering/ParityAudit.md)
+cover a subset of original audio/MIDI behavior. The completed [parity audit](ReverseEngineering/ParityAudit.md)
 in Beads `rigkontrol3-40h.13` inventories all 373 indexed executable entries and
 67 capability/platform/package rows. It identifies missing original rates,
 gain/direct-monitor controls, clock cadence and startup differences, and
-unresolved client contracts. Static inspection found real ARM IOAudioEngine
+client contracts that were then required. NI-private client recognition has
+since been removed from scope; audio/MIDI correctness remains required.
+Static inspection found real ARM IOAudioEngine
 implementations: native ABI and legacy USB migration are necessary; replacing
 the entire kernel audio model with the current user HAL is not proved necessary.
 Retaining kernel audio with modern kernel USB is a conditional minimum-change
@@ -116,9 +126,11 @@ No new implementation or installation occurred in the audit.
 The follow-up [.17 kernel-binding check](ReverseEngineering/KernelBindingDecision.md)
 records the public API, signing and loading requirements. The user requires
 SIP enabled and excludes the personal kernel-testing route. The existing
-AudioServerPlugIn/IOUSBHost/CoreMIDI baseline remains subject to `.6`'s API-contract
-and `.2`'s NI-client/control entry criteria, plus each card's original-parity tests
-and stop rules. No functionality exception was accepted. No coding, loading,
+AudioServerPlugIn/IOUSBHost/CoreMIDI baseline remains subject to the original
+audio/MIDI hardware contracts and tests. The current three delivery milestones
+are native MIDI/controller operation (`.2`), audio (`.1`), and installed
+qualification (`.3`); their Beads designs supersede historical NI-client gates.
+No coding, loading,
 toolchain or security change occurred in that decision.
 
 Candidate **0.2.2/build7** continues the lift-and-shift after the
@@ -126,9 +138,9 @@ Candidate **0.2.2/build7** continues the lift-and-shift after the
 Its scoped changes restore original clock sampling/counter/start behavior and
 callable per-input software gain with NI's raw Float32 semantics. The existing
 mappings, calibration and LED paths are retained. Source checks and installed
-acceptance are separate: **0.2.1/build6 remains installed** until the candidate
-is explicitly installed and verified. Remaining original rates, direct monitor,
-startup/priming, client compatibility, power and stability requirements stay in
+acceptance were separate at that checkpoint; build9 is now the verified installed
+baseline described above. Remaining original rates, direct monitor,
+startup/priming, power and stability requirements stay in
 Beads; this candidate does not complete the primary port.
 
 ## Build and install

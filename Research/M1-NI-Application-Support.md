@@ -1,9 +1,10 @@
 # M1: NI application support for Rig Kontrol 3
 
-**Current scope, 2026-10-27:** the user explicitly chose original native
-recognition in Controller Editor and standard MIDI in Guitar Rig 6. The GR6
-native-integration requirement and its blocker below are historical. Original
-driver/controller/audio functionality and SIP remain required.
+**Current scope, 2026-10-27:** the user subsequently dropped Controller Editor
+and original NI automatic recognition, requiring working native audio and MIDI.
+Both application-recognition gates below are historical and no longer block
+the driver. Stop editor and NI-agent compatibility work; retain original
+audio/MIDI behavior, mappings, calibration, LED feedback and SIP.
 
 Publication research verified 2026-10-27. That research used first-party NI
 publications only and performed no application, installer, driver, binary
@@ -12,7 +13,7 @@ recovery or device operation. A separate local UI inspection is recorded below.
 **Finding: NI removed Rig Kontrol hardware integration when Guitar Rig 6
 launched. A working ARM audio/MIDI driver is not evidence of native RK3
 recognition in unchanged GR6.** NI's own distinction between native integration
-and MIDI control matters to the retained M1 acceptance requirement.
+and MIDI control mattered to the then-current M1 acceptance requirement.
 
 ## What NI establishes
 
@@ -56,9 +57,9 @@ and MIDI control matters to the retained M1 acceptance requirement.
 
 **Inference from the sources:** restoring NI's driver/agent behavior can target
 the original compatible client contracts, but it cannot be assumed to restore
-an application feature NI says it removed. The retained requirement for
-unchanged GR6 native automatic recognition therefore has a concrete support
-conflict. CE recognition, a visible MIDI endpoint, MIDI Learn, audio-device
+an application feature NI says it removed. The then-current requirement for
+unchanged GR6 native automatic recognition therefore had a concrete support
+conflict, subsequently removed by the user. CE recognition, a visible MIDI endpoint, MIDI Learn, audio-device
 selection or an older Guitar Rig succeeding cannot satisfy that GR6 criterion.
 No fallback or requirement waiver is authorized by this report.
 
@@ -68,8 +69,9 @@ or recognition through our ARM implementation. The subsequent local section
 records GR6 version/UI observations; native discovery/session and ARM-agent
 recognition remain **unverified**. This research is not proof that every GR6 binary
 lacks every latent legacy code path; it identifies NI's explicit removal and
-unsupported status, not a binary audit. M1 must record the real unchanged-app
-result separately and must not report native recognition from MIDI control.
+unsupported status, not a binary audit. At that checkpoint M1 needed to record the real unchanged-app result
+separately; MIDI control could not count as native recognition. That acceptance
+gate is now out of scope.
 
 No new issue, source implementation, runtime test or security change resulted
 from the publication research. The local app inspection below is separate.
@@ -115,9 +117,10 @@ publication-only research above.
   is made that this was a test of a completed replacement agent.
 
 **Historical first-gate disposition:** the then-required GR6 native recognition
-conflicted with NI's removal of that feature. The user subsequently resolved
-this conflict explicitly as recorded at the top: native CE recognition plus
-standard GR6 MIDI. That GR6 blocker is lifted; M1 is still incomplete. The GR6
+conflicted with NI's removal of that feature. The user first resolved
+this conflict with the intermediate decision of native CE recognition plus
+standard GR6 MIDI, then dropped CE as recorded at the top. Both recognition
+blockers are lifted; native audio/MIDI delivery remains incomplete. The GR6
 process opened for the inspection was quit afterward; process inventory at
 that checkpoint confirmed no GR6 or CE process remained. No new planning issue,
 security change, driver installation, USB owner, timing change or recovery
@@ -162,7 +165,7 @@ during dyld initialization. The app image offset of the initializer frame is
 6,629,018 in both reports; different load addresses do not imply a different
 failure. The byte-identical normal-folder placement did not resolve it.
 
-**Current M1 disposition:** blocked on the required unchanged CE application's
+**Historical M1 disposition before the latest scope decision:** blocked on the then-required unchanged CE application's
 startup on this macOS 27.0.1 host, before recognition can be evaluated. The
 deeper ColorSync cause remains unproved, and this does not establish universal
 incompatibility or a driver/IPC defect. Dependent recognition code stops at

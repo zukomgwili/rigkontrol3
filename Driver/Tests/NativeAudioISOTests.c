@@ -57,6 +57,9 @@ static struct {
 } mock;
 static atomic_bool block_snapshot,snapshot_entered,release_snapshot;
 static rk3_native_audio_iso *priming_observer;
+static rk3_native_audio_iso *clock_start_observer;
+static unsigned clock_start_observations;
+static void (*clock_frame_hook)(void);
 static unsigned priming_attempts[2];
 static bool hold_priming_guard,fail_priming_prepare;
 static void observe_priming_attempt(uint8_t pipe) {
@@ -86,6 +89,7 @@ static uint64_t host_for_frame(uint64_t frame) {
 }
 static int32_t clock_frame(void *context,uint64_t *frame,uint64_t *paired_time) {
     (void)context;++mock.clock_queries;
+    if(clock_frame_hook)clock_frame_hook();
     if(mock.commands<2)++mock.clock_queries_before_format;
     if(mock.clock_error_index<mock.clock_error_count) {
         int32_t error=mock.clock_error_script[mock.clock_error_index++];if(error)return error;
@@ -231,6 +235,11 @@ static void drain_aborted(void) {
 }
 static bool command(void *context, const uint8_t *bytes, size_t length, uint32_t timeout) {
     (void)context;assert(length == 6 && bytes[0] == 9 && timeout == 1200);
+    if(clock_start_observer) {
+        rk3_native_audio_clock_schedule schedule={99,99};
+        assert(!rk3_native_audio_iso_clock_schedule(clock_start_observer,&schedule));
+        assert(schedule.incarnation==99&&schedule.deadline==99);++clock_start_observations;
+    }
     if(mock.commands < 2)memcpy(mock.commands_bytes[mock.commands],bytes,6);
     ++mock.commands;
     if(bytes[1]!=255) {
@@ -269,11 +278,11 @@ static void test_clock_start_order_and_idle_cadence(void) {
         const uint64_t ordinary[]={frame,frame,frame,frame+1};
         memcpy(mock.clock_script,ordinary,sizeof(ordinary));mock.clock_script_index=0;
         mock.clock_script_count=tick%8==0?4:2;
-        rk3_native_audio_iso_service(engine);
+        rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);
         assert(mock.clock_queries-before==mock.clock_script_count);
         assert(mock.clock_script_index==mock.clock_script_count);
         assert(mock.clock_begins==tick+1&&mock.clock_ends==tick+1&&mock.clock_end_tick==host_for_frame(mock.bus_frame));
-        unsigned marks=mock.clock_begins;rk3_native_audio_iso_service(engine);
+        unsigned marks=mock.clock_begins;rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);
         assert(mock.clock_begins==marks&&mock.clock_ends==marks&&mock.clock_queries-before==mock.clock_script_count);
     }
     /* Ordinary same-engine stop/restart keeps the estimator and counter.
@@ -282,10 +291,10 @@ static void test_clock_start_order_and_idle_cadence(void) {
     for(unsigned tick=0;tick<3;++tick) {
         mock.bus_frame+=128;uint64_t frame=mock.bus_frame;
         mock.clock_script[0]=mock.clock_script[1]=frame;mock.clock_script_count=2;mock.clock_script_index=0;
-        rk3_native_audio_iso_service(engine);assert(mock.clock_script_index==2);
+        rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);assert(mock.clock_script_index==2);
     }
     rk3_native_audio_iso_stop(engine);drain_aborted();unsigned stopped_queries=mock.clock_queries;
-    mock.bus_frame+=128;rk3_native_audio_iso_service(engine);assert(mock.clock_queries==stopped_queries);
+    mock.bus_frame+=128;rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);assert(mock.clock_queries==stopped_queries);
     mock.clock_script[0]=mock.clock_script[1]=mock.bus_frame;mock.clock_script_index=0;
     unsigned marks=mock.clock_begins;
     assert(rk3_native_audio_iso_start(engine)==0&&mock.clock_queries==stopped_queries+2);
@@ -295,7 +304,7 @@ static void test_clock_start_order_and_idle_cadence(void) {
         const uint64_t observations[]={frame,frame,frame,frame+1};
         memcpy(mock.clock_script,observations,sizeof(observations));mock.clock_script_index=0;
         mock.clock_script_count=tick==4?4:2;
-        rk3_native_audio_iso_service(engine);assert(mock.clock_script_index==mock.clock_script_count);
+        rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);assert(mock.clock_script_index==mock.clock_script_count);
     }
     destroy_engine(engine);
 }
@@ -350,6 +359,8 @@ static void prime(rk3_native_audio_iso *engine) {
     assert(mock.reads[0].scheduled_frame == 1101 && mock.reads[63].scheduled_frame == 1164);
     for(unsigned slot=0;slot<64;++slot){
         input_primary(slot,false);input_callback(slot,0);
+        /* Model the independent worker timer, never the IN callback itself. */
+        rk3_native_audio_iso_clock_service(engine);
         assert(mock.last_write && mock.last_write->scheduled_frame == 1165+slot);
     }
     assert(mock.write_count == 64);
@@ -796,7 +807,7 @@ static void test_exact_variable_count_zero_event(void) {
         if(step==341){hardware_input(slot,variable,false);wrap_usb_frame=frame;}
         else input_primary(slot,false);
         float sample[2];assert(rk3_native_audio_iso_capture_at(engine,sample,0,1)==1);
-        rk3_native_audio_iso_service(engine);input_callback(slot,0);
+        rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);input_callback(slot,0);
     }
     /* Cursor starts2. The first wrap consumes131069 wire bytes, so after
      *341 ordinary384-byte IRPs the event offset is125 in the variable IRP:
@@ -823,7 +834,7 @@ static void test_backward_output_host_time_guard(void) {
         const uint64_t observations[]={f,f,f,f+1};
         memcpy(mock.clock_script,observations,sizeof(observations));
         mock.clock_script_count=4;mock.clock_script_index=0;
-        rk3_native_audio_iso_service(engine);
+        rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);
     }
     assert(mock.clock_shift_applied>0);
     output_callback(1);assert(rk3_native_audio_iso_clock(engine,&after));
@@ -840,7 +851,7 @@ static void test_clock_source_failure_and_queued_zero(void) {
     input_primary(0,false);float sample[2];unsigned before_capture=mock.clock_queries;
     assert(rk3_native_audio_iso_capture_at(engine,sample,0,1)==1);
     assert(mock.clock_queries==before_capture); /* RT never invokes the provider. */
-    rk3_native_audio_iso_service(engine);output_callback(0);
+    rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);output_callback(0);
     rk3_native_audio_clock clock;uint32_t delay=0;int32_t error=0;
     assert(!rk3_native_audio_iso_clock(engine,&clock));
     assert(rk3_native_audio_iso_running(engine)&&rk3_native_audio_iso_error(engine)==0);
@@ -849,7 +860,7 @@ static void test_clock_source_failure_and_queued_zero(void) {
      * successful maintenance callback must publish THAT event (frame1165),
      * rather than dropping it or inventing a new zero at the recovery time. */
     mock.clock_failure=0;mock.persistent_clock_failure=false;mock.bus_frame+=128;
-    rk3_native_audio_iso_service(engine);output_callback(1);
+    rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);output_callback(1);
     assert(rk3_native_audio_iso_clock(engine,&clock));
     uint64_t expected=host_for_frame(1166);
     uint64_t difference=clock.zero_host_time>expected?clock.zero_host_time-expected:expected-clock.zero_host_time;
@@ -859,7 +870,7 @@ static void test_clock_source_failure_and_queued_zero(void) {
     engine=new_engine();prime(engine);rk3_native_audio_clock prior;
     assert(rk3_native_audio_iso_clock(engine,&prior));
     mock.clock_failure=kIOReturnNoResources;mock.persistent_clock_failure=true;mock.bus_frame+=128;
-    rk3_native_audio_iso_service(engine);
+    rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);
     assert(rk3_native_audio_iso_clock(engine,&clock)&&clock.seed==prior.seed&&clock.host_time==prior.host_time);
     assert(rk3_native_audio_iso_running(engine)&&rk3_native_audio_iso_error(engine)==0);
     assert(!rk3_native_audio_iso_panic(engine,&delay,&error));
@@ -871,11 +882,11 @@ static void test_clock_source_failure_and_queued_zero(void) {
     for(unsigned i=0;i<2;++i) {
         engine=new_engine();prime(engine);mock.clock_failure=removed[i];mock.bus_frame+=128;
         unsigned marks=mock.clock_begins;uint64_t before_mark=mach_absolute_time();
-        rk3_native_audio_iso_service(engine);uint64_t after_mark=mach_absolute_time();
+        rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);uint64_t after_mark=mach_absolute_time();
         assert(mock.clock_begins==marks+1&&mock.clock_ends==marks+1&&mock.clock_end_tick>=before_mark&&mock.clock_end_tick<=after_mark);
         assert(rk3_native_audio_iso_error(engine)==removed[i]&&!rk3_native_audio_iso_running(engine));
         assert(!rk3_native_audio_iso_clock(engine,&clock)&&!rk3_native_audio_iso_panic(engine,&delay,&error));
-        unsigned queries=mock.clock_queries;rk3_native_audio_iso_service(engine);assert(mock.clock_queries==queries);
+        unsigned queries=mock.clock_queries;rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);assert(mock.clock_queries==queries);
         destroy_engine(engine);
     }
     /* Prime's one elapsed maintenance tick leaves counter1. Six more active
@@ -885,11 +896,11 @@ static void test_clock_source_failure_and_queued_zero(void) {
     for(unsigned tick=0;tick<6;++tick) {
         mock.bus_frame+=128;uint64_t f=mock.bus_frame;
         mock.clock_script[0]=mock.clock_script[1]=f;mock.clock_script_count=2;mock.clock_script_index=0;
-        rk3_native_audio_iso_service(engine);assert(mock.clock_script_index==2);
+        rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);assert(mock.clock_script_index==2);
     }
     mock.clock_error_script[0]=kIOReturnNoResources;mock.clock_error_script[1]=kIOReturnNoDevice;
     mock.clock_error_count=2;mock.bus_frame+=128;unsigned queries=mock.clock_queries;
-    rk3_native_audio_iso_service(engine);
+    rk3_native_audio_iso_clock_service(engine);rk3_native_audio_iso_service(engine);
     assert(mock.clock_queries==queries+2&&rk3_native_audio_iso_error(engine)==kIOReturnNoDevice);
     assert(!rk3_native_audio_iso_running(engine)&&!rk3_native_audio_iso_clock(engine,&clock));
     assert(!rk3_native_audio_iso_panic(engine,&delay,&error));destroy_engine(engine);
@@ -918,7 +929,64 @@ static void test_live_rt_storage(void) {
     atomic_store(&release_snapshot,true);assert(pthread_join(thread,NULL) == 0);
     atomic_store(&block_snapshot,false);assert(call.frames <= 48);destroy_engine(engine);
 }
+static void test_due_clock_not_in_input_completion(void) {
+    rk3_native_audio_iso *engine=new_engine();
+    clock_start_observer=engine;clock_start_observations=0;
+    assert(rk3_native_audio_iso_start(engine)==0);
+    clock_start_observer=NULL;assert(clock_start_observations==2);
+    rk3_native_audio_clock_schedule first,after;
+    assert(rk3_native_audio_iso_clock_schedule(engine,&first)&&first.incarnation&&first.deadline);
+    engine->ni_clock.next_callback=host_for_frame(mock.bus_frame);
+    unsigned queries=mock.clock_queries,reads=mock.read_submissions,writes=mock.write_submissions;
+    uint64_t previous=mock.reads[0].scheduled_frame;
+    input_primary(0,false);input_callback(0,0);
+    assert(mock.clock_queries==queries&&"IN completion must not run due clock maintenance");
+    assert(mock.read_submissions==reads+1&&mock.reads[0].scheduled_frame==previous+64);
+    assert(mock.write_submissions==writes+1);
+    rk3_native_audio_iso_clock_service(engine);
+    assert(mock.clock_queries>queries&&rk3_native_audio_iso_clock_schedule(engine,&after));
+    assert(after.incarnation==first.incarnation&&after.deadline==host_for_frame(mock.bus_frame)+ticks_for_ns(128000000));
+    queries=mock.clock_queries;rk3_native_audio_iso_clock_service(engine);assert(mock.clock_queries==queries);
+    rk3_native_audio_iso_stop(engine);drain_aborted();
+    assert(!rk3_native_audio_iso_clock_schedule(engine,&after));
+    assert(rk3_native_audio_iso_start(engine)==0&&rk3_native_audio_iso_clock_schedule(engine,&after));
+    assert(after.incarnation!=first.incarnation);first=after;
+    destroy_engine(engine);
+    engine=new_engine();assert(rk3_native_audio_iso_start(engine)==0);
+    assert(rk3_native_audio_iso_clock_schedule(engine,&after)&&after.incarnation!=first.incarnation);
+    destroy_engine(engine);
+}
+static rk3_native_audio_iso *clock_lifetime_observer;
+static void observe_clock_lifetime(void) {
+    clock_frame_hook=NULL;
+    rk3_native_audio_iso *engine=clock_lifetime_observer;
+    rk3_native_audio_clock_schedule schedule={99,99};
+    assert(!rk3_native_audio_iso_clock_schedule(engine,&schedule));
+    assert(schedule.incarnation==99&&schedule.deadline==99);
+    unsigned queries=mock.clock_queries;
+    rk3_native_audio_iso_clock_service(engine);
+    assert(mock.clock_queries==queries); /* A nested worker pump cannot recurse. */
+    rk3_native_audio_iso_stop(engine); /* The fake host drains aborts immediately. */
+    assert(rk3_native_audio_iso_pending(engine)==0);
+    assert(!rk3_native_audio_iso_is_quiescent(engine));
+    assert(!rk3_native_audio_iso_release_usb(engine)&&!rk3_native_audio_iso_destroy(engine));
+    assert(rk3_native_audio_iso_start(engine)==kIOReturnBusy);
+}
+static void test_clock_callback_lifetime(void) {
+    rk3_native_audio_iso *engine=new_engine();
+    assert(rk3_native_audio_iso_start(engine)==0);
+    engine->ni_clock.next_callback=host_for_frame(mock.bus_frame);
+    clock_lifetime_observer=engine;clock_frame_hook=observe_clock_lifetime;
+    rk3_native_audio_iso_clock_service(engine);
+    assert(!clock_frame_hook&&!rk3_native_audio_iso_running(engine));
+    rk3_native_audio_clock_schedule schedule;
+    assert(!rk3_native_audio_iso_clock_schedule(engine,&schedule));
+    assert(rk3_native_audio_iso_is_quiescent(engine));
+    destroy_engine(engine);clock_lifetime_observer=NULL;
+}
 int main(void) {
+    test_due_clock_not_in_input_completion();
+    test_clock_callback_lifetime();
     test_original_priming_transition_order();
     test_clock_start_order_and_idle_cadence();
     test_lifted_calendar_and_deferred_dma();test_capture_primary_and_repeatable_positions();

@@ -38,6 +38,7 @@ typedef struct RetiredAudio {
     uint32_t inputs,outputs;
     RK3InputGain gain;
 } RetiredAudio;
+typedef struct AudioClockTimer AudioClockTimer;
 
 struct rk3_usb_session {
     pthread_mutex_t mutex;
@@ -46,6 +47,8 @@ struct rk3_usb_session {
     atomic_bool closing;
     atomic_uint rt_readers;
     CFRunLoopRef run_loop;
+    CFRunLoopTimerRef clock_timer;
+    AudioClockTimer *clock_timer_context;
     Request *head, *tail;
     Request *active_request; /* worker-owned reference, valid through completion */
     Request *stop_head, *stop_tail; /* worker-owned pending stops; never block EP1 */
@@ -93,6 +96,14 @@ struct rk3_usb_session {
     RetiredAudio *retired;
     size_t retired_count;
 };
+struct AudioClockTimer {
+    atomic_uint references;
+    rk3_usb_session *session;
+    rk3_native_audio_iso *audio;
+    uint64_t generation,incarnation,deadline;
+};
+static void release_session(rk3_usb_session *);
+static void set_audio_error(rk3_usb_session *,int32_t,const char *);
 
 static void spec_revoke_locked(rk3_usb_session *session) {
     session->spec_collecting=false;session->spec_pending_valid=false;
@@ -129,6 +140,79 @@ static void spec_stage_locked(rk3_usb_session *session,const uint8_t raw[RK3_INF
  * External readers pin rt_readers before taking the whole context. */
 static rk3_native_audio_iso *current_audio(rk3_usb_session *session) {
     RetiredAudio *context=atomic_load(&session->audio);return context?context->audio:NULL;
+}
+static const void *retain_audio_clock_timer_context(const void *info) {
+    AudioClockTimer *timer=(AudioClockTimer *)info;
+    atomic_fetch_add_explicit(&timer->references,1,memory_order_relaxed);return info;
+}
+static void release_audio_clock_timer_context(const void *info) {
+    AudioClockTimer *timer=(AudioClockTimer *)info;
+    if(atomic_fetch_sub_explicit(&timer->references,1,memory_order_acq_rel)!=1)return;
+    rk3_usb_session *session=timer->session;free(timer);release_session(session);
+}
+static void cancel_audio_clock_timer(rk3_usb_session *session) {
+    CFRunLoopTimerRef timer=session->clock_timer;AudioClockTimer *context=session->clock_timer_context;
+    session->clock_timer=NULL;session->clock_timer_context=NULL;
+    if(timer){CFRunLoopTimerInvalidate(timer);CFRelease(timer);}
+    if(context)release_audio_clock_timer_context(context);
+}
+static int32_t sync_audio_clock_timer(rk3_usb_session *);
+static void audio_clock_timer_callback(CFRunLoopTimerRef timer,void *info) {
+    AudioClockTimer *binding=(AudioClockTimer *)retain_audio_clock_timer_context(info);
+    rk3_usb_session *session=binding->session;CFRetain(timer);
+    /* Test identity before even asking a possibly retired engine for state. */
+    if(timer!=session->clock_timer||binding!=session->clock_timer_context)goto done;
+    rk3_native_audio_clock_schedule schedule;
+    if(atomic_load(&session->closing)||session->stopping_io||session->transport_failed||
+        session->generation!=binding->generation||current_audio(session)!=binding->audio||
+        !rk3_native_audio_iso_clock_schedule(binding->audio,&schedule)||
+        schedule.incarnation!=binding->incarnation||schedule.deadline!=binding->deadline) {
+        cancel_audio_clock_timer(session);goto done;
+    }
+    bool due=mach_absolute_time()>=binding->deadline;
+    /* interval=0 timers auto-invalidate after firing. Detach this object and
+     * create the next one-shot, rather than trying to resurrect this timer. */
+    cancel_audio_clock_timer(session);
+    if(due)rk3_native_audio_iso_clock_service(binding->audio);
+    if(!atomic_load(&session->closing)&&!session->stopping_io&&!session->transport_failed&&
+        !session->clock_timer&&session->generation==binding->generation&&
+        current_audio(session)==binding->audio&&
+        rk3_native_audio_iso_clock_schedule(binding->audio,&schedule)&&
+        schedule.incarnation==binding->incarnation) {
+        int32_t error=sync_audio_clock_timer(session);
+        if(error){rk3_native_audio_iso_stop(binding->audio);set_audio_error(session,error,"Cannot schedule NI audio clock timer");}
+    }
+done:
+    CFRelease(timer);release_audio_clock_timer_context(binding);
+}
+static int32_t sync_audio_clock_timer(rk3_usb_session *session) {
+    rk3_native_audio_iso *audio=current_audio(session);rk3_native_audio_clock_schedule schedule;
+    if(atomic_load(&session->closing)||session->stopping_io||session->transport_failed||!audio||
+        !rk3_native_audio_iso_clock_schedule(audio,&schedule)) {
+        cancel_audio_clock_timer(session);return 0;
+    }
+    AudioClockTimer *old=session->clock_timer_context;
+    if(old&&session->clock_timer&&CFRunLoopTimerIsValid(session->clock_timer)&&old->audio==audio&&
+        old->generation==session->generation&&old->incarnation==schedule.incarnation&&old->deadline==schedule.deadline)
+        return 0; /* Repeated pumps must not postpone an already due event. */
+    cancel_audio_clock_timer(session);
+    if(!session->run_loop)return EINVAL;
+    AudioClockTimer *binding=calloc(1,sizeof(*binding));if(!binding)return ENOMEM;
+    atomic_init(&binding->references,1);atomic_fetch_add_explicit(&session->references,1,memory_order_relaxed);
+    binding->session=session;binding->audio=audio;binding->generation=session->generation;
+    binding->incarnation=schedule.incarnation;binding->deadline=schedule.deadline;
+    mach_timebase_info_data_t scale;
+    if(mach_timebase_info(&scale)!=KERN_SUCCESS||!scale.denom){release_audio_clock_timer_context(binding);return EIO;}
+    uint64_t now=mach_absolute_time();uint64_t remaining=schedule.deadline>now?schedule.deadline-now:0;
+    CFAbsoluteTime fire=CFAbsoluteTimeGetCurrent()+(CFTimeInterval)((long double)remaining*scale.numer/scale.denom/1000000000.0L);
+    CFRunLoopTimerContext context={0,binding,retain_audio_clock_timer_context,release_audio_clock_timer_context,NULL};
+    CFRunLoopTimerRef timer=CFRunLoopTimerCreate(NULL,fire,0,0,0,audio_clock_timer_callback,&context);
+    if(!timer){release_audio_clock_timer_context(binding);return ENOMEM;}
+    session->clock_timer=timer;session->clock_timer_context=binding;
+    CFRunLoopAddTimer(session->run_loop,timer,kCFRunLoopDefaultMode);return 0;
+}
+static void stop_audio_clock(rk3_usb_session *session,rk3_native_audio_iso *audio) {
+    cancel_audio_clock_timer(session);if(audio)rk3_native_audio_iso_stop(audio);
 }
 static double seconds_now(void) {
     struct timespec now;
@@ -188,8 +272,10 @@ static void publish_audio(rk3_usb_session *session, RetiredAudio *context) {
 
 static void service_audio(rk3_usb_session *session) {
     rk3_native_audio_iso *audio = current_audio(session);
-    if (audio == NULL) return;
+    if (audio == NULL) {cancel_audio_clock_timer(session);return;}
     rk3_native_audio_iso_service(audio);
+    int32_t timer_error=sync_audio_clock_timer(session);
+    if(timer_error){stop_audio_clock(session,audio);set_audio_error(session,timer_error,"Cannot schedule NI audio clock timer");}
     int32_t diagnostic = rk3_native_audio_iso_stream_error(audio);
     if (diagnostic != 0) {
         pthread_mutex_lock(&session->mutex);
@@ -224,6 +310,7 @@ static void pump_callbacks(rk3_usb_session *session, double interval) {
 
 static void release_session(rk3_usb_session *session) {
     if (atomic_fetch_sub_explicit(&session->references, 1, memory_order_acq_rel) != 1) return;
+    cancel_audio_clock_timer(session);
     RetiredAudio *retired = session->retired;
     while (retired != NULL) {
         RetiredAudio *next = retired->next;
@@ -245,6 +332,8 @@ static void reclaim_retired(rk3_usb_session *session) {
     RetiredAudio **link = &session->retired;
     while (*link != NULL) {
         RetiredAudio *retired = *link;
+        if(retired!=current&&session->clock_timer_context&&session->clock_timer_context->audio==retired->audio)
+            cancel_audio_clock_timer(session);
         if (retired != current && rk3_native_audio_iso_is_quiescent(retired->audio) &&
             rk3_native_audio_iso_destroy(retired->audio)) {
             *link = retired->next; --session->retired_count; free(retired);
@@ -931,8 +1020,9 @@ static bool connect_device(rk3_usb_session *session) {
     if (session->want_audio) {
         pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
         int32_t started = rk3_native_audio_iso_start(audio);
+        if(started==0)started=sync_audio_clock_timer(session);
         if (started != 0 || !wait_audio_clock(session, audio)) {
-            rk3_native_audio_iso_stop(audio);
+            stop_audio_clock(session,audio);
             int32_t failure = started != 0 ? started : audio_failure(audio);
             if (device_lost(failure)) { spec_revoke(session); session->transport_failed = true; set_error(session, failure, "USB interface removed during audio start"); }
             else set_audio_error(session, failure, "Audio restart after reconnect has no valid clock");
@@ -958,7 +1048,7 @@ static void disconnect_device(rk3_usb_session *session) {
     session->panic_pending = false; session->panic_seen = true;
     session->stopping_io = true;
     session->command_recovering = false; session->command_suspended = true;
-    if (audio != NULL) rk3_native_audio_iso_stop(audio);
+    stop_audio_clock(session,audio);
     if (session->pending && session->opened) (void)rk3_host_abort(session->interface, session->command_in);
     if (session->pending_write && session->opened) (void)rk3_host_abort(session->interface, session->command_out);
     double deadline = seconds_now() + (double)DRAIN_MS / 1000.0;
@@ -1100,20 +1190,22 @@ static void process_one_request(rk3_usb_session *session, bool connected) {
             else if (!command_worker(session, request->bytes, request->length, REPLY_TIMEOUT_MS)) result = EIO;
         } else if (result == 0 && request->kind == REQUEST_START) {
             pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
+            if(audio&&!rk3_native_audio_iso_running(audio))cancel_audio_clock_timer(session);
             result = audio == NULL ? ENODEV : session->stop_head != NULL ? kIOReturnBusy :
                 rk3_native_audio_iso_running(audio) ? 0 :
                 !rk3_native_audio_iso_is_quiescent(audio) ? kIOReturnBusy : rk3_native_audio_iso_start(audio);
+            if(result==0)result=sync_audio_clock_timer(session);
             if (result == 0 && !wait_audio_clock(session, audio)) result = audio_failure(audio);
             pthread_mutex_lock(&session->mutex);
             bool expired = request->cancelled || seconds_now() >= request->deadline;
             pthread_mutex_unlock(&session->mutex);
             if (expired) {
-                if (audio != NULL) rk3_native_audio_iso_stop(audio);
+                stop_audio_clock(session,audio);
                 session->want_audio = false;
                 result = ETIMEDOUT;
             }
             if (result != 0) {
-                if (audio != NULL) rk3_native_audio_iso_stop(audio);
+                stop_audio_clock(session,audio);
                 if (device_lost(result)) {
                     spec_revoke(session);
                     session->transport_failed = true;
@@ -1132,7 +1224,7 @@ static void process_one_request(rk3_usb_session *session, bool connected) {
         } else if (result == 0 && request->kind == REQUEST_STOP) {
             session->want_audio = false;
             if (connected) { pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STOPPING; pthread_mutex_unlock(&session->mutex); }
-            if (audio != NULL) rk3_native_audio_iso_stop(audio);
+            stop_audio_clock(session,audio);
             if (audio != NULL && !rk3_native_audio_iso_is_quiescent(audio)) {
                 defer_stop(session, request, seconds_now()); deferred = true;
             } else if (connected && !session->transport_failed) {
@@ -1183,6 +1275,7 @@ static void *worker_main(void *context) {
         }
     }
     disconnect_device(session);
+    cancel_audio_clock_timer(session);
     pthread_mutex_lock(&session->mutex);
     while (session->head != NULL) {
         Request *request = session->head; session->head = request->next;
