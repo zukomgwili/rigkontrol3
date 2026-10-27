@@ -1,0 +1,1404 @@
+{
+  "schema": 1,
+  "purpose": "single installed owner-only correction validation; first fault stopped planned 600s gate",
+  "production_commit": "b05cdd3a20252683e723f331cd0eb7e6e9b0f353",
+  "installed_version": "0.2.6/build11",
+  "candidate_manifest_sha256": "24b73aa69a348447bf06591d72882d7588dac2009ac24d747f6ee252e85c7710",
+  "installation_session": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261027T101554Z-af8bd9eb",
+  "driver_pid": 26293,
+  "owner_tid": 3279214,
+  "usb_generation": 1,
+  "cap_seconds": 600.0,
+  "active_seconds": 200.59832187497523,
+  "result": "FAULT_LOG_CAPTURED",
+  "audio_gate_result": "RED",
+  "qualifies_stability": false,
+  "audio_summary": "CoreAudio callbacks=75271 input1frames=9634688 RMS=0.000077 input_peak=0.003731 stop=0",
+  "clock_records": 1939,
+  "status_samples": 1914,
+  "children": {
+    "driver": {
+      "pid": 26833,
+      "exit": 0
+    },
+    "midi": {
+      "pid": 26834,
+      "exit": 0
+    },
+    "trace": {
+      "pid": 26837,
+      "exit": 0
+    },
+    "audio": {
+      "pid": 26852,
+      "exit": 0
+    },
+    "status": {
+      "pid": 26856,
+      "exit": 0
+    }
+  },
+  "trace_exit": 0,
+  "collection_prerequisites_met": true,
+  "fault": {
+    "pipe": 130,
+    "first": 480,
+    "count": 8,
+    "requested": 13979570,
+    "current": 13979586,
+    "busStatus": 0,
+    "enqueueBefore": 3340881825082,
+    "enqueueAfter": 3340882133340,
+    "lastPipe": 130,
+    "lastStart": 13979506,
+    "lastTransaction": 3340880213129,
+    "rawArrival": 3340881823972,
+    "workerEntry": 3340881824943,
+    "orderedDelivery": 3340881824952,
+    "measureCookie": 401978,
+    "interfaceEpoch": 1,
+    "streamEpoch": 1,
+    "engineSeed": 1,
+    "measureMarks": 127,
+    "measureValidity": 23,
+    "postBefore": 3340881823978,
+    "postAfter": 3340881824059,
+    "wakeDone": 3340881963196,
+    "prePostTicks": 6,
+    "postWakeTicks": 0,
+    "orderedHoldTicks": 9,
+    "clockBegin": 3340879615892,
+    "clockEndSample": 3340879616343,
+    "clockOverlapTicks": 0,
+    "uncoveredTicks": 0
+  },
+  "fault_log_owner_tid_hex": "0x32096e",
+  "calibration": {
+    "mapping": "trace_ns + offset_ns = Mach_ns",
+    "offset_lower_ns_fraction": "417580716025750/3",
+    "offset_upper_ns_fraction": "417580716026500/3",
+    "uncertainty_ns": 250,
+    "complete_terminal_pairs": 3,
+    "identical_duplicate_export_rows": 3,
+    "terminal_markers": [
+      {
+        "pid": 27047,
+        "role": 2,
+        "seq": 0,
+        "id": "13824230090653728",
+        "before": 3340882469117,
+        "after": 3340882469336,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9864206458
+      },
+      {
+        "pid": 27047,
+        "role": 2,
+        "seq": 1,
+        "id": "13824230090653729",
+        "before": 3340882469842,
+        "after": 3340882469859,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9864235083
+      },
+      {
+        "pid": 27047,
+        "role": 2,
+        "seq": 2,
+        "id": "13824230090653730",
+        "before": 3340882469882,
+        "after": 3340882469888,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9864236500
+      }
+    ],
+    "mapped_ns_intervals": {
+      "lastTransaction": [
+        "9770204875",
+        "9770205125"
+      ],
+      "rawArrival": [
+        "29511970000/3",
+        "29511970750/3"
+      ],
+      "postAfter": [
+        "29511980875/3",
+        "29511981625/3"
+      ],
+      "wakeDone": [
+        "29529373000/3",
+        "29529373750/3"
+      ],
+      "workerEntry": [
+        "29512091375/3",
+        "29512092125/3"
+      ],
+      "orderedDelivery": [
+        "29512092500/3",
+        "29512093250/3"
+      ],
+      "enqueueBefore": [
+        "29512108750/3",
+        "29512109500/3"
+      ],
+      "enqueueAfter": [
+        "29550641000/3",
+        "29550641750/3"
+      ]
+    }
+  },
+  "measured_intervals_ns_fraction": {
+    "observed_stamp_to_raw_entry_ns": "201355375/3",
+    "raw_entry_to_owner_ns": "121375/3",
+    "owner_to_ordered_delivery_ns": "375",
+    "ordered_delivery_to_enqueue_ns": "16250/3",
+    "enqueue_call_ns": "38532250/3",
+    "owner_entry_to_later_wake_return_ns": "17281625/3"
+  },
+  "boundary_scheduler_states": {
+    "lastTransaction": {
+      "trace_ns_interval": [
+        "9770204875",
+        "9770205125"
+      ],
+      "scheduler_priorities": [
+        "User Initiated - 37"
+      ],
+      "states": [
+        "Blocked"
+      ]
+    },
+    "rawArrival": {
+      "trace_ns_interval": [
+        "29511970000/3",
+        "29511970750/3"
+      ],
+      "scheduler_priorities": [
+        "User Initiated - 37"
+      ],
+      "states": [
+        "Blocked"
+      ]
+    },
+    "postAfter": {
+      "trace_ns_interval": [
+        "29511980875/3",
+        "29511981625/3"
+      ],
+      "scheduler_priorities": [
+        "User Initiated - 37"
+      ],
+      "states": [
+        "Blocked"
+      ]
+    },
+    "wakeDone": {
+      "trace_ns_interval": [
+        "29529373000/3",
+        "29529373750/3"
+      ],
+      "scheduler_priorities": [
+        "User Initiated - 37"
+      ],
+      "states": [
+        "Blocked"
+      ]
+    },
+    "workerEntry": {
+      "trace_ns_interval": [
+        "29512091375/3",
+        "29512092125/3"
+      ],
+      "scheduler_priorities": [
+        "User Initiated - 37"
+      ],
+      "states": [
+        "Running"
+      ]
+    },
+    "orderedDelivery": {
+      "trace_ns_interval": [
+        "29512092500/3",
+        "29512093250/3"
+      ],
+      "scheduler_priorities": [
+        "User Initiated - 37"
+      ],
+      "states": [
+        "Running"
+      ]
+    },
+    "enqueueBefore": {
+      "trace_ns_interval": [
+        "29512108750/3",
+        "29512109500/3"
+      ],
+      "scheduler_priorities": [
+        "User Initiated - 37"
+      ],
+      "states": [
+        "Running"
+      ]
+    },
+    "enqueueAfter": {
+      "trace_ns_interval": [
+        "29550641000/3",
+        "29550641750/3"
+      ],
+      "scheduler_priorities": [
+        "User Initiated - 37"
+      ],
+      "states": [
+        "Running"
+      ]
+    }
+  },
+  "observed_stamp_to_raw_owner_state_duration_ns_fraction": {
+    "Blocked": {
+      "lower": "199120879/3",
+      "upper": "199120879/3"
+    },
+    "Runnable": {
+      "lower": "28541",
+      "upper": "28541"
+    },
+    "Running": {
+      "lower": "334208",
+      "upper": "334208"
+    },
+    "Interrupted": {
+      "lower": "22542",
+      "upper": "22542"
+    },
+    "Preempted": {
+      "lower": "359541",
+      "upper": "359541"
+    }
+  },
+  "owner_thread_states": [
+    {
+      "start_ns": 9767320541,
+      "end_ns": 9768230500,
+      "duration_ns": 909959,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9768230500,
+      "end_ns": 9768235250,
+      "duration_ns": 4750,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9768235250,
+      "end_ns": 9768241791,
+      "duration_ns": 6541,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9768241791,
+      "end_ns": 9768242791,
+      "duration_ns": 1000,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9768242791,
+      "end_ns": 9768316625,
+      "duration_ns": 73834,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9768316625,
+      "end_ns": 9791014625,
+      "duration_ns": 22698000,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791014625,
+      "end_ns": 9791016958,
+      "duration_ns": 2333,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791016958,
+      "end_ns": 9791023750,
+      "duration_ns": 6792,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791023750,
+      "end_ns": 9791039125,
+      "duration_ns": 15375,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791039125,
+      "end_ns": 9791043458,
+      "duration_ns": 4333,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791043458,
+      "end_ns": 9791165291,
+      "duration_ns": 121833,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791165291,
+      "end_ns": 9791166375,
+      "duration_ns": 1084,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791166375,
+      "end_ns": 9791170916,
+      "duration_ns": 4541,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791170916,
+      "end_ns": 9791190041,
+      "duration_ns": 19125,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791190041,
+      "end_ns": 9791216833,
+      "duration_ns": 26792,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9791216833,
+      "end_ns": 9805419708,
+      "duration_ns": 14202875,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805419708,
+      "end_ns": 9805421583,
+      "duration_ns": 1875,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805421583,
+      "end_ns": 9805427083,
+      "duration_ns": 5500,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805427083,
+      "end_ns": 9805427250,
+      "duration_ns": 167,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805427250,
+      "end_ns": 9805427666,
+      "duration_ns": 416,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805427666,
+      "end_ns": 9805504416,
+      "duration_ns": 76750,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805504416,
+      "end_ns": 9805511750,
+      "duration_ns": 7334,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805511750,
+      "end_ns": 9805518375,
+      "duration_ns": 6625,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805518375,
+      "end_ns": 9805520208,
+      "duration_ns": 1833,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805520208,
+      "end_ns": 9805738791,
+      "duration_ns": 218583,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805738791,
+      "end_ns": 9805747875,
+      "duration_ns": 9084,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805747875,
+      "end_ns": 9805750208,
+      "duration_ns": 2333,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805750208,
+      "end_ns": 9805751750,
+      "duration_ns": 1542,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805751750,
+      "end_ns": 9805796833,
+      "duration_ns": 45083,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805796833,
+      "end_ns": 9805803375,
+      "duration_ns": 6542,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805803375,
+      "end_ns": 9805814208,
+      "duration_ns": 10833,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805814208,
+      "end_ns": 9805818291,
+      "duration_ns": 4083,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805818291,
+      "end_ns": 9805819791,
+      "duration_ns": 1500,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805819791,
+      "end_ns": 9805861041,
+      "duration_ns": 41250,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9805861041,
+      "end_ns": 9815007750,
+      "duration_ns": 9146709,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9815007750,
+      "end_ns": 9815012250,
+      "duration_ns": 4500,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9815012250,
+      "end_ns": 9815022625,
+      "duration_ns": 10375,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9815022625,
+      "end_ns": 9820396875,
+      "duration_ns": 5374250,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9820396875,
+      "end_ns": 9820398541,
+      "duration_ns": 1666,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9820398541,
+      "end_ns": 9820404666,
+      "duration_ns": 6125,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9820404666,
+      "end_ns": 9820424708,
+      "duration_ns": 20042,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9820424708,
+      "end_ns": 9820430125,
+      "duration_ns": 5417,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9820430125,
+      "end_ns": 9820468791,
+      "duration_ns": 38666,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9820468791,
+      "end_ns": 9835383708,
+      "duration_ns": 14914917,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9835383708,
+      "end_ns": 9835385291,
+      "duration_ns": 1583,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9835385291,
+      "end_ns": 9835392083,
+      "duration_ns": 6792,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9835392083,
+      "end_ns": 9835408791,
+      "duration_ns": 16708,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9835408791,
+      "end_ns": 9835415625,
+      "duration_ns": 6834,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9835415625,
+      "end_ns": 9835450333,
+      "duration_ns": 34708,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9835450333,
+      "end_ns": 9837330708,
+      "duration_ns": 1880375,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9837330708,
+      "end_ns": 9837335625,
+      "duration_ns": 4917,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9837335625,
+      "end_ns": 9837350458,
+      "duration_ns": 14833,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9837350458,
+      "end_ns": 9837356125,
+      "duration_ns": 5667,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9837356125,
+      "end_ns": 9837360083,
+      "duration_ns": 3958,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9837360083,
+      "end_ns": 9837537583,
+      "duration_ns": 177500,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9837537583,
+      "end_ns": 9837539458,
+      "duration_ns": 1875,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9837539458,
+      "end_ns": 9838136125,
+      "duration_ns": 596667,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9838136125,
+      "end_ns": 9838279541,
+      "duration_ns": 143416,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9838279541,
+      "end_ns": 9838281583,
+      "duration_ns": 2042,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Interactive - 46"
+    },
+    {
+      "start_ns": 9838281583,
+      "end_ns": 9838315875,
+      "duration_ns": 34292,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Interactive - 46"
+    },
+    {
+      "start_ns": 9838315875,
+      "end_ns": 9838537708,
+      "duration_ns": 221833,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9838537708,
+      "end_ns": 9838538750,
+      "duration_ns": 1042,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9838538750,
+      "end_ns": 9838773916,
+      "duration_ns": 235166,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9838773916,
+      "end_ns": 9839027458,
+      "duration_ns": 253542,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839027458,
+      "end_ns": 9839032541,
+      "duration_ns": 5083,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839032541,
+      "end_ns": 9839062541,
+      "duration_ns": 30000,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839062541,
+      "end_ns": 9839118583,
+      "duration_ns": 56042,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839118583,
+      "end_ns": 9839122875,
+      "duration_ns": 4292,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839122875,
+      "end_ns": 9839139833,
+      "duration_ns": 16958,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839139833,
+      "end_ns": 9839217708,
+      "duration_ns": 77875,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839217708,
+      "end_ns": 9839220750,
+      "duration_ns": 3042,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839220750,
+      "end_ns": 9839236416,
+      "duration_ns": 15666,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839236416,
+      "end_ns": 9839260416,
+      "duration_ns": 24000,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839260416,
+      "end_ns": 9839263000,
+      "duration_ns": 2584,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839263000,
+      "end_ns": 9839302583,
+      "duration_ns": 39583,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839302583,
+      "end_ns": 9839425750,
+      "duration_ns": 123167,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839425750,
+      "end_ns": 9839450250,
+      "duration_ns": 24500,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839450250,
+      "end_ns": 9839498625,
+      "duration_ns": 48375,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839498625,
+      "end_ns": 9839556958,
+      "duration_ns": 58333,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839556958,
+      "end_ns": 9839570041,
+      "duration_ns": 13083,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9839570041,
+      "end_ns": 9840007833,
+      "duration_ns": 437792,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9840007833,
+      "end_ns": 9840055250,
+      "duration_ns": 47417,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9840055250,
+      "end_ns": 9840085041,
+      "duration_ns": 29791,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9840085041,
+      "end_ns": 9840153791,
+      "duration_ns": 68750,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9840153791,
+      "end_ns": 9848447625,
+      "duration_ns": 8293834,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848447625,
+      "end_ns": 9848453833,
+      "duration_ns": 6208,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848453833,
+      "end_ns": 9848537583,
+      "duration_ns": 83750,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848537583,
+      "end_ns": 9848539500,
+      "duration_ns": 1917,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848539500,
+      "end_ns": 9848625000,
+      "duration_ns": 85500,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848625000,
+      "end_ns": 9848626208,
+      "duration_ns": 1208,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848626208,
+      "end_ns": 9848627875,
+      "duration_ns": 1667,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848627875,
+      "end_ns": 9848680833,
+      "duration_ns": 52958,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848680833,
+      "end_ns": 9848703583,
+      "duration_ns": 22750,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848703583,
+      "end_ns": 9848704000,
+      "duration_ns": 417,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848704000,
+      "end_ns": 9848704875,
+      "duration_ns": 875,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848704875,
+      "end_ns": 9848709291,
+      "duration_ns": 4416,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848709291,
+      "end_ns": 9848788416,
+      "duration_ns": 79125,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848788416,
+      "end_ns": 9848826041,
+      "duration_ns": 37625,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848826041,
+      "end_ns": 9848828583,
+      "duration_ns": 2542,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848828583,
+      "end_ns": 9848894958,
+      "duration_ns": 66375,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848894958,
+      "end_ns": 9848896916,
+      "duration_ns": 1958,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848896916,
+      "end_ns": 9848980208,
+      "duration_ns": 83292,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9848980208,
+      "end_ns": 9849025208,
+      "duration_ns": 45000,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849025208,
+      "end_ns": 9849027166,
+      "duration_ns": 1958,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849027166,
+      "end_ns": 9849076291,
+      "duration_ns": 49125,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849076291,
+      "end_ns": 9849466125,
+      "duration_ns": 389834,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849466125,
+      "end_ns": 9849468458,
+      "duration_ns": 2333,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849468458,
+      "end_ns": 9849525750,
+      "duration_ns": 57292,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849525750,
+      "end_ns": 9849526750,
+      "duration_ns": 1000,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849526750,
+      "end_ns": 9849527250,
+      "duration_ns": 500,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849527250,
+      "end_ns": 9849567000,
+      "duration_ns": 39750,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849567000,
+      "end_ns": 9849865416,
+      "duration_ns": 298416,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9849865416,
+      "end_ns": 9850001083,
+      "duration_ns": 135667,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850001083,
+      "end_ns": 9850003500,
+      "duration_ns": 2417,
+      "tid": 3279214,
+      "state": "Runnable",
+      "priority": "User Interactive - 46"
+    },
+    {
+      "start_ns": 9850003500,
+      "end_ns": 9850014250,
+      "duration_ns": 10750,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Interactive - 46"
+    },
+    {
+      "start_ns": 9850014250,
+      "end_ns": 9850044750,
+      "duration_ns": 30500,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850044750,
+      "end_ns": 9850045041,
+      "duration_ns": 291,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850045041,
+      "end_ns": 9850045958,
+      "duration_ns": 917,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850045958,
+      "end_ns": 9850056333,
+      "duration_ns": 10375,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850056333,
+      "end_ns": 9850304708,
+      "duration_ns": 248375,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850304708,
+      "end_ns": 9850305083,
+      "duration_ns": 375,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850305083,
+      "end_ns": 9850334458,
+      "duration_ns": 29375,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850334458,
+      "end_ns": 9850335291,
+      "duration_ns": 833,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850335291,
+      "end_ns": 9850336250,
+      "duration_ns": 959,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850336250,
+      "end_ns": 9850345041,
+      "duration_ns": 8791,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850345041,
+      "end_ns": 9850346458,
+      "duration_ns": 1417,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850346458,
+      "end_ns": 9850346750,
+      "duration_ns": 292,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850346750,
+      "end_ns": 9850347208,
+      "duration_ns": 458,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850347208,
+      "end_ns": 9850360208,
+      "duration_ns": 13000,
+      "tid": 3279214,
+      "state": "Preempted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850360208,
+      "end_ns": 9850361541,
+      "duration_ns": 1333,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850361541,
+      "end_ns": 9850362000,
+      "duration_ns": 459,
+      "tid": 3279214,
+      "state": "Interrupted",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850362000,
+      "end_ns": 9850427500,
+      "duration_ns": 65500,
+      "tid": 3279214,
+      "state": "Running",
+      "priority": "User Initiated - 37"
+    },
+    {
+      "start_ns": 9850427500,
+      "end_ns": 9871888375,
+      "duration_ns": 21460875,
+      "tid": 3279214,
+      "state": "Blocked",
+      "priority": "User Initiated - 37"
+    }
+  ],
+  "owner_state_selection": {
+    "original_window_ns": [
+      9768204875.0,
+      9852213916.666666
+    ],
+    "row_count": 133,
+    "priority_row_counts": {
+      "User Initiated - 37": 129,
+      "User Interactive - 46": 4
+    },
+    "coverage": "continuous across the calibrated lastTransaction-to-enqueueAfter envelope"
+  },
+  "findings": [
+    "Signed installed source requests User Interactive QoS relative priority 0 only for the existing USB owner; trace shows scheduling priority User Initiated 37 at the observed stamp, raw entry, owner entry and enqueue boundaries, with brief User Interactive 46 rows during enqueue.",
+    "This capture does not reproduce the earlier dominant 69ms ready-owner preemption. Most of the observed stamp-to-raw-entry interval has the owner Blocked; the blocking location and upstream completion delivery cause remain unproved.",
+    "Callback raw-entry to owner-entry interval is 40.458333 microseconds. K (wake return) occurs after W (owner entry); validity 23 excludes post-wait and overlap validity, so zero postWakeTicks/clockOverlapTicks/uncoveredTicks are unavailable values.",
+    "The planned 600-second zero-fault gate failed and stopped once at the first TooOld after 200.59832187497523 active seconds; audio stop succeeded and all five owned children exited and were reaped."
+  ],
+  "limits": [
+    "Observed transaction timestamp to raw callback entry is not an exact physical USB completion latency or root-cause attribution.",
+    "Trace scheduler labels/numeric priorities are not a runtime pthread QoS getter and do not prove why requested and observed classifications differ.",
+    "The controller frame queried after rejection is not a measurement of lateness at enqueue entry; the enqueue-call interval includes error processing and is not all proven causal blocking.",
+    "No sustained 600s pass, physical eight-switch/pedal/LED acceptance, all-rate qualification or general resolution of historical TooOld faults is established.",
+    "System Trace may affect incidence. No second run, upstream queue change, new scheduling tweak, NI timing/recovery change or SIP change followed the fault."
+  ],
+  "post_stop_status": {
+    "status": 0,
+    "flags": 1,
+    "generation": 1,
+    "error": -536870162,
+    "error_hex": "0xe00002ee",
+    "bad": true,
+    "audio_running": false,
+    "sip": "enabled",
+    "capture": "one post-stop read, no restart"
+  },
+  "evidence_hashes": {
+    "state.json": "114e0d50c031b74f42f788bbb048fcc753aa77ead469afb31115d33dbfe80b88",
+    "preflight.log": "9044f51a01c803985141f6cd5b75b6a9a8a2f622439291c2ed2cd79ac2bc27de",
+    "driver.log": "7c4df5541a6fd2778691f6c970ddd474a62b947bf96a97d3b0b066729c8e5cec",
+    "audio.log": "60a720ef33e3c1ccb11dfb0cf6d53e81a90f4677d979777c5f6baecb20f74d34",
+    "midi.log": "9bd0b91d6a86fa8bd11b9f882f53775aa86b110427466108a86a7d52817f2211",
+    "status.log": "de7b1f461ce3ea2ef84420f7cff65d673db145b9ae1644cf6b5d1236a82dfc42",
+    "trace.log": "9fbdab721af785b2d918e6285b1384c353d2aa5eaff6a9e29e66acb2c2b98604",
+    "marker-1.log": "c7bc6659b743c389e79433bca60d3b2dad0858e05b6fa7deeda9071a55ec55ed",
+    "marker-2.log": "2fd565712037617d2cc8601a44157a1e88bdd4bd20dae905171b36c63d55fd47",
+    "signposts.xml": "ded2c25f79b8213a53a3b4f3bfcf63cd5a784ce1f0920fe0839f6508b526b10f",
+    "thread-state.xml": "fe5d113b2148ee4af4f2616fed346e94e93243a58df69ee4033a6277f28f0f20",
+    "time-sample.xml": "212e23efc9ad294031e7457ae14150a3a685c9675f2df01cee367acaa4d811d5",
+    "clock-calibration.json": "76b50315fb8a0f19481710c27abd1e17c2352f08f201fdfb41cf8ddecb1ba271",
+    "owner-thread-state.json": "917eb5a0450d7a763328a25ee0ede62c7bac08a2146edbbd0054908320f61a96"
+  },
+  "package_records": {
+    "source-record.json": "3cfec945520f2e07c6f3f75b923a0d8c1d6978f2bf078a708e861a47299d188c",
+    "drivers/manifest.json": "24b73aa69a348447bf06591d72882d7588dac2009ac24d747f6ee252e85c7710"
+  },
+  "validation_wrapper_sha256": "90a7a3c1aeab0fe3401ae77906b7f184f0a2ab9613a24449276a0010c9c6f819"
+}

@@ -138,4 +138,27 @@ The owner-only candidate is now implemented in `Driver/NativeUSB.c`. It creates 
 
 `Driver/Tests/NativeUSBTests.c` exercises the production open/close path with real pthread attributes and a controlled thread entry that never opens hardware. Five cases verify the requested class and relative priority, initialization/setup/create failure cleanup, and successful ownership despite a reported attribute-destruction error. The original null-attribute creation path failed the new regression before the patch; a private-copy negative control restores that path and fails the same intended assertion. The affected suite passes 59 groups in strict and ASan/UBSan builds. Both complete 14-suite native runs pass, with no sanitizer diagnostics; LeakSanitizer was disabled. Independent specification/lifetime and standards/test-efficacy reviews passed.
 
-This is an implemented source correction, not an installed or validated deadline fix. The installed driver remains build 10. Requested QoS and its getters do not establish effective scheduler priority or real-time guarantees. An explicitly frozen signed candidate, installation and measured scheduling/deadline acceptance remain required. SIP and the original NI calendar, ring, clock, recovery, MIDI mappings, calibration and LED policy are unchanged.
+These offline checks establish the source correction; they do not establish an installed deadline fix. Requested QoS and its getters do not establish effective scheduler priority or real-time guarantees. The subsequent signed installation and measured validation are reported below. SIP and the original NI calendar, ring, clock, recovery, MIDI mappings, calibration and LED policy are unchanged.
+
+
+### Signed build 11: owner-only correction validation
+
+Version **0.2.6/build 11**, source `b05cdd3a20252683e723f331cd0eb7e6e9b0f353`, was built from a clean Git archive and frozen before installation. Both thin ARM64 bundles passed strict Apple Development signature checks; all 12 installed files matched candidate manifest `24b73aa69a348447bf06591d72882d7588dac2009ac24d747f6ee252e85c7710`. Installation through normal macOS administrator authentication preserved rollback session `20261027T101554Z-af8bd9eb`. The package adds only version metadata to the reviewed owner-pthread correction; the completion queue, NI ring, calendar, clock, recovery and controller policy remain unchanged. SIP stayed enabled.
+
+The single planned **600-second** silent 48 kHz/128-frame test, with a persistent MIDI client and System Trace, stopped on its first TooOld after **200.598321875 seconds**. It is a **failed deadline gate**, not a 600-second pass. Audio stopped successfully after 75,271 callbacks and 9,634,688 input frames; all five owned children exited and were reaped. There were 1,939 monotonic, unflagged client-clock records and 1,914 native-status polls before the stop. This test did not repeat physical switch, pedal or LED acceptance. The post-stop device remained connected and idle, generation 1, with the TooOld error `0xe00002ee` latched.
+
+The [compact build 11 evidence](Evidence/Build11OwnerValidation.json) contains the exact event, calibration, selected owner states and artifact hashes. Three terminal markers give the common mapping `trace ns + offset = Mach ns`, offset interval `[417580716025750/3, 417580716026500/3] ns`, uncertainty **250 ns**. Duplicated exported markers were identical; the initial markers were outside the saved window. Owner TID **3279214 (`0x32096e`)** is the fault-log thread on the worker-CFRunLoop enqueue path. Its selected states cover the complete calibrated fault interval without gaps.
+
+| Recorded interval | Duration |
+| --- | --- |
+| Observed transaction timestamp → raw callback entry | 67.118458 ms |
+| Raw callback entry → queued owner callback entry | 40.458333 µs |
+| Owner callback entry → ordered delivery | 0.375 µs |
+| Ordered delivery → enqueue call | 5.416667 µs |
+| Enqueue call, including error processing | 12.844083 ms |
+
+The trace reports scheduling priority **User Initiated 37** at the observed timestamp, raw arrival, owner entry and both enqueue boundaries, with brief User Interactive 46 rows during the enqueue call. This is an observed scheduler classification, not a runtime pthread QoS getter; it does not explain the relationship to the source's requested User Interactive class. The earlier dominant 69 ms ready-owner preemption is absent here. During the 67.118458 ms observed-timestamp-to-raw-entry interval, the owner was blocked for approximately **66.374 ms**. The particular blocking call and upstream completion-delivery cause remain unproved. The timestamp interval is not a measured physical USB completion latency.
+
+The wake-return mark is **after** the owner-entry mark by 5.760542 ms. Measurement validity **23** excludes post-wait and overlap validity: printed zero `postWakeTicks`, `clockOverlapTicks` and `uncoveredTicks` are unavailable values, not proof of zero delay or no overlap. The requested transfer start is still precisely the preceding start plus NI's **64-frame** calendar. The controller frame read after rejection does not establish lateness at enqueue entry, and the entire enqueue-call interval cannot be attributed to causal blocking.
+
+Independent saved-evidence reviews verified the outcome, marker calibration, owner identity, state coverage and priority claims. The owner-only source change is built and installed, but stability remains unresolved. No repeat test, completion-queue change, additional scheduling adjustment, NI timing/recovery change or security change followed this fault. M2 and whole-rig qualification remain open; trace collection may affect fault incidence.
