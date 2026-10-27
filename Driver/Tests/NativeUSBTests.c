@@ -1,16 +1,163 @@
 /* Hardware-free transport tests. NativeAudioISO is mocked only in this file;
  * the production driver links the real ISO implementation. */
 #include <stdbool.h>
+#include <pthread.h>
+#include <pthread/qos.h>
+#include <stdatomic.h>
+#include <stdlib.h>
 #include <CoreFoundation/CoreFoundation.h>
 static bool fail_clock_timer_create;
 static unsigned clock_timer_create_calls;
 static CFRunLoopTimerRef test_clock_timer_create(CFAllocatorRef,CFAbsoluteTime,
     CFTimeInterval,CFOptionFlags,CFIndex,CFRunLoopTimerCallBack,CFRunLoopTimerContext *);
+static int owner_test_attr_init(pthread_attr_t *);
+static int owner_test_attr_set_qos(pthread_attr_t *,qos_class_t,int);
+static int owner_test_attr_destroy(pthread_attr_t *);
+static int owner_test_create(pthread_t *,const pthread_attr_t *,void *(*)(void *),void *);
+static int owner_test_detach(pthread_t);
+static int owner_test_mutex_destroy(pthread_mutex_t *);
+static int owner_test_cond_destroy(pthread_cond_t *);
+static void *owner_test_calloc(size_t,size_t);
+static void owner_test_free(void *);
 #define CFRunLoopTimerCreate test_clock_timer_create
+#define pthread_attr_init owner_test_attr_init
+#define pthread_attr_set_qos_class_np owner_test_attr_set_qos
+#define pthread_attr_destroy owner_test_attr_destroy
+#define pthread_create owner_test_create
+#define pthread_detach owner_test_detach
+#define pthread_mutex_destroy owner_test_mutex_destroy
+#define pthread_cond_destroy owner_test_cond_destroy
+#define calloc owner_test_calloc
+#define free owner_test_free
 #define RK3_NATIVE_USB_TESTING 1
 #include "../NativeUSB.c"
 #undef CFRunLoopTimerCreate
+#undef pthread_attr_init
+#undef pthread_attr_set_qos_class_np
+#undef pthread_attr_destroy
+#undef pthread_create
+#undef pthread_detach
+#undef pthread_mutex_destroy
+#undef pthread_cond_destroy
+#undef calloc
+#undef free
 #include <assert.h>
+
+/* Exercise the real public open/close lifetime without entering worker_main,
+ * which owns hardware discovery. Only its pthread entry is substituted. */
+static bool owner_test_active;
+static unsigned owner_test_failure;
+static rk3_usb_session *owner_test_session;
+static pthread_t owner_test_thread;
+static atomic_uint owner_attr_inits,owner_attr_sets,owner_attr_destroys,owner_creates,owner_detaches;
+static atomic_uint owner_mutex_destroys,owner_cond_destroys,owner_allocations,owner_frees;
+static atomic_bool owner_entered;
+static atomic_int owner_requested_qos,owner_requested_relative,owner_requested_result;
+static int owner_test_attr_init(pthread_attr_t *attributes) {
+    if(owner_test_active){atomic_fetch_add(&owner_attr_inits,1);if(owner_test_failure==1)return ENOMEM;}
+    return pthread_attr_init(attributes);
+}
+static int owner_test_attr_set_qos(pthread_attr_t *attributes,qos_class_t qos,int relative) {
+    if(owner_test_active){
+        atomic_fetch_add(&owner_attr_sets,1);
+        assert(qos==QOS_CLASS_USER_INTERACTIVE&&relative==0);
+        if(owner_test_failure==2)return EINVAL;
+    }
+    return pthread_attr_set_qos_class_np(attributes,qos,relative);
+}
+static int owner_test_attr_destroy(pthread_attr_t *attributes) {
+    if(owner_test_active)atomic_fetch_add(&owner_attr_destroys,1);
+    int result=pthread_attr_destroy(attributes);
+    return owner_test_active&&owner_test_failure==4&&result==0?EIO:result;
+}
+static void *owner_controlled_worker(void *context) {
+    rk3_usb_session *session=context;qos_class_t qos=QOS_CLASS_UNSPECIFIED;int relative=99;
+    int result=pthread_get_qos_class_np(pthread_self(),&qos,&relative);
+    atomic_store(&owner_requested_result,result);atomic_store(&owner_requested_qos,(int)qos);
+    atomic_store(&owner_requested_relative,relative);
+    pthread_mutex_lock(&session->mutex);atomic_store(&owner_entered,true);pthread_cond_broadcast(&session->wake);
+    while(!atomic_load(&session->closing))pthread_cond_wait(&session->wake,&session->mutex);
+    session->status.state=RK3_USB_CLOSED;pthread_cond_broadcast(&session->wake);pthread_mutex_unlock(&session->mutex);
+    release_session(session);return NULL;
+}
+static int owner_test_create(pthread_t *thread,const pthread_attr_t *attributes,void *(*entry)(void *),void *context) {
+    if(!owner_test_active)return pthread_create(thread,attributes,entry,context);
+    atomic_fetch_add(&owner_creates,1);
+    assert(entry==worker_main&&context==owner_test_session);
+    assert(attributes&&"USB owner must receive explicit QoS attributes");
+    qos_class_t qos=QOS_CLASS_UNSPECIFIED;int relative=99;
+    assert(!pthread_attr_get_qos_class_np((pthread_attr_t *)attributes,&qos,&relative));
+    assert(qos==QOS_CLASS_USER_INTERACTIVE&&relative==0);
+    if(owner_test_failure==3)return EAGAIN;
+    int result=pthread_create(thread,attributes,owner_controlled_worker,context);
+    if(result==0)owner_test_thread=*thread;return result;
+}
+static int owner_test_detach(pthread_t thread) {
+    if(!owner_test_active)return pthread_detach(thread);
+    atomic_fetch_add(&owner_detaches,1);assert(pthread_equal(thread,owner_test_thread));
+    return 0; /* Join the controlled worker after the real close_wait. */
+}
+static int owner_test_mutex_destroy(pthread_mutex_t *mutex) {
+    if(owner_test_active)atomic_fetch_add(&owner_mutex_destroys,1);
+    return pthread_mutex_destroy(mutex);
+}
+static int owner_test_cond_destroy(pthread_cond_t *condition) {
+    if(owner_test_active)atomic_fetch_add(&owner_cond_destroys,1);
+    return pthread_cond_destroy(condition);
+}
+static void *owner_test_calloc(size_t count,size_t size) {
+    void *result=calloc(count,size);
+    if(owner_test_active){
+        assert(count==1&&size==sizeof(rk3_usb_session)&&result);
+        atomic_fetch_add(&owner_allocations,1);owner_test_session=result;
+    }
+    return result;
+}
+static void owner_test_free(void *memory) {
+    if(owner_test_active&&memory==owner_test_session)atomic_fetch_add(&owner_frees,1);
+    free(memory);
+}
+static void owner_creation_test(void) {
+    /* Keep the setup-error shims available in the pre-correction RED build. */
+    (void)owner_test_attr_init;(void)owner_test_attr_set_qos;(void)owner_test_attr_destroy;
+    for(unsigned failure=0;failure<5;++failure) {
+        owner_test_active=true;owner_test_failure=failure;owner_test_session=NULL;
+        atomic_store(&owner_attr_inits,0);atomic_store(&owner_attr_sets,0);atomic_store(&owner_attr_destroys,0);
+        atomic_store(&owner_creates,0);atomic_store(&owner_detaches,0);atomic_store(&owner_mutex_destroys,0);
+        atomic_store(&owner_cond_destroys,0);atomic_store(&owner_allocations,0);atomic_store(&owner_frees,0);
+        atomic_store(&owner_entered,false);atomic_store(&owner_requested_result,-1);
+        atomic_store(&owner_requested_qos,(int)QOS_CLASS_UNSPECIFIED);atomic_store(&owner_requested_relative,99);
+        char error[128]="unchanged";rk3_usb_session *session=rk3_usb_open(error,sizeof(error));
+        assert(atomic_load(&owner_allocations)==1&&atomic_load(&owner_attr_inits)==1);
+        assert(atomic_load(&owner_attr_sets)==(failure==1?0u:1u));
+        assert(atomic_load(&owner_attr_destroys)==(failure==1?0u:1u));
+        assert(atomic_load(&owner_creates)==(failure==1||failure==2?0u:1u));
+        if(failure>=1&&failure<=3) {
+            assert(!session&&error[0]&&atomic_load(&owner_detaches)==0);
+            int expected=failure==1?ENOMEM:failure==2?EINVAL:EAGAIN;char expected_error[128];
+            snprintf(expected_error,sizeof(expected_error),"USB worker creation failed: %d",expected);
+            assert(!strcmp(error,expected_error)&&!atomic_load(&owner_entered));
+        } else {
+            assert(session==owner_test_session&&!error[0]&&atomic_load(&owner_detaches)==1);
+            assert(atomic_load(&owner_frees)==0);
+            pthread_mutex_lock(&session->mutex);
+            double deadline=seconds_now()+2;
+            while(!atomic_load(&owner_entered)&&seconds_now()<deadline) {
+                struct timespec relative={0,10000000};
+                (void)pthread_cond_timedwait_relative_np(&session->wake,&session->mutex,&relative);
+            }
+            pthread_mutex_unlock(&session->mutex);assert(atomic_load(&owner_entered));
+            /* These getters prove requested QoS, never effective priority or deadlines. */
+            assert(atomic_load(&owner_requested_result)==0);
+            assert(atomic_load(&owner_requested_qos)==(int)QOS_CLASS_USER_INTERACTIVE);
+            assert(atomic_load(&owner_requested_relative)==0);
+            assert(rk3_usb_close_wait(session,1000));assert(!pthread_join(owner_test_thread,NULL));
+        }
+        assert(atomic_load(&owner_cond_destroys)==1&&atomic_load(&owner_mutex_destroys)==1);
+        assert(atomic_load(&owner_frees)==1);
+        owner_test_active=false;owner_test_session=NULL;
+    }
+}
 
 static CFRunLoopTimerRef test_clock_timer_create(CFAllocatorRef allocator,
     CFAbsoluteTime date,CFTimeInterval interval,CFOptionFlags flags,CFIndex order,
@@ -2107,6 +2254,7 @@ static void identity_snapshot_race_test(void) {
     pthread_cond_destroy(&race.barrier.condition);pthread_mutex_destroy(&race.barrier.mutex);finish(&session);
 }
 int main(void) {
+    owner_creation_test();
     identity_capture_publication_test();identity_partial_capture_test();identity_property_test();
     identity_held_request_close_test();identity_cohort_test();identity_snapshot_race_test();identity_pending_drain_test();identity_opaque_transport_test();
     identity_reader_first_test();identity_reader_fallback_test();identity_reader_unicode_test();identity_reader_oracles_test();identity_reader_definedness_test();
@@ -2114,6 +2262,6 @@ int main(void) {
     gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
     clock_timer_binding_test();clock_timer_stop_restart_test();clock_timer_guard_test();clock_timer_retirement_test();
     clock_timer_reentrant_restart_test();clock_timer_command_pump_test();clock_timer_failure_test();
-    puts("NativeUSB: worker clock one-shots/lifetime, NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
+    puts("NativeUSB: explicit owner QoS/creation lifetime, worker clock one-shots/lifetime, NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
     return 0;
 }

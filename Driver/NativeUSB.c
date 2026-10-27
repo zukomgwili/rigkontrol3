@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <mach/mach_time.h>
 #include <pthread.h>
+#include <pthread/qos.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1309,7 +1310,17 @@ rk3_usb_session *rk3_usb_open(char *error, size_t error_size) {
     atomic_init(&session->rt_readers, 0);
     session->status.state = RK3_USB_OPENING;
     pthread_t thread;
-    result = pthread_create(&thread, NULL, worker_main, session);
+    pthread_attr_t attributes;
+    result = pthread_attr_init(&attributes);
+    if (result == 0) {
+        /* Named QoS binds the USB owner to latency-sensitive retirement;
+         * it does not supply a real-time scheduling guarantee. */
+        result = pthread_attr_set_qos_class_np(&attributes, QOS_CLASS_USER_INTERACTIVE, 0);
+        if (result == 0) result = pthread_create(&thread, &attributes, worker_main, session);
+        /* A successful create owns its worker reference even if attribute
+         * destruction reports an error. Never free that live session here. */
+        (void)pthread_attr_destroy(&attributes);
+    }
     if (result != 0) {
         if (error != NULL && error_size) snprintf(error, error_size, "USB worker creation failed: %d", result);
         atomic_store(&session->references, 1); release_session(session); return NULL;
