@@ -1,0 +1,593 @@
+{
+  "schema": 1,
+  "purpose": "single installed completion-queue QoS correction 600-second development gate; traced silent48kHz/128frames with persistent MIDI",
+  "production_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+  "installed_version": "0.2.7/build12",
+  "candidate_manifest_sha256": "1ad994554ab45016bfa701a9da62471284a36c8d3f11f3829f393ba0a91021f9",
+  "candidate_source_record_sha256": "e87751cd6f9f3442035b03e24ffcb51479c69e79544e7ad577a96ea82d67310a",
+  "installation_session": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261027T112909Z-ccb3d2c3",
+  "driver_pid": 41098,
+  "device": 112,
+  "usb_generation": 1,
+  "cap_seconds": 600.0,
+  "active_seconds": 600.0150822089927,
+  "active_started_utc": "2026-10-27T11:30:51.759207+00:00",
+  "stop_requested_utc": "2026-10-27T11:40:51.773013+00:00",
+  "ended_utc": "2026-10-27T11:41:07.658485+00:00",
+  "result": "NO_FAULT_CAPTURED",
+  "audio_gate_result": "PASS",
+  "reason": "600-second cap reached without watched fault",
+  "qualifies_full_m3_stability": false,
+  "audio_summary": "CoreAudio callbacks=225058 input1frames=28807424 RMS=0.000046 input_peak=0.003786 stop=0",
+  "audio_callbacks": 225058,
+  "input_frames": 28807424,
+  "audio_stop_status": 0,
+  "client_clock_records": 5768,
+  "clock_validation": "All5768 records status0, valid sample/host flags, finite sample, positive host, strictly advancing sample and host, badfalse; independently reviewed.",
+  "native_status_samples_consumed": 5696,
+  "native_status_rows_in_saved_log": 5697,
+  "running_rows": 5696,
+  "cleanup_idle_rows": 1,
+  "midi_observation": {
+    "client_exit": 0,
+    "controller_cc_messages": 1,
+    "observed_cc": 4,
+    "observed_value": 23,
+    "physical_switch_pedal_led_test": false
+  },
+  "children": {
+    "driver": {
+      "pid": 41383,
+      "exit": 0
+    },
+    "midi": {
+      "pid": 41384,
+      "exit": 0
+    },
+    "trace": {
+      "pid": 41398,
+      "exit": 0
+    },
+    "audio": {
+      "pid": 41413,
+      "exit": 0
+    },
+    "status": {
+      "pid": 41414,
+      "exit": 0
+    }
+  },
+  "all_owned_children_reaped": true,
+  "trace_exit": 0,
+  "collection_prerequisites_met": true,
+  "driver_fault_records": 0,
+  "clock_calibration": {
+    "mapping": "trace_ns + offset_ns = Mach_ns",
+    "offset_lower_ns_fraction": "143869877225042",
+    "offset_upper_ns_fraction": "431609631676126/3",
+    "uncertainty_ns_fraction": "1000/3",
+    "complete_pairs": 3,
+    "identical_duplicate_rows": 3,
+    "retained_markers": [
+      {
+        "pid": 42081,
+        "role": 2,
+        "seq": 0,
+        "id": "29203985462329888",
+        "before": 3453116772489,
+        "after": 3453116772681,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9988296625
+      },
+      {
+        "pid": 42081,
+        "role": 2,
+        "seq": 1,
+        "id": "29203985462329889",
+        "before": 3453116773077,
+        "after": 3453116773094,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9988320041
+      },
+      {
+        "pid": 42081,
+        "role": 2,
+        "seq": 2,
+        "id": "29203985462329890",
+        "before": 3453116773122,
+        "after": 3453116773130,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9988321708
+      }
+    ],
+    "selection_window_trace_ns": [
+      9488296625,
+      10008321708
+    ]
+  },
+  "scheduling_observation_summary": {
+    "raw_iso_completion": {
+      "samples": 1,
+      "tids": [
+        3389940
+      ],
+      "attributed_priorities": {
+        "User Initiated - 37": 1
+      }
+    },
+    "usb_owner": {
+      "samples": 219,
+      "tids": [
+        3386893
+      ],
+      "attributed_priorities": {
+        "User Initiated - 37": 219
+      }
+    }
+  },
+  "representative_source_attributed_samples": [
+    {
+      "time_ns": 9980685958,
+      "tid": 3389940,
+      "role": "raw_iso_completion",
+      "context_state": "Runnable",
+      "matching_intervals": [
+        {
+          "start_ns": 9980685958,
+          "end_ns": 9980697333,
+          "duration_ns": 11375,
+          "tid": 3389940,
+          "state": "Preempted",
+          "priority": "User Initiated - 37"
+        }
+      ],
+      "frames": [
+        {
+          "symbol": "___CFBasicHashFindBucket_Linear",
+          "address": "0x19dd10d8d",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "CFSetGetValue",
+          "address": "0x19db8e10b",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "__CFRunLoopCopyMode",
+          "address": "0x19dca73ab",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "CFRunLoopPerformBlock",
+          "address": "0x19dbb0ba7",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "__rk3_host_iso_enqueue_block_invoke",
+          "address": "0x1070c8a7f",
+          "image_uuid": "ECBBF939-1A51-3828-9282-4311E7E3C509"
+        },
+        {
+          "symbol": "_isochCompletionCallback",
+          "address": "0x1b4d5adcf",
+          "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+        },
+        {
+          "symbol": "IODispatchCalloutFromCFMessage",
+          "address": "0x1a1fef3d3",
+          "image_uuid": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7"
+        },
+        {
+          "symbol": "_IODispatchCalloutWithDispatch",
+          "address": "0x1a1fef20b",
+          "image_uuid": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7"
+        },
+        {
+          "symbol": "dispatch_mig_server",
+          "address": "0x19d96a96b",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_client_callout",
+          "address": "0x19d96659f",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_continuation_pop",
+          "address": "0x19d9511b3",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_source_latch_and_call",
+          "address": "0x19d9642a7",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_source_invoke",
+          "address": "0x19d962f7b",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_lane_serial_drain",
+          "address": "0x19d954e23",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_lane_invoke",
+          "address": "0x19d955abb",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_root_queue_drain_deferred_wlh",
+          "address": "0x19d95ff57",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_workloop_worker_thread",
+          "address": "0x19d95f85b",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_pthread_wqthread",
+          "address": "0x19db09f9b",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        },
+        {
+          "symbol": "start_wqthread",
+          "address": "0x19db08cdf",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        }
+      ],
+      "phase_relative_to_terminal_markers": "before_first_terminal_marker"
+    },
+    {
+      "time_ns": 9805724000,
+      "tid": 3386893,
+      "role": "usb_owner",
+      "context_state": "Blocked",
+      "matching_intervals": [
+        {
+          "start_ns": 0,
+          "end_ns": 9806644416,
+          "duration_ns": 9806644416,
+          "tid": 3386893,
+          "state": "Blocked",
+          "priority": "User Initiated - 37"
+        }
+      ],
+      "frames": [
+        {
+          "symbol": "mach_msg2_trap",
+          "address": "0x19dac8c21",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg2_internal",
+          "address": "0x19dadb8df",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg_overwrite",
+          "address": "0x19dad1a27",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg",
+          "address": "0x19dac8fab",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "__CFRunLoopServiceMachPort",
+          "address": "0x19dbceaeb",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "__CFRunLoopRun",
+          "address": "0x19dbcd333",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "_CFRunLoopRunSpecificWithOptions",
+          "address": "0x19dca782b",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "pump_callbacks",
+          "address": "0x1070bf18f",
+          "image_uuid": "ECBBF939-1A51-3828-9282-4311E7E3C509"
+        },
+        {
+          "symbol": "worker_main",
+          "address": "0x1070bc43b",
+          "image_uuid": "ECBBF939-1A51-3828-9282-4311E7E3C509"
+        },
+        {
+          "symbol": "_pthread_start",
+          "address": "0x19db0dcff",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        },
+        {
+          "symbol": "thread_start",
+          "address": "0x19db08ceb",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        }
+      ],
+      "phase_relative_to_terminal_markers": "before_first_terminal_marker"
+    },
+    {
+      "time_ns": 9906717875,
+      "tid": 3386893,
+      "role": "usb_owner",
+      "context_state": "Blocked",
+      "matching_intervals": [
+        {
+          "start_ns": 9906717875,
+          "end_ns": 9907731166,
+          "duration_ns": 1013291,
+          "tid": 3386893,
+          "state": "Blocked",
+          "priority": "User Initiated - 37"
+        }
+      ],
+      "frames": [
+        {
+          "symbol": "mach_msg2_trap",
+          "address": "0x19dac8c21",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg2_internal",
+          "address": "0x19dadb8df",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg_overwrite",
+          "address": "0x19dad1a27",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg",
+          "address": "0x19dac8fab",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "__CFRunLoopServiceMachPort",
+          "address": "0x19dbceaeb",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "__CFRunLoopRun",
+          "address": "0x19dbcd333",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "_CFRunLoopRunSpecificWithOptions",
+          "address": "0x19dca782b",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "pump_callbacks",
+          "address": "0x1070bf18f",
+          "image_uuid": "ECBBF939-1A51-3828-9282-4311E7E3C509"
+        },
+        {
+          "symbol": "worker_main",
+          "address": "0x1070bc43b",
+          "image_uuid": "ECBBF939-1A51-3828-9282-4311E7E3C509"
+        },
+        {
+          "symbol": "_pthread_start",
+          "address": "0x19db0dcff",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        },
+        {
+          "symbol": "thread_start",
+          "address": "0x19db08ceb",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        }
+      ],
+      "phase_relative_to_terminal_markers": "before_first_terminal_marker"
+    },
+    {
+      "time_ns": 9999718416,
+      "tid": 3386893,
+      "role": "usb_owner",
+      "context_state": "Blocked",
+      "matching_intervals": [
+        {
+          "start_ns": 9999718416,
+          "end_ns": 10000000000,
+          "duration_ns": 281584,
+          "tid": 3386893,
+          "state": "Blocked",
+          "priority": "User Initiated - 37"
+        }
+      ],
+      "frames": [
+        {
+          "symbol": "mach_msg2_trap",
+          "address": "0x19dac8c21",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg2_internal",
+          "address": "0x19dadb8df",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg_overwrite",
+          "address": "0x19dad1a27",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg",
+          "address": "0x19dac8fab",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "__CFRunLoopServiceMachPort",
+          "address": "0x19dbceaeb",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "__CFRunLoopRun",
+          "address": "0x19dbcd333",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "_CFRunLoopRunSpecificWithOptions",
+          "address": "0x19dca782b",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "pump_callbacks",
+          "address": "0x1070bf18f",
+          "image_uuid": "ECBBF939-1A51-3828-9282-4311E7E3C509"
+        },
+        {
+          "symbol": "worker_main",
+          "address": "0x1070bc43b",
+          "image_uuid": "ECBBF939-1A51-3828-9282-4311E7E3C509"
+        },
+        {
+          "symbol": "_pthread_start",
+          "address": "0x19db0dcff",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        },
+        {
+          "symbol": "thread_start",
+          "address": "0x19db08ceb",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        }
+      ],
+      "phase_relative_to_terminal_markers": "after_last_terminal_marker"
+    }
+  ],
+  "images": {
+    "727E905E-F344-3823-8E13-E7A096388321": {
+      "name": "CoreFoundation",
+      "UUID": "727E905E-F344-3823-8E13-E7A096388321",
+      "arch": "arm64e",
+      "load-addr": "0x19db4d000",
+      "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+    },
+    "ECBBF939-1A51-3828-9282-4311E7E3C509": {
+      "name": "RK3AudioDriver",
+      "UUID": "ECBBF939-1A51-3828-9282-4311E7E3C509",
+      "arch": "arm64",
+      "load-addr": "0x1070b8000",
+      "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver"
+    },
+    "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B": {
+      "name": "IOUSBHost",
+      "UUID": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B",
+      "arch": "arm64e",
+      "load-addr": "0x1b4d4a000",
+      "path": "/System/Library/Frameworks/IOUSBHost.framework/Versions/A/IOUSBHost"
+    },
+    "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7": {
+      "name": "IOKit",
+      "UUID": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7",
+      "arch": "arm64e",
+      "load-addr": "0x1a1fea000",
+      "path": "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit"
+    },
+    "022BF08F-0B3A-3225-9E65-16D1553CE90D": {
+      "name": "libdispatch.dylib",
+      "UUID": "022BF08F-0B3A-3225-9E65-16D1553CE90D",
+      "arch": "arm64e",
+      "load-addr": "0x19d94b000",
+      "path": "/usr/lib/system/libdispatch.dylib"
+    },
+    "5A1828C3-CBC2-3B85-BD07-C8ED10021A41": {
+      "name": "libsystem_pthread.dylib",
+      "UUID": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41",
+      "arch": "arm64e",
+      "load-addr": "0x19db07000",
+      "path": "/usr/lib/system/libsystem_pthread.dylib"
+    },
+    "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05": {
+      "name": "libsystem_kernel.dylib",
+      "UUID": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05",
+      "arch": "arm64e",
+      "load-addr": "0x19dac8000",
+      "path": "/usr/lib/system/libsystem_kernel.dylib"
+    }
+  },
+  "raw_callback_source_proof": {
+    "source_image_uuid": "ECBBF939-1A51-3828-9282-4311E7E3C509",
+    "frame_address": "0x1070c8a7f",
+    "load_address": "0x1070b8000",
+    "frozen_dsym_resolution": "__rk3_host_iso_enqueue_block_invoke (in RK3AudioDriver) (NativeHostUSB.m:658)"
+  },
+  "post_stop_status": {
+    "tick": 3455829451461,
+    "status": 0,
+    "flags": 1,
+    "generation": 1,
+    "error": 0,
+    "clock_status": 0,
+    "clock_flags": 0,
+    "sample": 0.0,
+    "host": 0,
+    "bad": false
+  },
+  "sip_status_after_test": "enabled",
+  "findings": [
+    "The single planned600-second silent48kHz/128frame development gate completed without a monitored USB/native/clock/generation/liveness fault; all clients stopped successfully.",
+    "A positively identified raw ISO callback and219 owner source-path context samples in the final selected window are associated with interval scheduling priority User Initiated37. This is an observed classification, not the requested QoS getter or sustained priority guarantee.",
+    "The post-stop device remains connected and idle at generation1 with no latched error; build12 remains installed."
+  ],
+  "limits": [
+    "One traced development gate is not full untraced M3 qualification, all-rate coverage or proof every historical TooOld fault is resolved. Instrumentation may affect fault incidence.",
+    "No guitar listening, physical8switch/pedal/LED feedback, reconnect/sleep recovery or DIN/external/toe-control acceptance was repeated in this test.",
+    "Scheduling attribution covers selected source-backed events in a short final saved window, not the full600-second execution or every callback. The raw sample itself has an11.375microsecond preemption, so no absence-of-preemption claim is made.",
+    "Requested UI0 does not guarantee numerical priority46 or real-time deadlines; observed37 is reported without investigating unrelated scheduler policies.",
+    "Only retained terminal markers calibrate the rebased trace; initial markers are outside saved window. Numeric marker IDs are decimal strings to preserve exact identity.",
+    "Owner scheduling samples include204 before the first terminal marker and15 after the last marker during cleanup; the one raw callback sample precedes the first marker. Do not label all219 owner samples as active-phase coverage."
+  ],
+  "evidence_hashes": {
+    "state.json": "56549c09f35be38ebb643341486592bb0a43a458eafe4f424ae5d09dfd85e2b6",
+    "preflight.log": "2befb6b322944483b3e14bbf848f74fdff2e382655ab2335603c45dbe85b05ef",
+    "driver.log": "07b73974163c926409f5de4bd77168baa0fd66d0b62d1227f3eccb9b3b5fa3a2",
+    "audio.log": "0ef96f3c12ffe19c61bde02170d273eec3608092f57ac5e6171487c98889485a",
+    "midi.log": "74b1eeb700bbc3cd9d8511ba6c8f723574dcda40455101d49a82f63b9b4728f1",
+    "status.log": "00aff4242c7a4fe3624ef6c84854f2fdae010efc02619b7378a8abf8b5103f42",
+    "trace.log": "9fbdab721af785b2d918e6285b1384c353d2aa5eaff6a9e29e66acb2c2b98604",
+    "marker-1.log": "574af5b0611b54f35a8327ddf922eeb57f9e8cf1468f7db524614c94513aae76",
+    "marker-2.log": "ff60da94cd09ebeeb280a9e694ca05e26748ff8ef44e0bb9397a758c4586528b",
+    "signposts.xml": "50cb2cff58dc4cf874100a56d45ff23d0b488a7da64fae1c061650545c3f6255",
+    "thread-state.xml": "1fd090b6248f8fc5a8ca890084b2aafcbd592f31b8f1462d32be351f857be215",
+    "context-switch-sample.xml": "095ccd68119dcd63bcc98cd9eae6120f90d66b91c4a46ba0a24f733210f6f4a8",
+    "clock-calibration.json": "799d3161c6cd928852a462e20c125876f80a0e61d6d90f0629c0d0b7c6ad13c8",
+    "scheduling-analysis.json": "6ce7ad75d970219c9b5bde2460832e22be6ee1030821f857a5875ef25329fb9e",
+    "export-record.json": "cf4aa24d11b088303494790cff377a08e1ef55e91ab04485b6da757cc48d88b3"
+  },
+  "verification_record_hashes": {
+    "build12-installed-verification.json": "2cae4d2937df1643073222b5110ef91cf0ee50f0c298788e0de7597969e6acd6",
+    "build12-install-admin.json": "ba1e8bdf77df343ecdd5f47e42f0ced3163be2c2d62a86000913a41ef011c032",
+    "build12-install-admin.log": "8e0fff3f66c8ca2df17941e6d0b23a2219e1abb3976acc776270fd35055563a6",
+    "build12-root-verification.json": "d5798b99aeb871886284b9156b849f47f51243fb3a60955fc3b4c327b477f2bf",
+    "build12-poststop-status.log": "63bd69d72ca763d9bdef8c734b5573e78823f9cbad31bafb8d3b4aef9988466b",
+    "build12-symbol-provenance.json": "b733c252f5b28701242f879816d584f5b06ebd44a3fee64728dcfe3aba72cf79",
+    "build12-runtime-symbolication.log": "566c29eb85d8d2253a36dbc7c5d675c1dfc3885cbd5e286b925a5ee60d903348",
+    "build12-wrapper-adaptation.json": "dfe20ed19f456be15b074a39b5ddf1409b9be4200193f9971711becdcb93734f",
+    "build12-wrapper-offline-record.json": "f39242cb6e758e4424c40308155d3f48bf04827529ab7e38851dc7d7bcdc634a"
+  },
+  "validation_wrapper_sha256": "653247aadb6ad298cbf892f98453caf5f881250ec8dbd4b191d0a13998a74fa6",
+  "scheduling_phase_counts": {
+    "raw_iso_completion": {
+      "before_first_terminal_marker": 1,
+      "during_terminal_markers": 0,
+      "after_last_terminal_marker": 0
+    },
+    "usb_owner": {
+      "before_first_terminal_marker": 204,
+      "during_terminal_markers": 0,
+      "after_last_terminal_marker": 15
+    }
+  }
+}
