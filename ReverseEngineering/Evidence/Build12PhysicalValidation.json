@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "bead": "rigkontrol3-40h.3",
+  "recorded_utc": "2026-10-27T12:34:04.628076+00:00",
+  "result": "PASS_requested_physical_audio_wah_eight_switches_and_LED_checks",
+  "whole_M3_qualification_complete": false,
+  "scope": "Physical checks on installed build12 only. No driver code, timing, recovery, calibration, USB ownership or SIP changes.",
+  "candidate": {
+    "version": "0.2.7",
+    "build": 12,
+    "source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+    "manifest_sha256": "1ad994554ab45016bfa701a9da62471284a36c8d3f11f3829f393ba0a91021f9",
+    "installed_bundles_match_all_12_manifest_files": true,
+    "both_Apple_anchor_signatures_verified": true,
+    "SIP": "enabled",
+    "rollback_session": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261027T112909Z-ccb3d2c3"
+  },
+  "setup": {
+    "host": "Guitar Rig 6 standalone 6.4.0 (R0)",
+    "audio_device": "Rig Kontrol 3 (NI ARM)",
+    "rate_Hz": 48000,
+    "buffer_frames": 128,
+    "input": "RK3 input1 mono L",
+    "output": "RK3 L/R, headphones",
+    "midi_input": "Native Controller Mapping (Controller), Omni",
+    "calibration": {
+      "version": 1,
+      "axis": 2,
+      "minimum": 88,
+      "maximum": 648,
+      "action": "read only; unchanged"
+    },
+    "preset": {
+      "name": "RK3 Build12 Physical Test",
+      "path": "/Users/zukomgwili/Documents/Native Instruments/User Content/Guitar Rig 6/Rack Presets/RK3 Build12 Physical Test.ngrr",
+      "sha256": "cefec2ef4f58568a5fbc90f856f9f5f4ac14fb0aef8e050f93d15b34d41c1811",
+      "saved_with_no_modified_marker": true,
+      "content": "Cry Wah only; separate user preset copied from New Preset",
+      "bindings": {
+        "CC4": "Wah knob",
+        "CC80": "Cry Wah power"
+      },
+      "other_seven_effects_mapped": false
+    }
+  },
+  "human_observations": {
+    "ready": "Ready — guitar and headphones connected, level low",
+    "initial_listening": {
+      "utc": "2026-10-27T12:07:38.662165+00:00",
+      "phase": "initial_listening",
+      "prompt": "GR6 NickelPower, RK3input/output48k128, playabout30sec",
+      "reply": "Clear, normal level and acceptable delay"
+    },
+    "combined_reply": "All checks passed",
+    "combined_request": "Play about two minutes; switch1 wah on/off, audible full pedal sweeps, switches2-8 twice with release-latching checks; finish all LEDs off and pedal at heel.",
+    "requested_play_seconds": 120,
+    "baseline_to_readback_seconds": 254.49019220899208,
+    "duration_limit": "254.49s is the human phase response window, not a measurement of continuous playing duration.",
+    "switch1_actual_count_clarification": "Four presses, including extra wah checks",
+    "final_restored_reply": "Yes, restored and everything works"
+  },
+  "app_input_refresh": {
+    "initial_report": "Neither pedal nor switch responds",
+    "native_MIDI_at_failure": {
+      "CC4": {
+        "count": 1096,
+        "min": 0,
+        "max": 127,
+        "last": 6
+      },
+      "CC80": {
+        "count": 4,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      }
+    },
+    "native_status": "flags3/generation1/error0; no recorded USB fault",
+    "action": "Toggled the same native controller input off then on in GR6 MIDI preferences. No new source, bridge, driver restart or calibration change.",
+    "human_retry": "Both now work",
+    "interpretation": "App input routing/assignment problem resolved by input refresh; no demonstrated driver failure."
+  },
+  "combined_MIDI": {
+    "switches": [
+      {
+        "physical": 1,
+        "cc": 80,
+        "actual_physical_presses": 4,
+        "planned_physical_presses": 2,
+        "count_delta": 4,
+        "min": 0,
+        "max": 127,
+        "last": 0,
+        "pass_after_human_clarification": true
+      },
+      {
+        "physical": 2,
+        "cc": 81,
+        "actual_physical_presses": 2,
+        "planned_physical_presses": 2,
+        "count_delta": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0,
+        "pass_after_human_clarification": true
+      },
+      {
+        "physical": 3,
+        "cc": 82,
+        "actual_physical_presses": 2,
+        "planned_physical_presses": 2,
+        "count_delta": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0,
+        "pass_after_human_clarification": true
+      },
+      {
+        "physical": 4,
+        "cc": 83,
+        "actual_physical_presses": 2,
+        "planned_physical_presses": 2,
+        "count_delta": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0,
+        "pass_after_human_clarification": true
+      },
+      {
+        "physical": 5,
+        "cc": 76,
+        "actual_physical_presses": 2,
+        "planned_physical_presses": 2,
+        "count_delta": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0,
+        "pass_after_human_clarification": true
+      },
+      {
+        "physical": 6,
+        "cc": 77,
+        "actual_physical_presses": 2,
+        "planned_physical_presses": 2,
+        "count_delta": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0,
+        "pass_after_human_clarification": true
+      },
+      {
+        "physical": 7,
+        "cc": 78,
+        "actual_physical_presses": 2,
+        "planned_physical_presses": 2,
+        "count_delta": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0,
+        "pass_after_human_clarification": true
+      },
+      {
+        "physical": 8,
+        "cc": 79,
+        "actual_physical_presses": 2,
+        "planned_physical_presses": 2,
+        "count_delta": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0,
+        "pass_after_human_clarification": true
+      }
+    ],
+    "interpretation": "Message counts match actual physical press counts; human confirms no extra state change on release. Aggregated counts have no per-event timestamps.",
+    "original_planned_count_mismatch": "Switch1 planned2 but actual4. Raw initial failed planned-count assertion is preserved unchanged; human explicitly confirmed four presses including extra wah checks.",
+    "pedal": {
+      "cc": 4,
+      "count_before": 1413,
+      "count_after": 9181,
+      "count_delta": 7768,
+      "cumulative_monitor_min": 0,
+      "cumulative_monitor_max": 127,
+      "last_after_combined": 0,
+      "range_scope": "Monitor extrema are cumulative including setup. Human confirmed full sweeps and audible wah during combined phase."
+    }
+  },
+  "incoming_LED_feedback": {
+    "mechanism": "Existing native MIDI destination, channel1 CC80/81/82/83/76/77/78/79; values127 on and0 off. Incoming feedback also sets local toggle baseline.",
+    "odd": {
+      "expected_lit": [
+        1,
+        3,
+        5,
+        7
+      ],
+      "human_reply": "Yes, the odd-numbered pattern matches"
+    },
+    "even": {
+      "expected_lit": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "human_reply": "Yes, the even-numbered pattern matches"
+    },
+    "restore": {
+      "expected_lit": [],
+      "human_reply": "Yes, restored and everything works",
+      "switch1_additional_CC80_messages": 2,
+      "all_switch_final_values": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0
+      },
+      "pedal_last_after_final_brief_sweep": 8
+    },
+    "all_24_feedback_commands_accepted": true,
+    "automatic_GR6_mouse_or_preset_effect_state_feedback_proven": false
+  },
+  "observed_health": {
+    "status_rows": 14876,
+    "flags_observed": [
+      3
+    ],
+    "generation_observed": [
+      1
+    ],
+    "errors_observed": [
+      0
+    ],
+    "bad_rows": 0,
+    "filtered_driver_error_fault_or_timing_events": 0,
+    "interpretation": "No faults or generation changes observed by these recorders; no numeric latency, continuity measurement or clock validation in this physical session. Status-watch clock fields are placeholders.",
+    "separate_prior_600s_silent_gate": "ReverseEngineering/Evidence/Build12CompletionQueueValidation.json"
+  },
+  "capture": {
+    "private_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build12-physical/physical-8lqyf7w6",
+    "started_utc": "2026-10-27T12:03:40.273365+00:00",
+    "ended_utc": "2026-10-27T12:29:27.137209+00:00",
+    "elapsed_seconds": 1532.5302239999874,
+    "maximum_seconds": 1800,
+    "terminal_result": "STOPPED",
+    "reason": "guided test ended by root",
+    "parent_exit": 0,
+    "children": {
+      "driver": {
+        "pid": 46747,
+        "argv": [
+          "/usr/bin/log",
+          "stream",
+          "--style",
+          "compact",
+          "--level",
+          "default",
+          "--predicate",
+          "processIdentifier == 41098 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+        ],
+        "exit": 0
+      },
+      "midi": {
+        "pid": 46748,
+        "argv": [
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+          "--live"
+        ],
+        "exit": 0
+      },
+      "status": {
+        "pid": 46749,
+        "argv": [
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/status-watch",
+          "112",
+          "1"
+        ],
+        "exit": 0
+      }
+    },
+    "all_three_owned_clients_reaped": true,
+    "host_left_available": true,
+    "no_parallel_dry_audio_client": true
+  },
+  "limitations": [
+    "Only wah was mapped as an audible effect. Switches2-8 passed physical MIDI/LED checks while guitar audio ran; seven other audible effect assignments were not tested.",
+    "Incoming MIDI feedback and local LED latching passed; GR6 mouse/preset effect-state LED synchronization was not tested or claimed.",
+    "Listening quality and acceptable delay are human observations; no measured round-trip latency or sample continuity test.",
+    "Existing wider M3 gates remain: additional finite rate/stability runs, gain/direct-monitor/latency, stop/start, sleep/wake, USB recovery, DIN, toe/external axes and rollback/reinstall as applicable. No new gates or planning-only issue created."
+  ],
+  "private_evidence_sha256": {
+    "combined-before.json": "724a830e3e540a8b0d9b2ab4cc05a4efa7fc4459dd29741875c51cc4339a2ba1",
+    "combined-result.json": "914f899c78ceed7483ec8fc5d8dd68b6951ea90c299833bfc5605c9888a5c66c",
+    "combined-validated.json": "21df6fde45a786122dc3fa32077f1e71d9f34dce7654df9adce3f60aa90fb7b8",
+    "control.json": "dc3e31898408e4de46aeeb78fd9dd328efaa16c56a64e66bb95cbcb059bd9ad2",
+    "driver.log": "07b73974163c926409f5de4bd77168baa0fd66d0b62d1227f3eccb9b3b5fa3a2",
+    "feedback-baseline-all-off.json": "c4c10c1a02eb60a795e713957291430e358d8b98042d3e7f0dfa774045be3cd5",
+    "human-initial-listening.json": "bf5159eed125aa9872a2414a62251e6cffe63ee6ab887e6d66eeeb8a6ea9ed36",
+    "identity-before.log": "0bf7f202094fba8886a161f036f5c6f18d64ef653ace47046112191502d50fd0",
+    "led-feedback-even.json": "dca2386de3beb431bcd9a374e1e4c9d388238b7a9876d6d82909c6c6cb6ea2a9",
+    "led-feedback-odd.json": "6ed2948fd1148459f92f4b1a132993e276c47aff554d2d5694dccaf0e6136d6c",
+    "led-feedback-restored.json": "4d2179529b526a6c562084fb4bfa1bfc5501e74369e86dbbaa174ffde86ea126",
+    "midi-readback-compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "midi-readback.log": "b10a34c4ea681ce10b347e9198b4ca31376222133fda1dbc1ae30fec90215ad7",
+    "midi.log": "422abc6f57719561bd96b97d5974b2f251690a00696b55663d971c4216ea453c",
+    "native-preflight.log": "e3d58c6ebf2b1bb0e324e065ac295b60388602946ca997a9a38f5314699194e9",
+    "setup.json": "d8a9717d548fcf4ebdc0752937f31a8f6015385ff36dbeb372e17a4938b4758c",
+    "state.json": "39d6278cb53b839ffb4a62bb64e2a46db0d9e36e50313f9405eecc060e6987b8",
+    "status.log": "3902075bf7e6318d3004b694517d9dd7c754f48f6eb9348c81ee9569f20591b6",
+    "wah-learn-issue-snapshot.json": "873e77601dc4217ed2e03a64d96f8b73e3987c971796d7440d9d04064dd9763c"
+  },
+  "observer_and_feedback_sha256": {
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor": "ad5adb79c04b93e9d17bdbe7dac6e017e67437d41947c319a8154f1484195364",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/status-watch": "e321ba03985755f5b9723f41ec243d845a25485588b376ab757bcfa93c01f725",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-feedback": "7d88388a6bc8835c8a06dded7ae34ab87bf3a348627449041ff2b166ad18b9fc",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build12-physical/physical-8lqyf7w6/midi-readback": "d5e2c635ce4be1f999e2c0b20ff4464df6d73f5c8e20a1c174d51799203b1032",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build12-physical/capture.py": "77222f0994c0d88954dbdee0bf3a66ab520c338a22869fa05f764ff44b518ba3"
+  }
+}
