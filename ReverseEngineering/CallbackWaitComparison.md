@@ -2,6 +2,8 @@
 
 2026-10-25 · Beads `rigkontrol3-40h.11` · admitted offline scope only
 
+The original sections below describe the pinned 2026-10-25 snapshot. The dated [2026-10-27 follow-up](#2026-10-27-matched-owner-preemption) records a later installed-driver capture and its separate conclusion.
+
 The comparison identifies a concrete binding region: the current input completion can execute due clock maintenance, including frame-query loops, on the serial USB owner **before** replenishing ISO requests. NI's exported `readHandler` instead calls its input scan and queue operations directly, with no direct clock-maintenance call in that local path. NI's clock timer is a separate registered entry point. This establishes a local call-order difference, not the original framework's complete thread relationship or a demonstrated cause of the observed 72.7 ms gap. The diagnostic conclusion is **source-inconclusive; stop before implementation or another runtime action**. [NI-read] [NI-timer] [ISO] [Clock]
 
 ## Scope and provenance
@@ -102,3 +104,29 @@ All current line references are pinned to the assessment commit above. Original 
 [Trace]: </private/tmp/rk3-build7-guided-ir1_nm64/system-timing.ndjson>
 [Binding-decision]: </Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/ReverseEngineering/KernelBindingDecision.md>
 [Binding-contracts]: </Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/ReverseEngineering/SelectedBindingContracts.md>
+
+
+## 2026-10-27: matched owner preemption
+
+Beads `rigkontrol3-40h.1` holds the plan, execution record, reviews and next patch bounds. Installed production source was `f924dddefaae5209c912428695aa9e89b02a069f`, version 0.2.5/build 10. Its separate NI clock-timer correction was already installed; this investigation changed no production driver code, queue calendar, ring, clock arithmetic or recovery behavior. SIP remained enabled.
+
+One silent 48 kHz/128-frame run with a persistent MIDI client and a System Trace stopped at its first TooOld after **135.523086834 seconds**. IN slot 17/range 136+8, interface/stream identity, full measurement marks and validity bits matched. The failed target, 207092, was exactly the preceding start 207028 plus NI's unchanged 64-frame interval. Audio stopped successfully; all five child processes were reaped. The status observer's exit 1 correctly reflected the captured native error.
+
+The [compact selected evidence](Evidence/Build10OwnerPreemption.json) retains the matched fields, exact marker brackets, selected thread states and original artifact hashes. Three terminal clock markers calibrated `trace ns + offset = Mach ns` to the common offset interval `[376203878449001/3, 376203878450126/3] ns`, width **375 ns**. The initial markers were outside the saved window; duplicated exported terminal rows were identical. No UTC conversion was used. Raw trace and full tables remain local in `.build/native/cause-analysis/systemtrace-fault-oqa1dtlv/`.
+
+| Boundary | Trace time (seconds) |
+| --- | --- |
+| Raw callback entry | 9.827029916333–9.827030291333 |
+| Wake call returned | 9.827032333000–9.827032708000 |
+| Owner preemption began | 9.827357375 |
+| Owner resumed running | 9.896449125 |
+| Queued owner callback entered | 9.896462374667–9.896462749667 |
+| Rejected enqueue call began | 9.896467708000–9.896468083000 |
+
+The fault-log TID `0x2bec36` is owner TID 2878518. The host's worker-CFRunLoop guard and enqueue path tie that thread to the native USB owner. Its state was **Preempted for 69.091750 ms at Default priority 31**, ending 13.25–13.62 microseconds before the queued callback entered. The complete calibrated raw-to-worker interval has no Blocked state. Two independent reviews verified identity, contiguous coverage and the raw XML references. This establishes scheduler preemption of the ready owner as the dominant delay in this captured TooOld fault.
+
+The trace names a Codex Renderer thread at User Initiated priority 37 as the thread that initially displaced the owner. It does not establish that this renderer ran throughout the interval or occupied every CPU. The owner also briefly ran at User Interactive priority earlier; it was not constantly at Default 31. This result does not establish the cause of every older fault, including the earlier capture with a long interval before raw callback entry. System Trace may affect incidence, so the run is diagnostic evidence, not stability acceptance or proof of a fix.
+
+The source creates the owner using `pthread_create` with null attributes in `Driver/NativeUSB.c`; host completions are posted onto its CFRunLoop by `Driver/NativeHostUSB.m`. Recovered NI evidence establishes kernel-resident read-handler replenishment, but supplies no exact old numeric priority or guaranteed interrupt callback context. The demonstrated gap is the selected native execution binding, rather than a reason to change NI's calendar or recovery.
+
+The next bounded candidate recorded in the existing bead requests `QOS_CLASS_USER_INTERACTIVE`, relative priority 0, for the **existing owner pthread** through Apple's pthread attribute API. This is a documented classification for immediately responsive work, not a recovered NI priority or a real-time deadline guarantee. The captured fault directly establishes the owner's scheduling deficit; it does not independently justify changing the upstream completion queue. Setup failure must unwind without falling back to default attributes. Actual effective scheduling and the original deadline still need installed validation before declaring a fix. Apple's [QoS guide](https://developer.apple.com/library/archive/documentation/Performance/Conceptual/EnergyGuide-iOS/PrioritizeWorkWithQoS.html) documents the pthread and dispatch classifications. Its [audio workgroup guidance](https://developer.apple.com/documentation/audiotoolbox/adding-asynchronous-real-time-threads-to-audio-workgroups) concerns already-real-time auxiliary threads; it does not justify assigning an invented real-time budget to this allocating and waiting USB owner.

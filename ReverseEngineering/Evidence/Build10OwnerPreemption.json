@@ -1,0 +1,252 @@
+{
+  "schema": 1,
+  "purpose": "one traced TooOld causal diagnosis; no fix or stability acceptance",
+  "production_commit": "f924dddefaae5209c912428695aa9e89b02a069f",
+  "installed_version": "0.2.5/build10",
+  "usb_generation": 2,
+  "driver_pid": 76836,
+  "owner_tid": 2878518,
+  "active_seconds": 135.52308683400042,
+  "fault": {
+    "pipe": 130,
+    "first": 136,
+    "count": 8,
+    "requested": 207092,
+    "current": 207102,
+    "busStatus": 0,
+    "enqueueBefore": 3009868542826,
+    "enqueueAfter": 3009868585839,
+    "lastPipe": 130,
+    "lastStart": 207028,
+    "lastTransaction": 3009866822321,
+    "rawArrival": 3009866876319,
+    "workerEntry": 3009868542698,
+    "orderedDelivery": 3009868542702,
+    "measureCookie": 768933,
+    "interfaceEpoch": 497090,
+    "streamEpoch": 1,
+    "engineSeed": 1,
+    "measureMarks": 127,
+    "measureValidity": 63,
+    "postBefore": 3009866876322,
+    "postAfter": 3009866876331,
+    "wakeDone": 3009866876377,
+    "prePostTicks": 3,
+    "postWakeTicks": 1666321,
+    "orderedHoldTicks": 4,
+    "clockBegin": 3009865884745,
+    "clockEndSample": 3009865885608,
+    "clockOverlapTicks": 0,
+    "uncoveredTicks": 1666321
+  },
+  "calibration": {
+    "mapping": "trace_ns + offset_ns = Mach_ns",
+    "offset_lower_ns_fraction": "376203878449001/3",
+    "offset_upper_ns_fraction": "376203878450126/3",
+    "uncertainty_ns": 375,
+    "terminal_markers": [
+      {
+        "pid": 90272,
+        "role": 2,
+        "seq": 0,
+        "id": "36532737593437728",
+        "before": 3009868772930,
+        "after": 3009868773119,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9906057375
+      },
+      {
+        "pid": 90272,
+        "role": 2,
+        "seq": 1,
+        "id": "36532737593437729",
+        "before": 3009868773795,
+        "after": 3009868773821,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9906092250
+      },
+      {
+        "pid": 90272,
+        "role": 2,
+        "seq": 2,
+        "id": "36532737593437730",
+        "before": 3009868773844,
+        "after": 3009868773853,
+        "numer": 125,
+        "denom": 3,
+        "trace_time_ns": 9906093833
+      }
+    ],
+    "mapped_time_ns_intervals": {
+      "rawArrival": [
+        "29481089749/3",
+        "29481090874/3"
+      ],
+      "postAfter": [
+        "29481091249/3",
+        "29481092374/3"
+      ],
+      "wakeDone": [
+        "9827032333",
+        "9827032708"
+      ],
+      "workerEntry": [
+        "29689387124/3",
+        "29689388249/3"
+      ],
+      "enqueueBefore": [
+        "9896467708",
+        "9896468083"
+      ],
+      "enqueueAfter": [
+        "29694779749/3",
+        "29694780874/3"
+      ]
+    }
+  },
+  "owner_thread_states": [
+    {
+      "start": 9826986208,
+      "end": 9827064083,
+      "duration": 77875,
+      "tid": 2878518,
+      "state": "Runnable",
+      "priority": "Default - 31",
+      "note": "made runnable by Core Audio Driver (RigKontrol3A (0x2d9e34) (Core Audio Driver (RigKontrol3A, pid: 76836) running on CPU 0 (E Core)",
+      "made_runnable_by": "Core Audio Driver (RigKontrol3A (0x2d9e34) (Core Audio Driver (RigKontrol3A, pid: 76836)",
+      "preempted_by": null
+    },
+    {
+      "start": 9827064083,
+      "end": 9827149708,
+      "duration": 85625,
+      "tid": 2878518,
+      "state": "Running",
+      "priority": "Default - 31",
+      "note": null,
+      "made_runnable_by": null,
+      "preempted_by": null
+    },
+    {
+      "start": 9827149708,
+      "end": 9827160791,
+      "duration": 11083,
+      "tid": 2878518,
+      "state": "Interrupted",
+      "priority": "Default - 31",
+      "note": null,
+      "made_runnable_by": null,
+      "preempted_by": null
+    },
+    {
+      "start": 9827160791,
+      "end": 9827319875,
+      "duration": 159084,
+      "tid": 2878518,
+      "state": "Running",
+      "priority": "Default - 31",
+      "note": null,
+      "made_runnable_by": null,
+      "preempted_by": null
+    },
+    {
+      "start": 9827319875,
+      "end": 9827320625,
+      "duration": 750,
+      "tid": 2878518,
+      "state": "Interrupted",
+      "priority": "Default - 31",
+      "note": null,
+      "made_runnable_by": null,
+      "preempted_by": null
+    },
+    {
+      "start": 9827320625,
+      "end": 9827322416,
+      "duration": 1791,
+      "tid": 2878518,
+      "state": "Running",
+      "priority": "Default - 31",
+      "note": null,
+      "made_runnable_by": null,
+      "preempted_by": null
+    },
+    {
+      "start": 9827322416,
+      "end": 9827333541,
+      "duration": 11125,
+      "tid": 2878518,
+      "state": "Preempted",
+      "priority": "Default - 31",
+      "note": "forced off CPU 0 (E Core) by thread call high #6 (0x2d8fc9) (kernel, pid: 0) with a priority of Kernel - 93",
+      "made_runnable_by": null,
+      "preempted_by": "thread call high #6 (0x2d8fc9) (kernel, pid: 0)"
+    },
+    {
+      "start": 9827333541,
+      "end": 9827351666,
+      "duration": 18125,
+      "tid": 2878518,
+      "state": "Running",
+      "priority": "User Interactive - 46",
+      "note": null,
+      "made_runnable_by": null,
+      "preempted_by": null
+    },
+    {
+      "start": 9827351666,
+      "end": 9827357375,
+      "duration": 5709,
+      "tid": 2878518,
+      "state": "Running",
+      "priority": "Default - 31",
+      "note": null,
+      "made_runnable_by": null,
+      "preempted_by": null
+    },
+    {
+      "start": 9827357375,
+      "end": 9896449125,
+      "duration": 69091750,
+      "tid": 2878518,
+      "state": "Preempted",
+      "priority": "Default - 31",
+      "note": "forced off CPU 2 (E Core) by ThreadPoolForegroundWorker (0x293d) (Codex (Renderer), pid: 1540) with a priority of User Initiated - 37",
+      "made_runnable_by": null,
+      "preempted_by": "ThreadPoolForegroundWorker (0x293d) (Codex (Renderer), pid: 1540)"
+    },
+    {
+      "start": 9896449125,
+      "end": 9896509541,
+      "duration": 60416,
+      "tid": 2878518,
+      "state": "Running",
+      "priority": "Default - 31",
+      "note": null,
+      "made_runnable_by": null,
+      "preempted_by": null
+    }
+  ],
+  "finding": "Native USB owner was preempted for 69.091750 ms during the ready-completion wait; it resumed 13.249667..13.624667 us before worker-entry mark. This is the dominant scheduling delay in this captured fault.",
+  "limits": [
+    "Initial preemptor is identified; continuous CPU use by that process is not established.",
+    "Owner briefly had UserInteractive priority earlier; Default31 is the priority at the dominant preemption.",
+    "This does not establish the cause of all earlier TooOld faults or original NI numeric priority.",
+    "System Trace can perturb incidence; this was not a stability test or validation of a fix.",
+    "No production scheduling, NI calendar, ring, timing or recovery code changed."
+  ],
+  "evidence_hashes": {
+    "state.json": "e179e4d492c2f410d240c593f570dc6ea1a0f491072c30b8c5ed1981ebb53436",
+    "driver.log": "413acb9c4a6fc0619cb236b4a9100e57866c654193ee5034a8957f4455fb122b",
+    "audio.log": "0248eb4d00fc421a265bf5589c6280d475a0ecdcc2bb9318abfc25cc5c27af27",
+    "status.log": "606658ca7a093c29475c98e93014feef0bba4e32d0468d41e15f22f82cd773ef",
+    "midi.log": "cde54aba3ad25e865d31e9591c31d477ad89d6a1677e3543d4fd3c592d93a4d4",
+    "trace.log": "9fbdab721af785b2d918e6285b1384c353d2aa5eaff6a9e29e66acb2c2b98604",
+    "signposts.xml": "51318a856aaae57893c905ac288cb6570810fdbbf216c69cbfc7621cad0e2862",
+    "thread-state.xml": "28a0b6fa606ced75f7ee1f5914c95fd4c6d16ee8453d8c7604e8efe46d188d53",
+    "clock-calibration.json": "dab95fa11d362ed596c1a060de11f6f58fc1c48fbeaba44dded0f37cf1ff0c61",
+    "owner-gap-evidence.json": "839b7a6279d2e5c4b21af95d825111e918716565f5689465dab95a82b68db49a"
+  }
+}
