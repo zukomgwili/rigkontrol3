@@ -13,6 +13,7 @@ static void commands(void) {
         {44100,24,128,{9,0,2,128,0,1}},
         {48000,24,136,{9,1,2,136,0,1}},
         {88200,24,176,{9,4,2,176,0,1}},
+        {96000,24,184,{9,2,2,184,0,1}},
         {96000,16,184,{9,2,1,184,0,1}},
         {192000,24,280,{9,3,2,24,1,1}}
     };
@@ -21,12 +22,17 @@ static void commands(void) {
         assert(rk3_audio_parameters(vectors[i].rate, vectors[i].bits,
                                     vectors[i].capacity, command));
         assert(memcmp(command, vectors[i].expected, 6) == 0);
+        uint16_t capacity=0;
+        assert(rk3_audio_capacity(vectors[i].rate,2,2,2,&capacity)&&capacity==vectors[i].capacity);
+        const uint8_t stopped[6]={9,255,255,vectors[i].expected[3],vectors[i].expected[4],1};
+        assert(rk3_audio_stop(capacity,command)&&memcmp(command,stopped,6)==0);
     }
     const uint8_t stop[] = {9,255,255,128,0,1};
     assert(rk3_audio_stop(128,command));
     assert(memcmp(command,stop,6)==0);
     memset(command,0xaa,6);
     assert(!rk3_audio_parameters(32000,24,128,command));
+    assert(!rk3_audio_parameters(176400,24,128,command));
     assert(!rk3_audio_parameters(48000,32,128,command));
     assert(!rk3_audio_parameters(48000,24,513,command));
     assert(!rk3_audio_stop(0,command));

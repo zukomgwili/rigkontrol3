@@ -712,3 +712,40 @@ No new live audio run was used for these source checks. Original rates, power,
 direct-monitor and sustained combined audio/MIDI qualification remain open.
 Controller Editor and private NI-agent recognition have been removed from the
 user's required scope; no such components are added by this patch.
+
+
+### Original sample-rate binding restored (0.2.8/build 13)
+
+The native HAL and sole USB owner now carry the original five-rate selection,
+with 44.1 kHz as the initial rate. The recovered command and timing values are:
+
+| Hz | NI rate code | Command capacity, bytes | Input latency, frames | Output latency / sample offset, frames |
+|---:|---:|---:|---:|---:|
+| 44100 | 0 | 128 | 64 | 128 |
+| 48000 | 1 | 136 | 68 | 136 |
+| 88200 | 4 | 176 | 88 | 176 |
+| 96000 | 2 | 184 | 92 | 184 |
+| 192000 | 3 | 280 | 140 | 280 |
+
+Nominal, physical and virtual format changes use the existing CoreAudio host
+configuration handshake. A transaction retains its USB generation and unique
+host action. Once host I/O is stopped and the worker confirms drain, one NI
+command 9 and its ACK commit the selection. Cancellation, a stale cohort or
+rejected parameters retain the previous selection. Publication and completion
+share the owner mutex so a timeout cannot report failure after a committed
+change. No compensating command or automatic format replay is added. Each new
+USB engine receives the committed rate before publication; normal start retains
+the original stop, priming, command retries and clock startup sequence.
+
+The packet capacity is a format-command value. Input descriptors remain eight
+512-byte reservations, outgoing lengths still follow actual input, and the
+16,384-frame live ring, USB calendar, USB-frame clock estimator and recovery
+rules are unchanged. Host PCM remains stereo Float32 with the existing physical
+24-bit conversion; there is no resampling or additional rate.
+
+Hardware-free tests exercise the actual HAL, worker and ISO paths, including
+fractional input counts and ring wrapping. They do not establish installed
+hardware acceptance at the four newly exposed rates. Build 12 remains installed
+with its completed 48 kHz physical and stability checks. The new candidate needs
+installation and the affected checks in `rigkontrol3-40h.3`. Source plans, review findings and
+actual test results are recorded in `rigkontrol3-40h.1`.

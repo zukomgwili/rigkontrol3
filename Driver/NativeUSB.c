@@ -2,6 +2,7 @@
 #include "NativeAudioISO.h"
 #include "NativeHostUSB.h"
 #include "InputGain.h"
+#include "AudioTiming.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOCFPlugIn.h>
 #include <IOKit/IOKitLib.h>
@@ -19,13 +20,14 @@
 
 enum { REPORT_HISTORY = 256, COMMAND_QUEUE = 32, COMMAND_TIMEOUT = 200,
        CONNECT_RETRY_MS = 1000, REPLY_TIMEOUT_MS = 3000, DRAIN_MS = 2000 };
-typedef enum { REQUEST_COMMAND, REQUEST_START, REQUEST_STOP } RequestKind;
+typedef enum { REQUEST_COMMAND, REQUEST_START, REQUEST_STOP, REQUEST_RATE } RequestKind;
 typedef struct Request {
     struct Request *next;
     RequestKind kind;
     uint8_t bytes[64];
     size_t length;
     uint64_t generation;
+    uint32_t sample_rate;
     double deadline;
     bool complete, cancelled;
     int32_t result;
@@ -93,6 +95,7 @@ struct rk3_usb_session {
     _Atomic(RetiredAudio *) audio;
     atomic_uint_fast64_t clock_generation;
     atomic_bool output_active;
+    uint32_t sample_rate; /* Session mutex; committed selection survives reconnect. */
     bool want_audio;
     RetiredAudio *retired;
     size_t retired_count;
@@ -264,11 +267,15 @@ static void set_audio_error(rk3_usb_session *session, int32_t code, const char *
 
 /* Setter and publication share this non-RT gate. A reconnect cannot overwrite
  * a newer desired output activity update after its setter has returned. */
-static void publish_audio(rk3_usb_session *session, RetiredAudio *context) {
+static int32_t publish_audio(rk3_usb_session *session, RetiredAudio *context) {
     pthread_mutex_lock(&session->mutex);
-    rk3_native_audio_iso_set_output_active(context->audio, atomic_load(&session->output_active));
-    atomic_store(&session->audio, context);
+    int32_t result=rk3_native_audio_iso_set_sample_rate(context->audio,session->sample_rate);
+    if(!result) {
+        rk3_native_audio_iso_set_output_active(context->audio, atomic_load(&session->output_active));
+        atomic_store(&session->audio, context);
+    }
     pthread_mutex_unlock(&session->mutex);
+    return result;
 }
 
 static void service_audio(rk3_usb_session *session) {
@@ -358,7 +365,8 @@ static void complete_locked(Request *request, int32_t result) {
 }
 
 static int32_t submit(rk3_usb_session *session, RequestKind kind,
-                      const uint8_t *bytes, size_t length, uint64_t generation, uint32_t timeout_ms) {
+                      const uint8_t *bytes, size_t length, uint64_t generation, uint32_t timeout_ms,
+                      uint32_t sample_rate) {
     if (session == NULL || timeout_ms == 0 || timeout_ms > 5000 || length > 64) return EINVAL;
     Request *request = calloc(1, sizeof(*request));
     if (request == NULL) return ENOMEM;
@@ -368,6 +376,7 @@ static int32_t submit(rk3_usb_session *session, RequestKind kind,
     request->references = 2;
     request->length = length;
     request->generation = generation;
+    request->sample_rate = sample_rate;
     if (length != 0) memcpy(request->bytes, bytes, length);
     double deadline = seconds_now() + (double)timeout_ms / 1000.0;
     request->deadline = deadline;
@@ -1016,7 +1025,15 @@ static bool connect_device(rk3_usb_session *session) {
     /* Old engines are unpublished before reconnect. Publish the new engine
      * only after its generation so clock readers cannot assign an old lease
      * to a newly published engine. Readers also recheck pointer+generation. */
-    publish_audio(session, retired);
+    result=publish_audio(session, retired);
+    if(result) {
+        /* This engine has never been visible or started. Release its mappings
+         * before interface cleanup; an unexpected busy result retains storage. */
+        if(rk3_native_audio_iso_destroy(audio)) {
+            session->retired=retired->next;--session->retired_count;free(retired);
+        }
+        set_error(session,result,"Cannot apply committed audio rate to replacement engine");return false;
+    }
     session->panic_seen = session->panic_pending = false;
     if (session->want_audio) {
         pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
@@ -1155,6 +1172,16 @@ static void complete_stops(rk3_usb_session *session, bool connected, double now)
 
 /* One request per outer turn: deferred stops never prevent subsequent MIDI or
  * LED commands from using the healthy shared command transport. */
+static int32_t rate_request_error_locked(rk3_usb_session *session,Request *request,RetiredAudio *context) {
+    if(request->cancelled||seconds_now()>=request->deadline)return ETIMEDOUT;
+    if(atomic_load(&session->closing)||!session->interface||!session->opened||session->transport_failed||
+       session->stopping_io||!context)return ENODEV;
+    if(!request->generation||request->generation!=session->generation||context->generation!=request->generation||
+       context!=atomic_load(&session->audio))return ESTALE;
+    if(session->status.state!=RK3_USB_READY||session->want_audio||session->stop_head||
+       rk3_native_audio_iso_running(context->audio)||!rk3_native_audio_iso_is_quiescent(context->audio))return kIOReturnBusy;
+    return 0;
+}
 static void process_one_request(rk3_usb_session *session, bool connected) {
     Request *request = NULL;
     pthread_mutex_lock(&session->mutex);
@@ -1179,7 +1206,7 @@ static void process_one_request(rk3_usb_session *session, bool connected) {
         session->active_request = request;
         int32_t result = cancelled ? ETIMEDOUT : connected ? 0 : ENODEV;
         rk3_native_audio_iso *audio = current_audio(session);
-        bool deferred = false;
+        bool deferred = false,completed = false;
         if (request->kind == REQUEST_STOP) {
             /* A stop revokes automatic restart even when the device is absent. */
             session->want_audio = false;
@@ -1189,6 +1216,42 @@ static void process_one_request(rk3_usb_session *session, bool connected) {
         if (result == 0 && request->kind == REQUEST_COMMAND) {
             if (request->generation == 0 || request->generation != session->generation) result = ESTALE;
             else if (!command_worker(session, request->bytes, request->length, REPLY_TIMEOUT_MS)) result = EIO;
+        } else if (result == 0 && request->kind == REQUEST_RATE) {
+            RetiredAudio *context=atomic_load(&session->audio);
+            uint16_t capacity=0;uint8_t command[RK3_AUDIO_PARAMS_BYTES];
+            pthread_mutex_lock(&session->mutex);
+            result=rate_request_error_locked(session,request,context);
+            if(!result&&(!rk3_audio_capacity(request->sample_rate,session->status.info.wire_mode,
+                (uint16_t)context->inputs,(uint16_t)context->outputs,&capacity)||
+                !rk3_audio_parameters(request->sample_rate,24,capacity,command)))result=EINVAL;
+            pthread_mutex_unlock(&session->mutex);
+            /* Original stopped format change is one command9 attempt. An ACK
+             * failure/cancellation never adds compensation or packet replay;
+             * the next normal start reasserts the last committed selection. */
+            bool attempted=result==0;
+            if(attempted&&!command_worker(session,command,sizeof(command),1200))result=EIO;
+            pthread_mutex_lock(&session->mutex);
+            if(request->cancelled||seconds_now()>=request->deadline)result=ETIMEDOUT;
+            else if(!result)result=rate_request_error_locked(session,request,context);
+            if(!result)result=rk3_native_audio_iso_set_sample_rate(context->audio,request->sample_rate);
+            if(!result) {
+                session->sample_rate=request->sample_rate;
+                session->status.error_code=0;session->status.error[0]='\0';
+            } else if(attempted&&session->status.state==RK3_USB_STOPPING&&
+                !atomic_load(&session->closing)&&session->interface&&session->opened&&!session->transport_failed&&
+                !session->stopping_io&&!session->command_recovering&&!session->pending_write&&!session->command_suspended&&
+                context==atomic_load(&session->audio)&&context->generation==request->generation&&
+                session->generation==request->generation&&!session->want_audio&&!session->stop_head&&
+                !rk3_native_audio_iso_running(context->audio)&&rk3_native_audio_iso_is_quiescent(context->audio)) {
+                /* command_worker marks a rejected format STOPPING. It did not
+                 * start this idle engine: retain its error and old selection,
+                 * while allowing a later explicit format request. */
+                session->status.state=RK3_USB_READY;
+            }
+            /* Commit and completion share the cancellation mutex. A caller
+             * cannot time out between changing the selection and its result. */
+            session->active_request=NULL;complete_locked(request,result);completed=true;
+            pthread_mutex_unlock(&session->mutex);
         } else if (result == 0 && request->kind == REQUEST_START) {
             pthread_mutex_lock(&session->mutex); session->status.state = RK3_USB_STARTING; pthread_mutex_unlock(&session->mutex);
             if(audio&&!rk3_native_audio_iso_running(audio))cancel_audio_clock_timer(session);
@@ -1233,7 +1296,7 @@ static void process_one_request(rk3_usb_session *session, bool connected) {
             }
         }
         session->active_request = NULL;
-        if (!deferred) { pthread_mutex_lock(&session->mutex); complete_locked(request, result); pthread_mutex_unlock(&session->mutex); }
+        if (!deferred&&!completed) { pthread_mutex_lock(&session->mutex); complete_locked(request, result); pthread_mutex_unlock(&session->mutex); }
     }
 }
 
@@ -1308,6 +1371,7 @@ rk3_usb_session *rk3_usb_open(char *error, size_t error_size) {
     atomic_init(&session->clock_generation, 0);
     atomic_init(&session->output_active, true);
     atomic_init(&session->rt_readers, 0);
+    session->sample_rate = RK3_AUDIO_DEFAULT_SAMPLE_RATE;
     session->status.state = RK3_USB_OPENING;
     pthread_t thread;
     pthread_attr_t attributes;
@@ -1370,7 +1434,7 @@ bool rk3_usb_info(rk3_usb_session *session, RK3NativeInfo *info) {
     if (session == NULL || info == NULL) return false;
     pthread_mutex_lock(&session->mutex);
     *info = (RK3NativeInfo){ .version = RK3_CONTROL_VERSION, .generation = session->generation,
-        .last_error = session->status.error_code, .sample_rate = 48000,
+        .last_error = session->status.error_code, .sample_rate = session->sample_rate,
         .audio_inputs = session->status.info.input_channels, .audio_outputs = session->status.info.output_channels,
         .midi_inputs = session->status.info.midi_inputs, .midi_outputs = session->status.info.midi_outputs,
         .wire_mode = session->status.info.wire_mode,
@@ -1443,7 +1507,7 @@ bool rk3_usb_command_for_generation(rk3_usb_session *session, const uint8_t *byt
     pthread_mutex_lock(&session->mutex);
     bool valid_port = !midi || bytes[1] < session->status.info.midi_outputs;
     pthread_mutex_unlock(&session->mutex);
-    return valid_port && generation != 0 && submit(session, REQUEST_COMMAND, bytes, length, generation, timeout_ms) == 0;
+    return valid_port && generation != 0 && submit(session, REQUEST_COMMAND, bytes, length, generation, timeout_ms, 0) == 0;
 }
 
 bool rk3_usb_command(rk3_usb_session *session, const uint8_t *bytes, size_t length, uint32_t timeout_ms) {
@@ -1512,8 +1576,13 @@ bool rk3_usb_set_audio_panic_handler(rk3_usb_session *session,
     return true;
 }
 
-int32_t rk3_usb_audio_start(rk3_usb_session *session, uint32_t timeout_ms) { return submit(session, REQUEST_START, NULL, 0, 0, timeout_ms); }
-int32_t rk3_usb_audio_stop(rk3_usb_session *session, uint32_t timeout_ms) { return submit(session, REQUEST_STOP, NULL, 0, 0, timeout_ms); }
+int32_t rk3_usb_audio_set_sample_rate(rk3_usb_session *session,uint64_t expected_generation,
+    uint32_t sample_rate,uint32_t timeout_ms) {
+    if(!session||!expected_generation||!rk3_audio_sample_rate_supported(sample_rate))return EINVAL;
+    return submit(session,REQUEST_RATE,NULL,0,expected_generation,timeout_ms,sample_rate);
+}
+int32_t rk3_usb_audio_start(rk3_usb_session *session, uint32_t timeout_ms) { return submit(session, REQUEST_START, NULL, 0, 0, timeout_ms, 0); }
+int32_t rk3_usb_audio_stop(rk3_usb_session *session, uint32_t timeout_ms) { return submit(session, REQUEST_STOP, NULL, 0, 0, timeout_ms, 0); }
 
 size_t rk3_usb_render_at(rk3_usb_session *session, const float *interleaved,
     uint64_t first_sample_frame, size_t frames) {

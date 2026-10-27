@@ -15,7 +15,7 @@
 #include "../NativeUSB.h"
 #include "../AudioTiming.h"
 
-enum { DEVICE=2, INPUT=3, OUTPUT=4, RATE=48000, PERIOD=16384, CLIENT_LIMIT=64 };
+enum { DEVICE=2, INPUT=3, OUTPUT=4, RATE=RK3_AUDIO_DEFAULT_SAMPLE_RATE, PERIOD=16384, CLIENT_LIMIT=64 };
 static AudioServerPlugInDriverInterface table;
 static AudioServerPlugInDriverInterface *interface=&table;
 static AudioServerPlugInDriverRef driver=&interface;
@@ -31,23 +31,100 @@ static dispatch_source_t monitor;
 static dispatch_queue_t device_control_queue;
 static atomic_bool configuration_pending;
 static atomic_int last_configuration_error;
+static _Atomic uint32_t sample_rate=RATE;
 #define RK3_AUDIO_RESTART_ACTION UINT64_C(0x726b33617564696f)
+typedef enum { CONFIGURATION_NONE,CONFIGURATION_RESTART,CONFIGURATION_RATE } ConfigurationKind;
+static struct {
+    ConfigurationKind kind;
+    uint64_t action,generation;
+    uint32_t rate;
+} pending_configuration;
+static uint64_t next_configuration_action=RK3_AUDIO_RESTART_ACTION;
+static _Atomic uint64_t rate_action_in_flight;
+static uint64_t last_rate_commit_action,last_rate_commit_generation;
+static bool deferred_panic;
+static uint64_t deferred_panic_generation;
+static RK3NativeInfo info(void);
+static void request_configuration(uint64_t action);
+/* All transaction fields except rate_action_in_flight are protected by control.
+ * The worker only captures that token and enqueues; it never waits for control. */
+static uint64_t begin_configuration_locked(ConfigurationKind kind,uint64_t generation,uint32_t rate) {
+    if(next_configuration_action==UINT64_MAX)return 0;
+    uint64_t action=next_configuration_action++;
+    pending_configuration.kind=kind;pending_configuration.action=action;
+    pending_configuration.generation=generation;pending_configuration.rate=rate;
+    atomic_store(&configuration_pending,true);
+    atomic_store(&rate_action_in_flight,kind==CONFIGURATION_RATE?action:0);return action;
+}
+static uint64_t finish_configuration_locked(int32_t error,bool committed) {
+    uint64_t retry=deferred_panic&&!committed?deferred_panic_generation:0;
+    deferred_panic=false;deferred_panic_generation=0;
+    memset(&pending_configuration,0,sizeof(pending_configuration));
+    atomic_store(&rate_action_in_flight,0);atomic_store(&configuration_pending,false);
+    atomic_store(&last_configuration_error,error);return retry;
+}
 /* NI panic pauses/resumes its host engine. The current host's configuration
  * handshake is the documented equivalent: it stops IO before Perform and
  * restarts outstanding IO afterward (AudioServerPlugIn.h71-77). */
 static void audio_panic_handler(void *context,uint64_t generation,int32_t error) {
     (void)context;(void)error;
-    if(!device_control_queue||atomic_exchange(&configuration_pending,true))return;
+    if(!device_control_queue)return;
+    uint64_t covered_rate_action=atomic_load(&rate_action_in_flight);
     dispatch_async(device_control_queue,^{
-        RK3NativeInfo current={0};
-        if(!usb||!host||!rk3_usb_info(usb,&current)||current.generation!=generation||
+        pthread_mutex_lock(&control);RK3NativeInfo current=info();
+        if(!usb||!host||current.generation!=generation||
            !(current.flags&RK3_NATIVE_CONNECTED)) {
-            atomic_store(&configuration_pending,false);return;
+            pthread_mutex_unlock(&control);return;
         }
-        OSStatus result=host->RequestDeviceConfigurationChange(host,DEVICE,RK3_AUDIO_RESTART_ACTION,NULL);
-        atomic_store(&last_configuration_error,result);
-        if(result)atomic_store(&configuration_pending,false);
+        /* A queued panic can reach this queue after its covering rate Perform.
+         * Preserve that identity instead of submitting a redundant restart. */
+        if(covered_rate_action&&last_rate_commit_generation==generation&&
+           covered_rate_action==last_rate_commit_action) {pthread_mutex_unlock(&control);return;}
+        if(pending_configuration.kind==CONFIGURATION_RATE) {
+            deferred_panic=true;deferred_panic_generation=generation;
+            pthread_mutex_unlock(&control);return;
+        }
+        if(pending_configuration.kind!=CONFIGURATION_NONE){pthread_mutex_unlock(&control);return;}
+        uint64_t action=begin_configuration_locked(CONFIGURATION_RESTART,generation,0);
+        pthread_mutex_unlock(&control);if(action)request_configuration(action);
     });
+}
+static void request_configuration(uint64_t action) {
+    pthread_mutex_lock(&control);
+    if(pending_configuration.action!=action||pending_configuration.kind==CONFIGURATION_NONE) {
+        pthread_mutex_unlock(&control);return;
+    }
+    RK3NativeInfo current=info();
+    if(!usb||!host||!(current.flags&RK3_NATIVE_CONNECTED)||current.generation!=pending_configuration.generation) {
+        uint64_t retry=finish_configuration_locked(kAudioHardwareNotRunningError,false);
+        pthread_mutex_unlock(&control);if(retry)audio_panic_handler(NULL,retry,0);return;
+    }
+    AudioServerPlugInHostRef owner=host;pthread_mutex_unlock(&control);
+    OSStatus result=owner->RequestDeviceConfigurationChange(owner,DEVICE,action,NULL);
+    pthread_mutex_lock(&control);
+    uint64_t retry=0;
+    /* The host may synchronously Perform/Abort and admit newer work before its
+     * request function returns. Its result belongs only to this exact token. */
+    if(result&&pending_configuration.kind!=CONFIGURATION_NONE&&pending_configuration.action==action)
+        retry=finish_configuration_locked(result,false);
+    pthread_mutex_unlock(&control);if(retry)audio_panic_handler(NULL,retry,0);
+}
+static OSStatus request_sample_rate(uint32_t rate) {
+    pthread_mutex_lock(&control);
+    if(pending_configuration.kind!=CONFIGURATION_NONE) {
+        RK3NativeInfo current=info();
+        bool same=pending_configuration.kind==CONFIGURATION_RATE&&pending_configuration.rate==rate&&
+            current.generation==pending_configuration.generation&&(current.flags&RK3_NATIVE_CONNECTED);
+        pthread_mutex_unlock(&control);return same?0:kAudioHardwareIllegalOperationError;
+    }
+    if(rate==atomic_load(&sample_rate)){pthread_mutex_unlock(&control);return 0;}
+    RK3NativeInfo current=info();
+    if(!usb||!host||!device_control_queue||!(current.flags&RK3_NATIVE_CONNECTED)) {
+        pthread_mutex_unlock(&control);return kAudioHardwareNotRunningError;
+    }
+    uint64_t action=begin_configuration_locked(CONFIGURATION_RATE,current.generation,rate);
+    pthread_mutex_unlock(&control);if(!action)return kAudioHardwareUnspecifiedError;
+    dispatch_async(device_control_queue,^{request_configuration(action);});return 0;
 }
 static mach_timebase_info_data_t timebase;
 static _Atomic uint64_t last_frame, last_time, last_seed;
@@ -58,13 +135,14 @@ static bool object(AudioObjectID value) { return value>=kAudioObjectPlugInObject
 static OSStatus checked(AudioServerPlugInDriverRef value, AudioObjectID value_id) {
     return valid(value)&&object(value_id)?0:kAudioHardwareBadObjectError;
 }
-static AudioStreamBasicDescription format(void) {
+static AudioStreamBasicDescription format_at(uint32_t rate) {
     AudioStreamBasicDescription f={0};
-    f.mSampleRate=RATE; f.mFormatID=kAudioFormatLinearPCM;
+    f.mSampleRate=rate; f.mFormatID=kAudioFormatLinearPCM;
     f.mFormatFlags=kAudioFormatFlagsNativeFloatPacked;
     f.mBytesPerPacket=8; f.mFramesPerPacket=1; f.mBytesPerFrame=8;
     f.mChannelsPerFrame=2; f.mBitsPerChannel=32; return f;
 }
+static AudioStreamBasicDescription format(void) { return format_at(atomic_load(&sample_rate)); }
 static RK3NativeInfo info(void) {
     RK3NativeInfo value={0}; value.version=RK3_CONTROL_VERSION;
     if(usb) (void)rk3_usb_info(usb,&value);
@@ -95,6 +173,24 @@ static OSStatus return_cfdata(const void *wire,size_t wire_size,void *output) {
 static void notify(AudioObjectPropertySelector selector) {
     AudioObjectPropertyAddress a={selector,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
     if(host) (void)host->PropertiesChanged(host,DEVICE,1,&a);
+}
+static void notify_rate_change(void) {
+    if(!host)return;
+    AudioObjectPropertyAddress device_changes[]={
+        {kAudioDevicePropertyNominalSampleRate,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain},
+        {RK3_PROPERTY_INFO,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain},
+        {kAudioDevicePropertyLatency,kAudioObjectPropertyScopeInput,kAudioObjectPropertyElementMain},
+        {kAudioDevicePropertyLatency,kAudioObjectPropertyScopeOutput,kAudioObjectPropertyElementMain},
+        {kAudioDevicePropertyLatency,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain},
+        {kAudioDevicePropertySafetyOffset,kAudioObjectPropertyScopeInput,kAudioObjectPropertyElementMain},
+        {kAudioDevicePropertySafetyOffset,kAudioObjectPropertyScopeOutput,kAudioObjectPropertyElementMain},
+        {kAudioDevicePropertySafetyOffset,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain}};
+    AudioObjectPropertyAddress stream_changes[]={
+        {kAudioStreamPropertyPhysicalFormat,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain},
+        {kAudioStreamPropertyVirtualFormat,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain}};
+    (void)host->PropertiesChanged(host,DEVICE,sizeof(device_changes)/sizeof(device_changes[0]),device_changes);
+    (void)host->PropertiesChanged(host,INPUT,2,stream_changes);
+    (void)host->PropertiesChanged(host,OUTPUT,2,stream_changes);
 }
 static HRESULT query(void *value, REFIID uuid, LPVOID *result) {
     if(!result) return E_POINTER;
@@ -156,18 +252,38 @@ static OSStatus client(AudioServerPlugInDriverRef v,AudioObjectID o,const AudioS
 static OSStatus configuration(AudioServerPlugInDriverRef v,AudioObjectID o,UInt64 action,void *data) {
     (void)data;
     if(!valid(v)||o!=DEVICE)return kAudioHardwareBadObjectError;
-    if(action!=RK3_AUDIO_RESTART_ACTION)return kAudioHardwareUnsupportedOperationError;
-    if(atomic_load(&running))return kAudioHardwareIllegalOperationError;
+    pthread_mutex_lock(&control);
+    if(pending_configuration.kind==CONFIGURATION_NONE||action!=pending_configuration.action) {
+        pthread_mutex_unlock(&control);return kAudioHardwareUnsupportedOperationError;
+    }
+    if(atomic_load(&running)){pthread_mutex_unlock(&control);return kAudioHardwareIllegalOperationError;}
+    RK3NativeInfo current=info();OSStatus result=0;bool changed=false;
+    if(!usb||!(current.flags&RK3_NATIVE_CONNECTED)||current.generation!=pending_configuration.generation)
+        result=kAudioHardwareNotRunningError;
+    else if(pending_configuration.kind==CONFIGURATION_RATE) {
+        /* The owner confirms the existing engine is idle/drained and the NI
+         * command was acknowledged before either published rate changes. */
+        result=rk3_usb_audio_set_sample_rate(usb,pending_configuration.generation,pending_configuration.rate,5000);
+        if(!result) {
+            atomic_store(&sample_rate,pending_configuration.rate);changed=true;
+            last_rate_commit_action=action;last_rate_commit_generation=current.generation;
+        }
+    }
     /* Host StopIO has drained only the audio engine. A subsequent Host StartIO
      * resets the NI rings/clock while the controller's USB lease remains valid. */
-    atomic_store(&configuration_pending,false);return 0;
+    uint64_t retry=finish_configuration_locked(result,result==0);
+    pthread_mutex_unlock(&control);
+    if(changed)notify_rate_change();if(retry)audio_panic_handler(NULL,retry,0);return result;
 }
 static OSStatus abort_configuration(AudioServerPlugInDriverRef v,AudioObjectID o,UInt64 action,void *data) {
     (void)data;
     if(!valid(v)||o!=DEVICE)return kAudioHardwareBadObjectError;
-    if(action!=RK3_AUDIO_RESTART_ACTION)return kAudioHardwareUnsupportedOperationError;
-    atomic_store(&last_configuration_error,kAudioHardwareUnspecifiedError);
-    atomic_store(&configuration_pending,false);return 0;
+    pthread_mutex_lock(&control);
+    if(pending_configuration.kind==CONFIGURATION_NONE||action!=pending_configuration.action) {
+        pthread_mutex_unlock(&control);return kAudioHardwareUnsupportedOperationError;
+    }
+    uint64_t retry=finish_configuration_locked(kAudioHardwareUnspecifiedError,false);
+    pthread_mutex_unlock(&control);if(retry)audio_panic_handler(NULL,retry,0);return 0;
 }
 static bool has(AudioObjectID o, const AudioObjectPropertyAddress *a) {
     if(!a||!object(o)||a->mElement!=kAudioObjectPropertyElementMain) return false;
@@ -242,11 +358,11 @@ static UInt32 size_for(AudioObjectID o,const AudioObjectPropertyAddress *a) {
         case kAudioObjectPropertyControlList:case kAudioPlugInPropertyBoxList:return 0;
         case kAudioDevicePropertyStreams:{AudioObjectID ids[2];return streams(a->mScope,ids)*sizeof(AudioObjectID);}
         case kAudioDevicePropertyNominalSampleRate:return sizeof(Float64);
-        case kAudioDevicePropertyAvailableNominalSampleRates:return sizeof(AudioValueRange);
+        case kAudioDevicePropertyAvailableNominalSampleRates:return RK3_AUDIO_RATE_COUNT*sizeof(AudioValueRange);
         case kAudioDevicePropertyPreferredChannelsForStereo:return 2*sizeof(UInt32);
         case kAudioDevicePropertyStreamConfiguration:return sizeof(AudioBufferList);
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:return sizeof(AudioStreamBasicDescription);
-        case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:return sizeof(AudioStreamRangedDescription);
+        case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:return RK3_AUDIO_RATE_COUNT*sizeof(AudioStreamRangedDescription);
         case kAudioObjectPropertyCustomPropertyInfoList:return 6*sizeof(AudioServerPlugInCustomPropertyInfo);
         case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:case RK3_PROPERTY_SPEC:case RK3_PROPERTY_USB_IDENTITY:return sizeof(CFPropertyListRef);
         default:return sizeof(UInt32);
@@ -288,22 +404,28 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         case kAudioDevicePropertyDeviceCanBeDefaultDevice:number=1;break;
         case kAudioDevicePropertyLatency:
             if(o==DEVICE)number=a->mScope==kAudioObjectPropertyScopeInput?
-                RK3_AUDIO_INPUT_LATENCY_FRAMES:RK3_AUDIO_OUTPUT_LATENCY_FRAMES;
+                rk3_audio_input_latency_frames(atomic_load(&sample_rate)):rk3_audio_output_latency_frames(atomic_load(&sample_rate));
             break;
-        case kAudioDevicePropertySafetyOffset:number=RK3_AUDIO_SAMPLE_OFFSET_FRAMES;break;
+        case kAudioDevicePropertySafetyOffset:number=rk3_audio_sample_offset_frames(atomic_load(&sample_rate));break;
         case kAudioDevicePropertyZeroTimeStampPeriod:number=PERIOD;break;
         case kAudioDevicePropertyClockAlgorithm:number=kAudioDeviceClockAlgorithmRaw;break;
         case kAudioDevicePropertyClockIsStable:number=0;break;
         case kAudioDevicePropertyPreferredChannelsForStereo:{UInt32 channels[]={1,2};memcpy(out,channels,sizeof(channels));return 0;}
-        case kAudioDevicePropertyNominalSampleRate:{Float64 rate=RATE;memcpy(out,&rate,sizeof(rate));return 0;}
-        case kAudioDevicePropertyAvailableNominalSampleRates:{AudioValueRange range={RATE,RATE};memcpy(out,&range,sizeof(range));return 0;}
+        case kAudioDevicePropertyNominalSampleRate:{Float64 rate=atomic_load(&sample_rate);memcpy(out,&rate,sizeof(rate));return 0;}
+        case kAudioDevicePropertyAvailableNominalSampleRates:{
+            AudioValueRange ranges[RK3_AUDIO_RATE_COUNT];
+            for(unsigned i=0;i<RK3_AUDIO_RATE_COUNT;++i){Float64 rate=rk3_audio_sample_rate_at(i);ranges[i]=(AudioValueRange){rate,rate};}
+            memcpy(out,ranges,sizeof(ranges));return 0;}
         case kAudioDevicePropertyStreamConfiguration:{AudioBufferList list={1,{{2,0,NULL}}};memcpy(out,&list,sizeof(list));return 0;}
         case kAudioStreamPropertyIsActive:number=atomic_load(o==INPUT?&input_active:&output_active);break;
         case kAudioStreamPropertyStartingChannel:number=1;break;
         case kAudioStreamPropertyDirection:number=o==INPUT;break;
         case kAudioStreamPropertyTerminalType:number=kAudioStreamTerminalTypeLine;break;
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:{AudioStreamBasicDescription f=format();memcpy(out,&f,sizeof(f));return 0;}
-        case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:{AudioStreamRangedDescription f={format(),{RATE,RATE}};memcpy(out,&f,sizeof(f));return 0;}
+        case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:{
+            AudioStreamRangedDescription formats[RK3_AUDIO_RATE_COUNT];
+            for(unsigned i=0;i<RK3_AUDIO_RATE_COUNT;++i){uint32_t rate=rk3_audio_sample_rate_at(i);formats[i]=(AudioStreamRangedDescription){format_at(rate),{rate,rate}};}
+            memcpy(out,formats,sizeof(formats));return 0;}
         case kAudioObjectPropertyCustomPropertyInfoList:{
             AudioServerPlugInCustomPropertyInfo custom[]={
                 {RK3_PROPERTY_INFO,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeNone},
@@ -386,7 +508,12 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         if(command->version!=RK3_CONTROL_VERSION||(!midi&&!leds))return kAudioHardwareIllegalOperationError;
         return usb&&rk3_usb_command_for_generation(usb,command->bytes,command->length,lease->generation,500)?0:kAudioHardwareUnspecifiedError;
     }
-    if(a->mSelector==kAudioDevicePropertyNominalSampleRate)return *(const Float64 *)data==RATE?0:kAudioHardwareUnsupportedOperationError;
+    if(a->mSelector==kAudioDevicePropertyNominalSampleRate) {
+        Float64 rate;memcpy(&rate,data,sizeof(rate));
+        if(!isfinite(rate)||rate<0||rate>UINT32_MAX||!rk3_audio_sample_rate_supported((uint32_t)rate)||rate!=(Float64)(uint32_t)rate)
+            return kAudioHardwareUnsupportedOperationError;
+        return request_sample_rate((uint32_t)rate);
+    }
     if(a->mSelector==kAudioStreamPropertyIsActive) {
         UInt32 active=0;memcpy(&active,data,sizeof(active));if(active>1)return kAudioHardwareIllegalOperationError;
         atomic_store(o==INPUT?&input_active:&output_active,active!=0);
@@ -394,11 +521,14 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         AudioObjectPropertyAddress changed={kAudioStreamPropertyIsActive,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
         if(host)(void)host->PropertiesChanged(host,o,1,&changed);return 0;
     }
+    AudioStreamBasicDescription requested;memcpy(&requested,data,sizeof(requested));
     AudioStreamBasicDescription expected=format();
-    const AudioStreamBasicDescription *requested=data;
-    return requested->mSampleRate==expected.mSampleRate&&requested->mFormatID==expected.mFormatID&&
-        requested->mFormatFlags==expected.mFormatFlags&&requested->mBytesPerPacket==8&&requested->mFramesPerPacket==1&&
-        requested->mBytesPerFrame==8&&requested->mChannelsPerFrame==2&&requested->mBitsPerChannel==32?0:kAudioHardwareUnsupportedOperationError;
+    Float64 rate=requested.mSampleRate;
+    if(!isfinite(rate)||rate<0||rate>UINT32_MAX||rate!=(Float64)(uint32_t)rate||!rk3_audio_sample_rate_supported((uint32_t)rate)||
+        requested.mFormatID!=expected.mFormatID||requested.mFormatFlags!=expected.mFormatFlags||requested.mBytesPerPacket!=8||
+        requested.mFramesPerPacket!=1||requested.mBytesPerFrame!=8||requested.mChannelsPerFrame!=2||requested.mBitsPerChannel!=32||requested.mReserved!=0)
+        return kAudioHardwareUnsupportedOperationError;
+    return request_sample_rate((uint32_t)rate);
 }
 static OSStatus start(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
     if(!valid(v)||o!=DEVICE)return kAudioHardwareBadObjectError;

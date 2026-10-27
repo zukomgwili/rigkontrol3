@@ -65,6 +65,12 @@ int main(int argc,char **argv){
         if(info.flags&(RK3_NATIVE_CONNECTED|RK3_NATIVE_FAILED))break;pause_ms(10);
     }
     if(!(info.flags&RK3_NATIVE_CONNECTED)){fprintf(stderr,"Driver connection failed:%d flags%u\n",info.last_error,info.flags);return 1;}
+    Float64 nominal=0;size=0;a=(AudioObjectPropertyAddress){kAudioDevicePropertyNominalSampleRate,kAudioObjectPropertyScopeGlobal,0};
+    if(!rk3_audio_sample_rate_supported(info.sample_rate)||
+       (*driver)->GetPropertyData(driver,device,0,&a,0,NULL,sizeof(nominal),&size,&nominal)||
+       size!=sizeof(nominal)||nominal!=(Float64)info.sample_rate) {
+        fprintf(stderr,"Driver rate metadata is invalid or inconsistent\n");return 1;
+    }
     OSStatus error=(*driver)->StartIO(driver,device,42);
     if(error){fprintf(stderr,"StartIO:%d\n",(int)error);return 1;}
     float input[512],silence[512]={0};uint64_t calls=0;long double energy=0;
@@ -78,9 +84,9 @@ int main(int argc,char **argv){
         if(!error){
             uint64_t tick=mach_absolute_time();
             long double elapsed=tick>=timestamp?(long double)(tick-timestamp)*timebase.numer/timebase.denom/1e9L:0;
-            Float64 current=last_frame+(Float64)(elapsed*RK3_AUDIO_SAMPLE_RATE);
-            cycle.mInputTime.mSampleTime=floor(current)-RK3_AUDIO_SAMPLE_OFFSET_FRAMES-RK3_AUDIO_INPUT_LATENCY_FRAMES;
-            cycle.mOutputTime.mSampleTime=floor(current)+RK3_AUDIO_SAMPLE_OFFSET_FRAMES+RK3_AUDIO_OUTPUT_LATENCY_FRAMES;
+            Float64 current=last_frame+(Float64)(elapsed*info.sample_rate);
+            cycle.mInputTime.mSampleTime=floor(current)-rk3_audio_sample_offset_frames(info.sample_rate)-rk3_audio_input_latency_frames(info.sample_rate);
+            cycle.mOutputTime.mSampleTime=floor(current)+rk3_audio_sample_offset_frames(info.sample_rate)+rk3_audio_output_latency_frames(info.sample_rate);
         }
         if(!error)error=(*driver)->DoIOOperation(driver,device,3,42,kAudioServerPlugInIOOperationReadInput,256,&cycle,input,NULL);
         if(!error)error=(*driver)->DoIOOperation(driver,device,4,42,kAudioServerPlugInIOOperationWriteMix,256,&cycle,silence,NULL);

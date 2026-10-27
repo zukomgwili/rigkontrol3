@@ -94,7 +94,7 @@ bool rk3_usb_command_for_generation(rk3_usb_session *session, const uint8_t *byt
                      size_t length, uint64_t generation, uint32_t timeout_ms);
 bool rk3_usb_write_midi(rk3_usb_session *session, uint8_t port,
                         const uint8_t *bytes, size_t length, uint32_t timeout_ms);
-/* First hardware format: 48000 Hz, stereo Float32 host PCM, NI wire mode2.
+/* Stereo Float32 host PCM, NI wire mode2. The initial selection is 44100 Hz.
  * Start returns zero only after the real USB audio startup completes.
  * Data functions are bounded/nonblocking; they return actual addressed frames
  * written or captured; unavailable capture frames are zero-filled. A zero return
@@ -119,6 +119,12 @@ int32_t rk3_usb_input_gain_set(rk3_usb_session *session,uint64_t generation,uint
  * applied before publishing each engine. It pins the engine and invokes only
  * the ISO atomic setter; no USB transfer is issued. */
 void rk3_usb_set_output_active(rk3_usb_session *session, bool active);
+/* Non-RT, stopped/drained worker transaction. Only the five NI rates are
+ * accepted. One command9 ACK commits the rate; cancellation/failure leaves the
+ * previous selection. expected_generation is the caller's USB cohort lease;
+ * the committed selection survives USB reconnection. */
+int32_t rk3_usb_audio_set_sample_rate(rk3_usb_session *session, uint64_t expected_generation,
+    uint32_t sample_rate, uint32_t timeout_ms);
 int32_t rk3_usb_audio_start(rk3_usb_session *session, uint32_t timeout_ms);
 int32_t rk3_usb_audio_stop(rk3_usb_session *session, uint32_t timeout_ms);
 /* HAL uses host target sample positions. These bounded paths make no USB call,

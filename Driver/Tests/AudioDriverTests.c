@@ -29,6 +29,13 @@ static size_t captured_frames,rendered_frames;
 static rk3_usb_audio_panic_handler registered_panic;
 static void *registered_context;
 static bool fail_start, fail_output, mock_running, mock_connected=true;
+static uint32_t mock_sample_rate=RATE;
+static unsigned rate_changes;
+static int32_t rate_error;
+static bool mock_draining;
+static int32_t stop_error;
+static bool reconnect_at_rate_handoff;
+static uint64_t rate_generation_argument;
 static uint64_t mock_generation=7;
 static int32_t mock_spec_error;
 static rk3_usb_clock_snapshot mock_clock={.sample_frame=0,.host_time=1000000000,.seed=1,.zero_sample_frame=0,.zero_host_time=1000000000};
@@ -39,7 +46,7 @@ void rk3_usb_close(rk3_usb_session *s){assert(s==&mock_session&&!spec_owner_acti
 bool rk3_usb_info(rk3_usb_session *s,RK3NativeInfo *value){
     (void)s;memset(value,0,sizeof(*value));value->version=1;value->flags=(mock_connected?RK3_NATIVE_CONNECTED:0)|(mock_running?RK3_NATIVE_AUDIO_RUNNING:0);
     value->generation=mock_generation;value->midi_inputs=1;value->midi_outputs=1;
-    value->audio_inputs=value->audio_outputs=2;value->sample_rate=RATE;value->wire_mode=2;return true;
+    value->audio_inputs=value->audio_outputs=2;value->sample_rate=mock_sample_rate;value->wire_mode=2;return true;
 }
 int32_t rk3_usb_copy_spec(rk3_usb_session *s,uint64_t generation,uint8_t raw[14]) {
     assert(s==&mock_session&&generation);
@@ -88,7 +95,16 @@ bool rk3_usb_command_for_generation(rk3_usb_session *s,const uint8_t *b,size_t n
 }
 bool rk3_usb_clock(rk3_usb_session *s,rk3_usb_clock_snapshot *c){(void)s;*c=mock_clock;return true;}
 int32_t rk3_usb_audio_start(rk3_usb_session *s,uint32_t timeout){(void)s;(void)timeout;++starts;if(!fail_start)mock_running=true;return fail_start?-1:0;}
-int32_t rk3_usb_audio_stop(rk3_usb_session *s,uint32_t timeout){(void)s;(void)timeout;++stops;mock_running=false;return 0;}
+int32_t rk3_usb_audio_stop(rk3_usb_session *s,uint32_t timeout){(void)s;(void)timeout;++stops;mock_running=false;return stop_error;}
+int32_t rk3_usb_audio_set_sample_rate(rk3_usb_session *s,uint64_t expected_generation,uint32_t rate,uint32_t timeout){
+    assert(s==&mock_session&&timeout==5000);++rate_changes;rate_generation_argument=expected_generation;
+    if(reconnect_at_rate_handoff){reconnect_at_rate_handoff=false;++mock_generation;}
+    if(expected_generation!=mock_generation)return ESTALE;
+    if(!mock_connected)return ENODEV;
+    if(mock_running||mock_draining)return EBUSY;
+    if(rate_error)return rate_error;
+    mock_sample_rate=rate;return 0;
+}
 void rk3_usb_set_output_active(rk3_usb_session *s,bool active){assert(s==&mock_session);backend_output_active=active;++output_active_changes;}
 bool rk3_usb_set_audio_panic_handler(rk3_usb_session *s,rk3_usb_audio_panic_handler handler,void *context){assert(s==&mock_session);if(fail_registration)return false;registered_panic=handler;registered_context=context;return true;}
 size_t rk3_usb_capture_at(rk3_usb_session *s,float *samples,uint64_t first,size_t n){
@@ -137,28 +153,28 @@ static void properties(void){
     assert(table.GetPropertyDataSize(driver,INPUT,0,&a,0,NULL,&size)==0&&size==sizeof(AudioStreamBasicDescription));
     AudioStreamBasicDescription f={0};
     assert(table.GetPropertyData(driver,INPUT,0,&a,0,NULL,sizeof(f),&written,&f)==0);
-    assert(f.mSampleRate==48000&&f.mChannelsPerFrame==2&&f.mBytesPerFrame==8);
+    assert(f.mSampleRate==44100&&f.mChannelsPerFrame==2&&f.mBytesPerFrame==8);
     unsigned char guard[sizeof(f)];memset(guard,0x5a,sizeof(guard));
     assert(table.GetPropertyData(driver,INPUT,0,&a,0,NULL,sizeof(f)-1,&written,guard)==kAudioHardwareBadPropertySizeError);
     for(size_t i=0;i<sizeof(guard);++i)assert(guard[i]==0x5a);
-    f.mSampleRate=44100;
+    f.mSampleRate=32000;
     assert(table.SetPropertyData(driver,INPUT,0,&a,0,NULL,sizeof(f),&f)==kAudioHardwareUnsupportedOperationError);
     a.mSelector=kAudioDevicePropertyStreams;a.mScope=kAudioObjectPropertyScopeInput;
     AudioObjectID ids[2]={0};
     assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(ids),&written,ids)==0&&written==4&&ids[0]==INPUT);
     a.mSelector=kAudioDevicePropertyLatency;a.mScope=kAudioObjectPropertyScopeInput;
     UInt32 latency=99;
-    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==68);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==64);
     a.mScope=kAudioObjectPropertyScopeOutput;
-    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==136);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==128);
     a.mScope=kAudioObjectPropertyScopeGlobal;
-    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==136);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==128);
     assert(table.GetPropertyData(driver,INPUT,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==0);
     assert(table.GetPropertyData(driver,OUTPUT,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==0);
     a.mSelector=kAudioDevicePropertySafetyOffset;
     for(unsigned i=0;i<3;++i){
         a.mScope=i==0?kAudioObjectPropertyScopeInput:i==1?kAudioObjectPropertyScopeOutput:kAudioObjectPropertyScopeGlobal;
-        assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==136);
+        assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(latency),&written,&latency)==0&&latency==128);
     }
     a.mSelector=RK3_PROPERTY_COMMAND;a.mScope=kAudioObjectPropertyScopeGlobal;
     RK3NativeCommand command={1,4,{7,0,1,0xf8}};
@@ -661,13 +677,44 @@ static OSStatus configuration_result;
 static UInt64 requested_action;
 static char queue_key;
 static AudioServerPlugInHostInterface fake_host;
+static struct { AudioObjectID object;AudioObjectPropertyAddress address; } notifications[256];
+static unsigned notification_count;
+static bool inspect_rate_notifications,reentrant_perform,panic_during_request;
+static Float64 reentrant_follow_rate;
+static Float64 nominal_rate(void) {
+    AudioObjectPropertyAddress a={kAudioDevicePropertyNominalSampleRate,kAudioObjectPropertyScopeGlobal,0};
+    Float64 value=0;UInt32 written=0;
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(value),&written,&value)==0&&written==sizeof(value));return value;
+}
+static OSStatus nominal_set(Float64 value) {
+    AudioObjectPropertyAddress a={kAudioDevicePropertyNominalSampleRate,kAudioObjectPropertyScopeGlobal,0};
+    return table.SetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(value),&value);
+}
 static OSStatus changed(AudioServerPlugInHostRef owner,AudioObjectID object_id,UInt32 n,const AudioObjectPropertyAddress *addresses){
-    assert(owner==&fake_host&&object_id==DEVICE&&n==1&&addresses);return 0;
+    assert(owner==&fake_host&&(object_id==DEVICE||object_id==INPUT||object_id==OUTPUT)&&n&&addresses);
+    assert(pthread_mutex_trylock(&control)==0);pthread_mutex_unlock(&control);
+    for(UInt32 i=0;i<n;++i){assert(notification_count<256);notifications[notification_count].object=object_id;notifications[notification_count++].address=addresses[i];}
+    if(inspect_rate_notifications) {
+        assert(nominal_rate()==mock_sample_rate); /* Reenter a public property getter. */
+        assert(nominal_set(mock_sample_rate)==0); /* And the same-rate setter. */
+    }
+    return 0;
 }
 static OSStatus request_change(AudioServerPlugInHostRef owner,AudioObjectID object_id,UInt64 action,void *data){
     assert(owner==&fake_host&&object_id==DEVICE&&data==NULL);
     assert(dispatch_get_specific(&queue_key)==&queue_key); /* Enqueued off USB worker. */
-    ++configuration_requests;requested_action=action;return configuration_result;
+    assert(pthread_mutex_trylock(&control)==0);pthread_mutex_unlock(&control);
+    ++configuration_requests;requested_action=action;OSStatus result=configuration_result;
+    if(panic_during_request) {
+        panic_during_request=false;configuration_result=0;
+        assert(registered_panic);registered_panic(registered_context,mock_generation,kIOReturnIsoTooOld);
+    }
+    if(reentrant_perform) {
+        reentrant_perform=false;configuration_result=0;
+        assert(table.PerformDeviceConfigurationChange(driver,DEVICE,action,NULL)==0);
+        if(reentrant_follow_rate){Float64 rate=reentrant_follow_rate;reentrant_follow_rate=0;assert(nominal_set(rate)==0);}
+    }
+    return result;
 }
 static void flush_configuration_queue(void){dispatch_sync(device_control_queue,^{ });}
 static void trigger_panic(uint64_t generation){
@@ -683,7 +730,7 @@ static void panic_handshake(void){
     assert(table.StartIO(driver,DEVICE,77)==0);
     unsigned initial_starts=starts,initial_stops=stops;
     trigger_panic(mock_generation);trigger_panic(mock_generation);flush_configuration_queue();
-    assert(configuration_requests==1&&requested_action==RK3_AUDIO_RESTART_ACTION);
+    assert(configuration_requests==1&&requested_action==pending_configuration.action&&pending_configuration.kind==CONFIGURATION_RESTART);
     assert(atomic_load(&configuration_pending)&&starts==initial_starts&&stops==initial_stops);
     assert(table.PerformDeviceConfigurationChange(driver,DEVICE,requested_action,NULL)==kAudioHardwareIllegalOperationError);
     assert(atomic_load(&configuration_pending));
@@ -694,7 +741,7 @@ static void panic_handshake(void){
     assert(table.StopIO(driver,DEVICE,77)==0);
     trigger_panic(mock_generation);flush_configuration_queue();
     assert(configuration_requests==2&&atomic_load(&configuration_pending));
-    assert(table.AbortDeviceConfigurationChange(driver,DEVICE,RK3_AUDIO_RESTART_ACTION,NULL)==0);
+    assert(table.AbortDeviceConfigurationChange(driver,DEVICE,requested_action,NULL)==0);
     assert(!atomic_load(&configuration_pending)&&atomic_load(&last_configuration_error)!=0);
     configuration_result=kAudioHardwareUnspecifiedError;
     trigger_panic(mock_generation);flush_configuration_queue();
@@ -702,7 +749,7 @@ static void panic_handshake(void){
     assert(atomic_load(&last_configuration_error)==configuration_result);
     configuration_result=0;trigger_panic(mock_generation);flush_configuration_queue();
     assert(configuration_requests==4&&atomic_load(&configuration_pending));
-    assert(table.AbortDeviceConfigurationChange(driver,DEVICE,RK3_AUDIO_RESTART_ACTION,NULL)==0);
+    assert(table.AbortDeviceConfigurationChange(driver,DEVICE,requested_action,NULL)==0);
     /* A USB generation can change while the callback waits on the control
      * queue. Drop that stale request before touching the host configuration. */
     dispatch_suspend(device_control_queue);trigger_panic(mock_generation);++mock_generation;
@@ -715,8 +762,158 @@ static void panic_handshake(void){
     assert(rk3_usb_set_audio_panic_handler(&mock_session,NULL,NULL));
     flush_configuration_queue();dispatch_release(device_control_queue);device_control_queue=NULL;host=NULL;
 }
+static const struct {uint32_t rate,input,output,offset;} rate_cases[]={
+    {44100,64,128,128},{48000,68,136,136},{88200,88,176,176},{96000,92,184,184},{192000,140,280,280}};
+static AudioStreamBasicDescription literal_format(uint32_t rate) {
+    AudioStreamBasicDescription value={0};value.mSampleRate=rate;value.mFormatID=kAudioFormatLinearPCM;
+    value.mFormatFlags=kAudioFormatFlagsNativeFloatPacked;value.mBytesPerPacket=8;value.mFramesPerPacket=1;
+    value.mBytesPerFrame=8;value.mChannelsPerFrame=2;value.mBitsPerChannel=32;return value;
+}
+static void assert_rate_values(unsigned index) {
+    assert(index<5);uint32_t rate=rate_cases[index].rate;assert(nominal_rate()==rate&&mock_sample_rate==rate);
+    for(unsigned object_index=0;object_index<2;++object_index)for(unsigned property=0;property<2;++property) {
+        AudioObjectPropertyAddress a={property?kAudioStreamPropertyPhysicalFormat:kAudioStreamPropertyVirtualFormat,kAudioObjectPropertyScopeGlobal,0};
+        AudioStreamBasicDescription value={0},expected=literal_format(rate);UInt32 written=0;
+        assert(table.GetPropertyData(driver,object_index?OUTPUT:INPUT,0,&a,0,NULL,sizeof(value),&written,&value)==0);
+        assert(memcmp(&value,&expected,sizeof(value))==0);
+    }
+    for(unsigned scope=0;scope<3;++scope) {
+        AudioObjectPropertyScope scopes[]={kAudioObjectPropertyScopeInput,kAudioObjectPropertyScopeOutput,kAudioObjectPropertyScopeGlobal};
+        AudioObjectPropertyAddress a={kAudioDevicePropertyLatency,scopes[scope],0};UInt32 value=0,written=0;
+        assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(value),&written,&value)==0);
+        assert(value==(scope?rate_cases[index].output:rate_cases[index].input));
+        a.mSelector=kAudioDevicePropertySafetyOffset;
+        assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(value),&written,&value)==0&&value==rate_cases[index].offset);
+    }
+}
+static void rate_metadata_test(void) {
+    AudioObjectPropertyAddress a={kAudioDevicePropertyAvailableNominalSampleRates,kAudioObjectPropertyScopeGlobal,0};
+    AudioValueRange ranges[5];UInt32 size=0,written=0;
+    assert(table.GetPropertyDataSize(driver,DEVICE,0,&a,0,NULL,&size)==0&&size==sizeof(ranges));
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(ranges),&written,ranges)==0&&written==sizeof(ranges));
+    for(unsigned i=0;i<5;++i)assert(ranges[i].mMinimum==rate_cases[i].rate&&ranges[i].mMaximum==rate_cases[i].rate);
+    for(unsigned object_index=0;object_index<2;++object_index)for(unsigned property=0;property<2;++property) {
+        AudioStreamRangedDescription formats[5];AudioObjectID object_id=object_index?OUTPUT:INPUT;
+        a.mSelector=property?kAudioStreamPropertyAvailablePhysicalFormats:kAudioStreamPropertyAvailableVirtualFormats;
+        assert(table.GetPropertyDataSize(driver,object_id,0,&a,0,NULL,&size)==0&&size==sizeof(formats));
+        assert(table.GetPropertyData(driver,object_id,0,&a,0,NULL,sizeof(formats),&written,formats)==0&&written==sizeof(formats));
+        for(unsigned i=0;i<5;++i){AudioStreamBasicDescription expected=literal_format(rate_cases[i].rate);
+            assert(memcmp(&formats[i].mFormat,&expected,sizeof(expected))==0&&formats[i].mSampleRateRange.mMinimum==rate_cases[i].rate&&formats[i].mSampleRateRange.mMaximum==rate_cases[i].rate);}
+        memset(formats,0x5a,sizeof(formats));written=0xabcdef;
+        assert(table.GetPropertyData(driver,object_id,0,&a,0,NULL,sizeof(formats)-1,&written,formats)==kAudioHardwareBadPropertySizeError&&written==0xabcdef);
+        const uint8_t *bytes=(const uint8_t *)formats;for(size_t i=0;i<sizeof(formats);++i)assert(bytes[i]==0x5a);
+    }
+    assert_rate_values(0);
+}
+static uint64_t rate_request(Float64 rate) {
+    assert(nominal_set(rate)==0);flush_configuration_queue();assert(atomic_load(&configuration_pending));return requested_action;
+}
+static void assert_rate_notifications(void) {
+    const AudioObjectPropertySelector selectors[]={kAudioDevicePropertyNominalSampleRate,RK3_PROPERTY_INFO,
+        kAudioDevicePropertyLatency,kAudioDevicePropertyLatency,kAudioDevicePropertyLatency,
+        kAudioDevicePropertySafetyOffset,kAudioDevicePropertySafetyOffset,kAudioDevicePropertySafetyOffset,
+        kAudioStreamPropertyPhysicalFormat,kAudioStreamPropertyVirtualFormat,kAudioStreamPropertyPhysicalFormat,kAudioStreamPropertyVirtualFormat};
+    const AudioObjectPropertyScope scopes[]={kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyScopeInput,kAudioObjectPropertyScopeOutput,kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyScopeInput,kAudioObjectPropertyScopeOutput,kAudioObjectPropertyScopeGlobal,
+        kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyScopeGlobal};
+    assert(notification_count==12);
+    for(unsigned i=0;i<12;++i)assert(notifications[i].object==(i<8?DEVICE:i<10?INPUT:OUTPUT)&&
+        notifications[i].address.mSelector==selectors[i]&&notifications[i].address.mScope==scopes[i]&&notifications[i].address.mElement==0);
+}
+static void rate_commit(uint64_t action,unsigned index) {
+    notification_count=0;inspect_rate_notifications=true;
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,action,NULL)==0);
+    inspect_rate_notifications=false;assert_rate_values(index);assert_rate_notifications();assert(!atomic_load(&configuration_pending));
+}
+static void rate_handshake(void) {
+    fake_host=(AudioServerPlugInHostInterface){.PropertiesChanged=changed,.RequestDeviceConfigurationChange=request_change};
+    host=&fake_host;device_control_queue=dispatch_queue_create("rk3.fake.host.rates",DISPATCH_QUEUE_SERIAL);
+    dispatch_queue_set_specific(device_control_queue,&queue_key,&queue_key,NULL);configuration_result=0;configuration_requests=0;
+    assert(rk3_usb_set_audio_panic_handler(&mock_session,audio_panic_handler,NULL));
+    assert(!atomic_load(&running)&&!mock_running);assert(nominal_set(44100)==0);flush_configuration_queue();assert(configuration_requests==0&&rate_changes==0);
+    const Float64 invalid[]={NAN,INFINITY,-INFINITY,-1,0,32000,44100.5,4294967296.0};
+    for(unsigned i=0;i<sizeof(invalid)/sizeof(invalid[0]);++i)assert(nominal_set(invalid[i])==kAudioHardwareUnsupportedOperationError);
+    AudioObjectPropertyAddress a={kAudioStreamPropertyVirtualFormat,kAudioObjectPropertyScopeGlobal,0};
+    AudioStreamBasicDescription invalid_format=literal_format(48000);invalid_format.mChannelsPerFrame=1;
+    assert(table.SetPropertyData(driver,INPUT,0,&a,0,NULL,sizeof(invalid_format),&invalid_format)==kAudioHardwareUnsupportedOperationError);
+    invalid_format=literal_format(48000);invalid_format.mReserved=1;
+    assert(table.SetPropertyData(driver,INPUT,0,&a,0,NULL,sizeof(invalid_format),&invalid_format)==kAudioHardwareUnsupportedOperationError);
+    invalid_format=literal_format(48000);invalid_format.mSampleRate=NAN;
+    assert(table.SetPropertyData(driver,INPUT,0,&a,0,NULL,sizeof(invalid_format),&invalid_format)==kAudioHardwareUnsupportedOperationError);
+    flush_configuration_queue();assert(configuration_requests==0&&rate_changes==0);
+    /* Exercise all four stream-format setter routes and the nominal route. */
+    for(unsigned i=0;i<5;++i) {
+        unsigned index=(i+1)%5;Float64 old=nominal_rate();unsigned requests=configuration_requests;
+        if(i<4) {
+            a.mSelector=i<2?kAudioStreamPropertyVirtualFormat:kAudioStreamPropertyPhysicalFormat;
+            AudioStreamBasicDescription value=literal_format(rate_cases[index].rate);
+            assert(table.SetPropertyData(driver,i%2?OUTPUT:INPUT,0,&a,0,NULL,sizeof(value),&value)==0);
+        } else assert(nominal_set(rate_cases[index].rate)==0);
+        assert(nominal_rate()==old);flush_configuration_queue();assert(configuration_requests==requests+1);
+        uint64_t action=requested_action;assert(nominal_rate()==old);rate_commit(action,index);
+    }
+    /* Duplicate requests coalesce; conflicts and stale callbacks cannot commit. */
+    uint64_t first=rate_request(48000);unsigned requests=configuration_requests;
+    assert(nominal_set(48000)==0&&nominal_set(44100)==kAudioHardwareIllegalOperationError&&nominal_set(96000)==kAudioHardwareIllegalOperationError);
+    flush_configuration_queue();assert(configuration_requests==requests&&nominal_rate()==44100);
+    assert(table.AbortDeviceConfigurationChange(driver,DEVICE,first,NULL)==0&&nominal_rate()==44100);
+    uint64_t second=rate_request(96000);assert(first!=second);
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,first,NULL)==kAudioHardwareUnsupportedOperationError);
+    assert(table.AbortDeviceConfigurationChange(driver,DEVICE,first,NULL)==kAudioHardwareUnsupportedOperationError);
+    assert(atomic_load(&configuration_pending)&&nominal_rate()==44100);rate_commit(second,3);
+    rate_commit(rate_request(44100),0);
+    /* A zero client count after Stop timeout is not proof of callback drain. */
+    assert(table.StartIO(driver,DEVICE,88)==0);uint64_t action=rate_request(48000);unsigned changed_rates=rate_changes;
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,action,NULL)==kAudioHardwareIllegalOperationError&&rate_changes==changed_rates);
+    stop_error=ETIMEDOUT;mock_draining=true;assert(table.StopIO(driver,DEVICE,88)==ETIMEDOUT);stop_error=0;notification_count=0;
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,action,NULL)==EBUSY&&nominal_rate()==44100&&notification_count==0);
+    mock_draining=false;
+    rate_error=EIO;action=rate_request(48000);notification_count=0;
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,action,NULL)==EIO&&nominal_rate()==44100&&mock_sample_rate==44100&&notification_count==0);rate_error=0;
+    configuration_result=kAudioHardwareUnspecifiedError;assert(nominal_set(48000)==0);flush_configuration_queue();configuration_result=0;
+    assert(!atomic_load(&configuration_pending)&&nominal_rate()==44100);
+    /* Reconnect invalidates the captured cohort before dispatch or Perform. */
+    requests=configuration_requests;dispatch_suspend(device_control_queue);assert(nominal_set(48000)==0);++mock_generation;
+    dispatch_resume(device_control_queue);flush_configuration_queue();assert(configuration_requests==requests&&!atomic_load(&configuration_pending));--mock_generation;
+    action=rate_request(48000);++mock_generation;
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,action,NULL)==kAudioHardwareNotRunningError&&nominal_rate()==44100);--mock_generation;
+    /* HAL observes G1, but the worker reaches G2 before accepting the request.
+     * The original generation must cross the backend handoff unchanged. */
+    action=rate_request(48000);uint64_t generation=mock_generation;reconnect_at_rate_handoff=true;notification_count=0;
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,action,NULL)==ESTALE);
+    assert(rate_generation_argument==generation&&mock_generation==generation+1&&nominal_rate()==44100&&mock_sample_rate==44100&&notification_count==0);
+    --mock_generation;
+    /* Consume a deferred panic only when the covering rate transaction commits. */
+    action=rate_request(48000);requests=configuration_requests;trigger_panic(mock_generation);flush_configuration_queue();rate_commit(action,1);
+    flush_configuration_queue();assert(configuration_requests==requests);
+    action=rate_request(44100);requests=configuration_requests;dispatch_suspend(device_control_queue);trigger_panic(mock_generation);
+    rate_commit(action,0);dispatch_resume(device_control_queue);flush_configuration_queue();assert(configuration_requests==requests);
+    action=rate_request(48000);requests=configuration_requests;trigger_panic(mock_generation);flush_configuration_queue();
+    assert(table.AbortDeviceConfigurationChange(driver,DEVICE,action,NULL)==0);flush_configuration_queue();assert(configuration_requests==requests+1);
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,requested_action,NULL)==0&&nominal_rate()==44100);
+    action=rate_request(48000);requests=configuration_requests;trigger_panic(mock_generation);flush_configuration_queue();rate_error=EIO;
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,action,NULL)==EIO);rate_error=0;flush_configuration_queue();assert(configuration_requests==requests+1);
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,requested_action,NULL)==0&&nominal_rate()==44100);
+    configuration_result=kAudioHardwareUnspecifiedError;panic_during_request=true;requests=configuration_requests;
+    assert(nominal_set(48000)==0);flush_configuration_queue();flush_configuration_queue();
+    assert(configuration_requests==requests+2&&atomic_load(&configuration_pending)&&nominal_rate()==44100);
+    assert(table.PerformDeviceConfigurationChange(driver,DEVICE,requested_action,NULL)==0);
+    /* A synchronous host Perform admits another request before returning the old
+     * request's error. The late old error must not erase the newer request. */
+    reentrant_perform=true;reentrant_follow_rate=96000;configuration_result=kAudioHardwareUnspecifiedError;
+    assert(nominal_set(48000)==0);flush_configuration_queue();flush_configuration_queue();
+    assert(nominal_rate()==48000&&atomic_load(&configuration_pending));
+    rate_commit(requested_action,3);rate_commit(rate_request(44100),0);
+    /* New start epoch supersedes old sample positions, retaining NI's anchor. */
+    mock_clock=(rk3_usb_clock_snapshot){.sample_frame=0,.host_time=4000000000,.seed=3,.zero_sample_frame=0,.zero_host_time=3999123456};
+    Float64 frame=99;UInt64 time=0,seed=0;
+    assert(table.GetZeroTimeStamp(driver,DEVICE,88,&frame,&time,&seed)==0&&frame==0&&time==3999123456&&seed==3);
+    assert(PERIOD==16384);assert(rk3_usb_set_audio_panic_handler(&mock_session,NULL,NULL));
+    flush_configuration_queue();dispatch_release(device_control_queue);device_control_queue=NULL;host=NULL;
+}
 int main(void){
     assert(RK3AudioFactory(NULL,kAudioServerPlugInTypeUUID)==driver);
-    rk3_input_gain_init(&mock_gain);usb=&mock_session;usb_identity_property_test();usb_identity_raw_transport_test();usb_identity_client_test();usb_identity_client_header_test();usb_identity_client_field_test();usb_identity_partial_and_status_test();usb_identity_client_envelope_test();usb_identity_property_validation_test();spec_property_transport_test();spec_domain_reply_test();spec_client_transport_test();spec_client_invalid_reply_test();spec_metadata_and_query_test();spec_native_status_test();spec_client_response_matrix_test();spec_initialization_lifetime_test();usb_identity_initialization_lifetime_test();properties();input_gain_transport_test();audio();stream_activity();panic_handshake();assert(opens==2&&closes==2);
+    rk3_input_gain_init(&mock_gain);usb=&mock_session;usb_identity_property_test();usb_identity_raw_transport_test();usb_identity_client_test();usb_identity_client_header_test();usb_identity_client_field_test();usb_identity_partial_and_status_test();usb_identity_client_envelope_test();usb_identity_property_validation_test();spec_property_transport_test();spec_domain_reply_test();spec_client_transport_test();spec_client_invalid_reply_test();spec_metadata_and_query_test();spec_native_status_test();spec_client_response_matrix_test();spec_initialization_lifetime_test();usb_identity_initialization_lifetime_test();properties();input_gain_transport_test();audio();stream_activity();panic_handshake();rate_metadata_test();rate_handshake();assert(opens==2&&closes==2);
     puts("Audio driver: host ABI, CFData, NI timing, addressed PCM, lifecycle, clock and panic handshake passed");return 0;
 }

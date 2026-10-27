@@ -27,6 +27,9 @@ rk3_native_audio_iso *rk3_native_audio_iso_create(RK3HostInterface *,uint8_t,uin
 rk3_native_audio_iso *rk3_native_audio_iso_create_with_clock(RK3HostInterface *,uint8_t,uint8_t,
     rk3_native_audio_command,void *,const NIAudioClockProvider *);
 int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *);
+/* Worker-only selection after audio stop/drain. No USB command, clock reset,
+ * ring mutation or rate conversion; startup uses the selected NI format. */
+int32_t rk3_native_audio_iso_set_sample_rate(rk3_native_audio_iso *,uint32_t);
 void rk3_native_audio_iso_stop(rk3_native_audio_iso *);
 void rk3_native_audio_iso_service(rk3_native_audio_iso *);
 /* Worker-only clock entry. The production provider uses Mach absolute ticks.

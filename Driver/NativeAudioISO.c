@@ -6,6 +6,8 @@
 #include "AudioCodec.h"
 #include "AudioRing.h"
 #include "AudioSchedule.h"
+#include "AudioTiming.h"
+#include "DeviceProtocol.h"
 #include <IOKit/usb/USBSpec.h>
 #include <mach/mach_time.h>
 #include <os/log.h>
@@ -26,6 +28,7 @@ typedef struct {
 struct rk3_native_audio_iso {
     RK3HostInterface *interface;
     uint8_t input_pipe,output_pipe;
+    uint32_t sample_rate; /* Serial worker only; selected while stopped/drained. */
     rk3_native_audio_command command;
     void *command_context;
     RK3HostBuffer *input_buffer,*wire_buffer;
@@ -416,6 +419,7 @@ rk3_native_audio_iso *rk3_native_audio_iso_create_with_clock(RK3HostInterface *i
     if(!interface||!in||!out||!command||!rk3_host_primary_lists_supported()) return NULL;
     rk3_native_audio_iso *e=calloc(1,sizeof(*e));if(!e)return NULL;
     e->interface=interface;e->input_pipe=in;e->output_pipe=out;e->command=command;e->command_context=context;
+    e->sample_rate=RK3_AUDIO_DEFAULT_SAMPLE_RATE;
     rk3_host_retain(interface);(void)mach_timebase_info(&e->timebase);
     e->clock_provider=provider?*provider:(NIAudioClockProvider){e,default_frame,default_uptime,default_to_ns,default_to_ticks,clock_source_fatal};
     e->clock_provider.is_fatal=clock_source_fatal; /* Existing ISO removal policy. */
@@ -449,7 +453,9 @@ static int32_t start_engine(rk3_native_audio_iso *e) {
     int32_t result=validate_pipe(e,e->input_pipe,kUSBIn,2);
     if(!result)result=validate_pipe(e,e->output_pipe,kUSBOut,6);
     if(result)return result;
-    const uint8_t stop[]={9,255,255,136,0,1},start[]={9,1,2,136,0,1};
+    uint16_t capacity=0;uint8_t stop[RK3_AUDIO_PARAMS_BYTES],start[RK3_AUDIO_PARAMS_BYTES];
+    if(!rk3_audio_capacity(e->sample_rate,2,2,2,&capacity)||
+       !rk3_audio_stop(capacity,stop)||!rk3_audio_parameters(e->sample_rate,24,capacity,start))return kIOReturnBadArgument;
     /* performStart0x5fd6 ignores the rate-ff STOP result; only the real-rate
      * setAudioParams result at0x63bc is tested. The bounded command adapter
      * retains its own pending write storage even if this attempt fails. */
@@ -518,6 +524,12 @@ int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *e) {
     e->clock_incarnation=incarnation;e->clock_starting=true;
     int32_t result=start_engine(e);
     e->clock_starting=false;return result;
+}
+int32_t rk3_native_audio_iso_set_sample_rate(rk3_native_audio_iso *e,uint32_t rate) {
+    if(!e||e->usb_released||!rk3_audio_sample_rate_supported(rate))return kIOReturnBadArgument;
+    if(atomic_load(&e->running)||e->clock_starting||e->clock_servicing||
+       !rk3_native_audio_iso_is_quiescent(e))return kIOReturnBusy;
+    e->sample_rate=rate;return 0;
 }
 bool rk3_native_audio_iso_clock_schedule(rk3_native_audio_iso *e,rk3_native_audio_clock_schedule *schedule) {
     if(!e||!schedule||e->clock_starting||e->clock_servicing||

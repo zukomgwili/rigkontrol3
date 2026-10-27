@@ -248,18 +248,22 @@ static bool command(void *context, const uint8_t *bytes, size_t length, uint32_t
     }
     return !mock.fail_command&&!(mock.fail_stop&&bytes[1]==255);
 }
-static rk3_native_audio_iso *new_engine(void) {
+static rk3_native_audio_iso *new_engine_rate(uint32_t rate) {
     memset(&mock,0,sizeof(mock));mock.interface.references=1;mock.bus_frame=1000;
     mock.anchor_host=mach_absolute_time();mock.primary_supported=true;
     atomic_store(&block_snapshot,false);atomic_store(&snapshot_entered,false);atomic_store(&release_snapshot,false);
     rk3_native_audio_iso *engine=rk3_native_audio_iso_create_with_clock(&mock.interface,1,2,command,NULL,&clock_provider);
-    assert(engine && rk3_native_audio_iso_is_quiescent(engine));return engine;
+    assert(engine && rk3_native_audio_iso_is_quiescent(engine));
+    if(rate)assert(rk3_native_audio_iso_set_sample_rate(engine,rate)==0);
+    return engine;
 }
+/* Keep all existing 48k witnesses on their original rate explicitly. */
+static rk3_native_audio_iso *new_engine(void) {return new_engine_rate(48000);}
 static void destroy_engine(rk3_native_audio_iso *);
 static void test_clock_start_order_and_idle_cadence(void) {
     rk3_native_audio_iso *engine=new_engine();destroy_engine(engine);
     engine=rk3_native_audio_iso_create_with_clock(&mock.interface,1,2,command,NULL,&clock_provider);
-    assert(engine);mock.commands=0;
+    assert(engine&&rk3_native_audio_iso_set_sample_rate(engine,48000)==0);mock.commands=0;
     mock.poison_clock_pair=true;
     const uint64_t cold[]={1000,1000,1000,1001,1001,1002};
     memcpy(mock.clock_script,cold,sizeof(cold));mock.clock_script_count=6;
@@ -984,7 +988,92 @@ static void test_clock_callback_lifetime(void) {
     assert(rk3_native_audio_iso_is_quiescent(engine));
     destroy_engine(engine);clock_lifetime_observer=NULL;
 }
+static void test_original_default_rate_command(void) {
+    rk3_native_audio_iso *engine=new_engine_rate(0);
+    assert(rk3_native_audio_iso_start(engine)==0);
+    const uint8_t stop[6]={9,255,255,128,0,1},start[6]={9,0,2,128,0,1};
+    assert(mock.commands==2&&!memcmp(mock.commands_bytes[0],stop,6)&&!memcmp(mock.commands_bytes[1],start,6));
+    destroy_engine(engine);
+}
+static void test_all_original_rate_start_commands(void) {
+    static const struct {uint32_t rate;uint8_t command[6];} cases[]={
+        {44100,{9,0,2,128,0,1}},{48000,{9,1,2,136,0,1}},
+        {88200,{9,4,2,176,0,1}},{96000,{9,2,2,184,0,1}},{192000,{9,3,2,24,1,1}}
+    };
+    for(unsigned n=0;n<sizeof(cases)/sizeof(cases[0]);++n) {
+        rk3_native_audio_iso *e=new_engine_rate(cases[n].rate);
+        NIAudioClock previous=e->ni_clock;
+        unsigned commands=mock.commands;
+        assert(rk3_native_audio_iso_set_sample_rate(e,176400)==kIOReturnBadArgument);
+        assert(e->sample_rate==cases[n].rate&&mock.commands==commands);
+        assert(!memcmp(&previous,&e->ni_clock,sizeof(previous)));
+        assert(rk3_native_audio_iso_start(e)==0);
+        const uint8_t stop[]={9,255,255,cases[n].command[3],cases[n].command[4],1};
+        assert(mock.commands==2&&!memcmp(mock.commands_bytes[0],stop,6)&&!memcmp(mock.commands_bytes[1],cases[n].command,6));
+        assert(mock.read_submissions==64&&mock.reads_at_format==64&&mock.reads[0].scheduled_frame==1101&&mock.reads[63].scheduled_frame==1164);
+        assert(e->input_buffer->size==64*4096&&e->wire_buffer->size==NI_AUDIO_RING_WIRE_BYTES);
+        for(unsigned slot=0;slot<64;++slot)for(unsigned m=0;m<8;++m)
+            assert(mock.reads[slot].list->entries[slot*8+m].frame.requested==512);
+        assert(rk3_native_audio_iso_set_sample_rate(e,48000)==kIOReturnBusy);
+        assert(e->sample_rate==cases[n].rate&&mock.commands==2);
+        mock.defer_abort=true;rk3_native_audio_iso_stop(e);
+        assert(!rk3_native_audio_iso_is_quiescent(e));
+        assert(rk3_native_audio_iso_set_sample_rate(e,48000)==kIOReturnBusy);
+        drain_aborted();assert(rk3_native_audio_iso_is_quiescent(e));
+        previous=e->ni_clock;uint64_t seed=atomic_load(&e->clock_seed);
+        assert(rk3_native_audio_iso_set_sample_rate(e,48000)==0);
+        assert(!memcmp(&previous,&e->ni_clock,sizeof(previous))&&atomic_load(&e->clock_seed)==seed);
+        assert(mock.commands==2&&rk3_native_audio_iso_start(e)==0&&atomic_load(&e->clock_seed)==seed+1);
+        assert(e->sample_rate==48000);destroy_engine(e);
+    }
+}
+static void rate_counts(uint32_t rate,uint64_t packet,uint16_t counts[8]) {
+    for(unsigned m=0;m<8;++m) {
+        uint64_t position=packet*8+m;
+        counts[m]=(uint16_t)(((position+1)*rate/8000-position*rate/8000)*8);
+    }
+}
+static void test_fractional_and_high_rate_input_led_wrap(void) {
+    const uint32_t rates[]={44100,88200,192000};
+    for(unsigned r=0;r<3;++r) {
+        uint32_t rate=rates[r];rk3_native_audio_iso *e=new_engine_rate(rate);
+        assert(rk3_native_audio_iso_start(e)==0);
+        uint16_t counts[8];
+        for(unsigned slot=0;slot<64;++slot) {
+            rate_counts(rate,slot,counts);hardware_input(slot,counts,false);input_callback(slot,0);
+            rk3_native_audio_iso_clock_service(e);
+            assert(mock.last_write&&mock.last_write->scheduled_frame==1165+slot);
+            for(unsigned m=0;m<8;++m)assert(mock.last_write->list->entries[mock.last_write->first+m].frame.requested==counts[m]);
+        }
+        assert(!e->schedule.priming&&mock.write_count==64);
+        bool wrap=false,variable=false;uint16_t previous=0;
+        for(unsigned step=0;step<500;++step) {
+            unsigned slot=step%64;uint64_t frame=mock.reads[slot].scheduled_frame;
+            complete_due_outputs(frame);rate_counts(rate,(uint64_t)step+64,counts);
+            for(unsigned m=0;m<8;++m){if(previous&&previous!=counts[m])variable=true;previous=counts[m];}
+            hardware_input(slot,counts,false);
+            float input[2];assert(rk3_native_audio_iso_capture_at(e,input,step,1)==1);
+            rk3_native_audio_iso_clock_service(e);rk3_native_audio_iso_service(e);input_callback(slot,0);
+            MockTransfer *out=mock.last_write;assert(out&&out->scheduled_frame==frame+64);
+            for(unsigned m=0;m<8;++m) {
+                MockEntry *entry=out->list->entries+out->first+m;
+                assert(entry->frame.requested==counts[m]);
+                if((size_t)entry->offset+entry->frame.requested>out->buffer->size){assert(entry->wrap);wrap=true;}
+            }
+            uint32_t delay=0;int32_t error=0;
+            assert(!rk3_native_audio_iso_panic(e,&delay,&error)&&rk3_native_audio_iso_stream_error(e)==0);
+        }
+        rk3_native_audio_clock clock;assert(rk3_native_audio_iso_clock(e,&clock));
+        assert(clock.zero_sample_frame>=NI_AUDIO_RING_FRAME_COUNT&&wrap);
+        if(rate!=192000)assert(variable);
+        assert(e->ni_clock.interval_scaled==NI_AUDIO_CLOCK_INITIAL_INTERVAL);
+        destroy_engine(e);
+    }
+}
 int main(void) {
+    test_original_default_rate_command();
+    test_all_original_rate_start_commands();
+    test_fractional_and_high_rate_input_led_wrap();
     test_due_clock_not_in_input_completion();
     test_clock_callback_lifetime();
     test_original_priming_transition_order();

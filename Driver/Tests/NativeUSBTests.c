@@ -17,6 +17,7 @@ static int owner_test_create(pthread_t *,const pthread_attr_t *,void *(*)(void *
 static int owner_test_detach(pthread_t);
 static int owner_test_mutex_destroy(pthread_mutex_t *);
 static int owner_test_cond_destroy(pthread_cond_t *);
+static int rate_test_mutex_unlock(pthread_mutex_t *);
 static void *owner_test_calloc(size_t,size_t);
 static void owner_test_free(void *);
 #define CFRunLoopTimerCreate test_clock_timer_create
@@ -27,6 +28,7 @@ static void owner_test_free(void *);
 #define pthread_detach owner_test_detach
 #define pthread_mutex_destroy owner_test_mutex_destroy
 #define pthread_cond_destroy owner_test_cond_destroy
+#define pthread_mutex_unlock rate_test_mutex_unlock
 #define calloc owner_test_calloc
 #define free owner_test_free
 #define RK3_NATIVE_USB_TESTING 1
@@ -39,9 +41,25 @@ static void owner_test_free(void *);
 #undef pthread_detach
 #undef pthread_mutex_destroy
 #undef pthread_cond_destroy
+#undef pthread_mutex_unlock
 #undef calloc
 #undef free
 #include <assert.h>
+
+/* Observe the actual transaction's unlock boundary without changing its lock.
+ * A changed selection must already have a completed successful request. */
+static rk3_usb_session *rate_atomic_session;
+static Request *rate_atomic_request;
+static uint32_t rate_atomic_previous;
+static bool rate_atomic_observed;
+static int rate_test_mutex_unlock(pthread_mutex_t *mutex) {
+    if(rate_atomic_session&&mutex==&rate_atomic_session->mutex&&
+        rate_atomic_session->sample_rate!=rate_atomic_previous) {
+        assert(rate_atomic_request&&rate_atomic_request->complete&&rate_atomic_request->result==0);
+        assert(rate_atomic_session->active_request==NULL);rate_atomic_observed=true;
+    }
+    return pthread_mutex_unlock(mutex);
+}
 
 /* Exercise the real public open/close lifetime without entering worker_main,
  * which owns hardware discovery. Only its pthread entry is substituted. */
@@ -151,6 +169,8 @@ static void owner_creation_test(void) {
             assert(atomic_load(&owner_requested_result)==0);
             assert(atomic_load(&owner_requested_qos)==(int)QOS_CLASS_USER_INTERACTIVE);
             assert(atomic_load(&owner_requested_relative)==0);
+            RK3NativeInfo info;
+            assert(rk3_usb_info(session,&info)&&info.sample_rate==44100);
             assert(rk3_usb_close_wait(session,1000));assert(!pthread_join(owner_test_thread,NULL));
         }
         assert(atomic_load(&owner_cond_destroys)==1&&atomic_load(&owner_mutex_destroys)==1);
@@ -169,6 +189,7 @@ static CFRunLoopTimerRef test_clock_timer_create(CFAllocatorRef allocator,
 
 struct rk3_native_audio_iso {
     uint64_t incarnation,deadline;
+    uint32_t sample_rate;
     bool clock_armed;
 };
 typedef void (*TestHook)(void);
@@ -191,16 +212,26 @@ static bool fake_panic_pending;
 static uint32_t fake_panic_delay;
 static int32_t fake_panic_error;
 static unsigned fake_stop_calls, fake_start_calls, fake_service_calls;
+static uint32_t fake_started_rate;
 static bool check_host_lifetime, mapped_released, fake_output_active;
 static unsigned release_busy, close_busy, release_usb_calls, host_close_calls, host_release_calls, host_alt_calls, activity_calls;
 static rk3_usb_session *activity_publication;
 static int32_t fake_audio_error, fake_stream_error, fake_start_result=ENODEV;
+static int32_t fake_rate_result;
+static unsigned fake_rate_calls;
 rk3_native_audio_iso *rk3_native_audio_iso_create(RK3HostInterface *interface,
     uint8_t input, uint8_t output, rk3_native_audio_command command, void *context) {
     (void)interface; (void)input; (void)output; (void)command; (void)context; return NULL;
 }
+int32_t rk3_native_audio_iso_set_sample_rate(rk3_native_audio_iso *audio,uint32_t sample_rate) {
+    ++fake_rate_calls;
+    if(fake_rate_result)return fake_rate_result;
+    assert(audio&&rk3_audio_sample_rate_supported(sample_rate));
+    if(activity_publication)assert(atomic_load(&activity_publication->audio)==NULL);
+    audio->sample_rate=sample_rate;return 0;
+}
 int32_t rk3_native_audio_iso_start(rk3_native_audio_iso *audio) {
-    ++fake_start_calls;
+    ++fake_start_calls;fake_started_rate=audio->sample_rate;
     if(fake_start_result==0){
         fake_audio_running=true;fake_panic_pending=false;fake_audio_error=fake_stream_error=0;
         ++audio->incarnation;audio->clock_armed=true;
@@ -300,6 +331,7 @@ int32_t rk3_host_bulk_write(RK3HostInterface *interface,uint8_t pipe,const void 
 
 static unsigned int read_arms;
 static unsigned int command_writes;
+static CFRunLoopSourceRef rate_ack_source;
 static uint8_t last_command_bytes[64];
 static size_t last_command_size;
 static rk3_usb_session *command_io_session;
@@ -337,7 +369,10 @@ static int32_t fake_write(void *self, uint8_t pipe, const void *buffer, size_t s
     (void)self; (void)pipe; (void)buffer;
     assert(size > 0 && size <= 64 && no_data > 0 && no_data <= 200);
     ++command_writes;last_command_size=size;memcpy(last_command_bytes,buffer,size);
-    if (ack_test_session != NULL) ack_test_session->ack_result = ack_test_result;
+    if (ack_test_session != NULL) {
+        ack_test_session->ack_result = rate_ack_source ? -1 : ack_test_result;
+        if(rate_ack_source)CFRunLoopSourceSignal(rate_ack_source);
+    }
     if (command_io_session != NULL) {
         trace_command(COMMAND_WRITE);
         assert(size == 1 && ((const uint8_t *)buffer)[0] == RK3_COMMAND_INFO);
@@ -379,6 +414,7 @@ static void initialize(rk3_usb_session *session) {
     atomic_init(&session->output_active, true);
     atomic_init(&session->rt_readers, 0);
     atomic_init(&session->references, 2);
+    session->sample_rate=44100;
     session->status.info.midi_outputs = 1;
     session->generation = 9;
     session->run_loop=CFRunLoopGetCurrent(); /* Borrowed fixture loop; no worker is created. */
@@ -386,6 +422,8 @@ static void initialize(rk3_usb_session *session) {
     fake_audio_error = fake_stream_error = 0; fake_audio_running = fake_clock_valid = false; fake_stop_calls = fake_start_calls = 0; fake_start_result=ENODEV;
     clock_service_hook=NULL;fake_clock_schedule_calls=fake_clock_service_calls=0;
     fake_clock_interval_ns=128000000;forbidden_clock_audio=NULL;stop_timer_session=destroy_timer_session=NULL;
+    fake_rate_result=0;fake_rate_calls=0;
+    fake_started_rate=0;
     fail_clock_timer_create=false;
 }
 
@@ -967,6 +1005,217 @@ static void free_test_request(Request *request) {
     pthread_cond_destroy(&request->condition);free(request);
 }
 
+static void *rate_worker(void *context) {
+    rk3_usb_session *session=context;
+    pthread_mutex_lock(&session->mutex);
+    while(!session->head)pthread_cond_wait(&session->wake,&session->mutex);
+    assert(session->head->kind==REQUEST_RATE&&session->head->generation==9&&session->head->sample_rate==88200);
+    pthread_mutex_unlock(&session->mutex);
+    process_one_request(session,true);return NULL;
+}
+static void sample_rate_request_test(void) {
+    rk3_usb_session session;initialize(&session);
+    rk3_native_audio_iso audio={0};test_audio(&session,&audio);
+    RK3HostInterface functions={.bulk_write=fake_write};session.interface=&functions;session.opened=true;
+    session.status.state=RK3_USB_READY;session.status.info=(rk3_device_info){.input_channels=2,.output_channels=2,.wire_mode=2};
+    ack_test_session=&session;ack_test_result=1;unsigned before=command_writes;
+    pthread_t worker;assert(!pthread_create(&worker,NULL,rate_worker,&session));
+    assert(!rk3_usb_audio_set_sample_rate(&session,9,88200,1000));assert(!pthread_join(worker,NULL));
+    RK3NativeInfo info;assert(rk3_usb_info(&session,&info)&&info.sample_rate==88200);
+    const uint8_t expected[]={9,4,2,176,0,1};
+    assert(command_writes==before+1&&last_command_size==sizeof(expected)&&!memcmp(last_command_bytes,expected,sizeof(expected)));
+    assert(audio.sample_rate==88200&&fake_rate_calls==1&&session.generation==9);
+    assert(rk3_usb_audio_set_sample_rate(&session,9,32000,1)==EINVAL); /* Invalid rate never queues. */
+    assert(rk3_usb_audio_set_sample_rate(&session,0,48000,1)==EINVAL);
+    assert(!session.head&&!session.queued);
+    /* The caller's old lease must not be replaced by a new API-entry snapshot. */
+    session.generation=10;atomic_load(&session.audio)->generation=10;
+    assert(!pthread_create(&worker,NULL,rate_worker,&session));
+    assert(rk3_usb_audio_set_sample_rate(&session,9,88200,1000)==ESTALE);assert(!pthread_join(worker,NULL));
+    assert(command_writes==before+1&&fake_rate_calls==1&&session.sample_rate==88200);
+    ack_test_session=NULL;finish(&session);
+}
+
+static void rate_fixture(rk3_usb_session *session,rk3_native_audio_iso *audio,RK3HostInterface *interface) {
+    initialize(session);test_audio(session,audio);audio->sample_rate=44100;
+    *interface=(RK3HostInterface){.bulk_write=fake_write};session->interface=interface;session->opened=true;
+    session->status.state=RK3_USB_READY;
+    session->status.info=(rk3_device_info){.input_channels=2,.output_channels=2,.wire_mode=2};
+    ack_test_session=session;ack_test_result=1;rate_ack_source=NULL;
+    command_write_result=command_callback_result=0;defer_write=short_write_callback=false;
+}
+static Request *enqueue_rate(rk3_usb_session *session,uint32_t rate) {
+    Request *request=enqueue_test_request(session,REQUEST_RATE,NULL,0);request->sample_rate=rate;return request;
+}
+static void sample_rate_vectors_test(void) {
+    const uint32_t rates[]={44100,48000,88200,96000,192000};
+    const uint8_t commands[][6]={{9,0,2,128,0,1},{9,1,2,136,0,1},{9,4,2,176,0,1},
+        {9,2,2,184,0,1},{9,3,2,24,1,1}};
+    for(unsigned i=0;i<5;++i) {
+        rk3_usb_session session;rk3_native_audio_iso audio={0};RK3HostInterface interface;
+        rate_fixture(&session,&audio,&interface);Request *request=enqueue_rate(&session,rates[i]);
+        rate_atomic_session=&session;rate_atomic_request=request;rate_atomic_previous=44100;rate_atomic_observed=false;
+        unsigned writes=command_writes;process_one_request(&session,true);
+        assert(request->complete&&request->result==0&&fake_rate_calls==1);
+        assert(command_writes==writes+1&&last_command_size==6&&!memcmp(last_command_bytes,commands[i],6));
+        assert(audio.sample_rate==rates[i]&&session.sample_rate==rates[i]&&session.generation==9);
+        assert(i==0||rate_atomic_observed);
+        RK3NativeInfo info;assert(rk3_usb_info(&session,&info)&&info.sample_rate==rates[i]&&info.flags==RK3_NATIVE_CONNECTED);
+        rate_atomic_session=NULL;rate_atomic_request=NULL;free_test_request(request);ack_test_session=NULL;finish(&session);
+    }
+}
+static void sample_rate_admission_test(void) {
+    for(unsigned scenario=0;scenario<12;++scenario) {
+        rk3_usb_session session;rk3_native_audio_iso audio={0};RK3HostInterface interface;
+        rate_fixture(&session,&audio,&interface);Request *request=enqueue_rate(&session,96000);
+        Request stop={0};int32_t expected=kIOReturnBusy;
+        switch(scenario) {
+            case 0:request->sample_rate=32000;expected=EINVAL;break;
+            case 1:request->generation=8;expected=ESTALE;break;
+            case 2:request->deadline=seconds_now()-1;expected=ETIMEDOUT;break;
+            case 3:request->cancelled=true;expected=ETIMEDOUT;break;
+            case 4:session.opened=false;expected=ENODEV;break;
+            case 5:atomic_store(&session.audio,NULL);expected=ENODEV;break;
+            case 6:session.status.state=RK3_USB_RUNNING;break;
+            case 7:session.want_audio=true;break;
+            case 8:session.stop_head=&stop;break;
+            case 9:fake_audio_running=true;break;
+            case 10:fake_audio_quiescent=false;break;
+            case 11:session.stopping_io=true;expected=ENODEV;break;
+        }
+        unsigned writes=command_writes;process_one_request(&session,true);
+        assert(request->complete&&request->result==expected&&command_writes==writes&&fake_rate_calls==0);
+        RK3NativeInfo info;assert(rk3_usb_info(&session,&info)&&info.sample_rate==44100&&audio.sample_rate==44100);
+        session.stop_head=NULL;fake_audio_quiescent=true;fake_audio_running=false;
+        free_test_request(request);ack_test_session=NULL;finish(&session);
+    }
+    rk3_usb_session session;rk3_native_audio_iso audio={0};RK3HostInterface interface;
+    rate_fixture(&session,&audio,&interface);Request *request=enqueue_rate(&session,48000);
+    session.command_recovering=true;unsigned writes=command_writes;process_one_request(&session,true);
+    assert(!request->complete&&session.head==request&&command_writes==writes);
+    session.command_recovering=false;process_one_request(&session,true);
+    assert(request->complete&&request->result==0&&command_writes==writes+1);
+    free_test_request(request);ack_test_session=NULL;finish(&session);
+}
+typedef struct {rk3_usb_session *session;unsigned mutation;int ack;RetiredAudio *replacement;Request stop;} RateACK;
+static void rate_after_ack(void *context) {
+    RateACK *event=context;rk3_usb_session *session=event->session;
+    /* Delivered inside the real ACK wait, after its last pre-pump check. */
+    pthread_mutex_lock(&session->mutex);session->ack_result=event->ack;
+    switch(event->mutation) {
+        case 0:session->active_request->cancelled=true;break;
+        case 1:session->active_request->deadline=seconds_now()-1;break;
+        case 2:++session->generation;break;
+        case 3:atomic_store(&session->audio,event->replacement);break;
+        case 4:session->opened=false;break;
+        case 5:session->transport_failed=true;break;
+        case 6:session->stopping_io=true;break;
+        case 7:fake_audio_running=true;break;
+        case 8:fake_audio_quiescent=false;break;
+        case 9:session->want_audio=true;break;
+        case 10:session->stop_head=&event->stop;break;
+        case 11:atomic_store(&session->closing,true);break;
+        case 12:
+            session->command_recovering=true;session->pending=true;
+            session->command_recovery_deadline=seconds_now()+1;break; /* EP1 clear callback still pending. */
+        case 13:session->command_suspended=true;break;
+    }
+    pthread_mutex_unlock(&session->mutex);
+}
+static void sample_rate_late_ack_test(void) {
+    for(unsigned mutation=0;mutation<12;++mutation) {
+        rk3_usb_session session;rk3_native_audio_iso audio={0},replacement={0};RK3HostInterface interface;
+        rate_fixture(&session,&audio,&interface);Request *request=enqueue_rate(&session,192000);
+        RateACK event={.session=&session,.mutation=mutation,.ack=1,.replacement=test_context(&session,&replacement)};
+        CFRunLoopSourceContext context={0};context.info=&event;context.perform=rate_after_ack;
+        rate_ack_source=CFRunLoopSourceCreate(NULL,0,&context);assert(rate_ack_source);
+        CFRunLoopAddSource(CFRunLoopGetCurrent(),rate_ack_source,kCFRunLoopDefaultMode);
+        unsigned writes=command_writes;process_one_request(&session,true);
+        int32_t expected=mutation<2?ETIMEDOUT:mutation<4?ESTALE:mutation<7||mutation==11?ENODEV:kIOReturnBusy;
+        assert(request->complete&&request->result==expected&&command_writes==writes+1&&fake_rate_calls==0);
+        assert(session.status.commands_completed==1&&session.sample_rate==44100&&audio.sample_rate==44100);
+        CFRunLoopRemoveSource(CFRunLoopGetCurrent(),rate_ack_source,kCFRunLoopDefaultMode);CFRelease(rate_ack_source);rate_ack_source=NULL;
+        session.stop_head=NULL;fake_audio_quiescent=true;fake_audio_running=false;
+        free_test_request(request);ack_test_session=NULL;finish(&session);
+    }
+}
+static void sample_rate_failure_test(void) {
+    for(unsigned failure=0;failure<4;++failure) {
+        rk3_usb_session session;rk3_native_audio_iso audio={0};RK3HostInterface interface;
+        rate_fixture(&session,&audio,&interface);Request *request=enqueue_rate(&session,88200);
+        if(failure==0)ack_test_result=0;
+        if(failure==1)command_write_result=kIOReturnIOError;
+        if(failure==2){ack_test_result=-1;request->deadline=seconds_now()+0.002;}
+        if(failure==3)fake_rate_result=kIOReturnBusy;
+        unsigned writes=command_writes;process_one_request(&session,true);
+        int32_t expected=failure==2?ETIMEDOUT:failure==3?kIOReturnBusy:EIO;
+        if(!request->complete||request->result!=expected||command_writes!=writes+1)
+            fprintf(stderr,"rate failure %u: complete=%d result=%d expected=%d writes=%u expected-writes=%u\n",
+                failure,request->complete,request->result,expected,command_writes,writes+1);
+        assert(request->complete&&request->result==expected&&command_writes==writes+1);
+        assert(fake_rate_calls==(failure==3?1u:0u)&&session.sample_rate==44100&&audio.sample_rate==44100);
+        assert(session.generation==9&&!session.want_audio&&!fake_start_calls&&!fake_stop_calls);
+        free_test_request(request);ack_test_session=NULL;
+        /* The next actual worker START sees the retained selection. Real ISO
+         * tests separately verify that start sends its selected NI commands. */
+        fake_start_result=0;fake_clock_valid=true;
+        Request *start=enqueue_test_request(&session,REQUEST_START,NULL,0);process_one_request(&session,true);
+        assert(start->complete&&start->result==0&&fake_started_rate==44100&&session.sample_rate==44100);
+        assert(command_writes==writes+1&&session.generation==9);
+        free_test_request(start);
+        Request *stop=enqueue_test_request(&session,REQUEST_STOP,NULL,0);process_one_request(&session,true);
+        assert(stop->complete&&stop->result==0);free_test_request(stop);finish(&session);
+    }
+    command_write_result=0;
+}
+static void sample_rate_explicit_retry_test(void) {
+    for(unsigned failure=0;failure<2;++failure) {
+        rk3_usb_session session;rk3_native_audio_iso audio={0};RK3HostInterface interface;
+        rate_fixture(&session,&audio,&interface);Request *first=enqueue_rate(&session,88200);
+        ack_test_result=failure?-1:0;if(failure)first->deadline=seconds_now()+0.002;
+        unsigned writes=command_writes;process_one_request(&session,true);
+        assert(first->complete&&first->result==(failure?ETIMEDOUT:EIO)&&command_writes==writes+1);
+        assert(session.status.state==RK3_USB_READY&&session.status.error_code==(failure?ETIMEDOUT:EPROTO));
+        assert(session.sample_rate==44100&&audio.sample_rate==44100&&fake_rate_calls==0);
+        free_test_request(first);ack_test_result=1;
+        Request *second=enqueue_rate(&session,96000);process_one_request(&session,true);
+        const uint8_t expected[]={9,2,2,184,0,1};
+        assert(second->complete&&second->result==0&&command_writes==writes+2);
+        assert(last_command_size==6&&!memcmp(last_command_bytes,expected,6)&&fake_rate_calls==1);
+        assert(session.sample_rate==96000&&audio.sample_rate==96000&&session.status.state==RK3_USB_READY);
+        assert(session.status.error_code==0&&!session.status.error[0]&&!fake_start_calls&&!fake_stop_calls);
+        free_test_request(second);ack_test_session=NULL;finish(&session);
+    }
+    for(unsigned mutation=12;mutation<14;++mutation) {
+        rk3_usb_session session;rk3_native_audio_iso audio={0};RK3HostInterface interface;
+        rate_fixture(&session,&audio,&interface);Request *request=enqueue_rate(&session,88200);
+        RateACK event={.session=&session,.mutation=mutation,.ack=0};
+        CFRunLoopSourceContext context={0};context.info=&event;context.perform=rate_after_ack;
+        rate_ack_source=CFRunLoopSourceCreate(NULL,0,&context);assert(rate_ack_source);
+        CFRunLoopAddSource(CFRunLoopGetCurrent(),rate_ack_source,kCFRunLoopDefaultMode);
+        unsigned writes=command_writes;process_one_request(&session,true);
+        assert(request->complete&&request->result==EIO&&command_writes==writes+1&&fake_rate_calls==0);
+        assert(session.status.state==RK3_USB_STOPPING&&session.status.error_code==EPROTO&&session.sample_rate==44100);
+        CFRunLoopRemoveSource(CFRunLoopGetCurrent(),rate_ack_source,kCFRunLoopDefaultMode);CFRelease(rate_ack_source);rate_ack_source=NULL;
+        session.pending=false;session.command_recovering=false;
+        free_test_request(request);ack_test_session=NULL;finish(&session);
+    }
+}
+static void sample_rate_publication_test(void) {
+    rk3_usb_session session;initialize(&session);rk3_native_audio_iso old={0},replacement={0};
+    session.sample_rate=96000;RetiredAudio *first=test_context(&session,&old);
+    activity_publication=&session;assert(!publish_audio(&session,first));activity_publication=NULL;
+    assert(current_audio(&session)==&old&&old.sample_rate==96000&&fake_rate_calls==1);
+    session.sample_rate=192000;++session.generation;atomic_store(&session.clock_generation,session.generation);
+    RetiredAudio *next=test_context(&session,&replacement);fake_rate_result=kIOReturnBusy;
+    assert(publish_audio(&session,next)==kIOReturnBusy&&current_audio(&session)==&old&&replacement.sample_rate==0);
+    fake_rate_result=0;assert(!publish_audio(&session,next));
+    assert(current_audio(&session)==&replacement&&replacement.sample_rate==192000&&next->generation==10);
+    fake_clock_valid=true;rk3_usb_clock_snapshot clock;assert(rk3_usb_clock(&session,&clock)&&clock.seed==((UINT64_C(10)<<32)|1));
+    RK3NativeInfo info;assert(rk3_usb_info(&session,&info)&&info.sample_rate==192000);
+    finish(&session);
+}
+
 typedef struct { CFRunLoopTimerRef timer;AudioClockTimer *context; } HeldClockTimer;
 static HeldClockTimer hold_clock_timer(rk3_usb_session *session) {
     assert(session->clock_timer&&session->clock_timer_context);
@@ -1307,11 +1556,11 @@ static void activity_publication_test(void) {
     assert(atomic_load(&session.output_active));
     unsigned before=activity_calls;rk3_usb_set_output_active(&session,false);
     assert(!atomic_load(&session.output_active)&&activity_calls==before&&atomic_load(&session.rt_readers)==0);
-    activity_publication=&session;publish_audio(&session,test_context(&session,&first));activity_publication=NULL;
+    activity_publication=&session;assert(!publish_audio(&session,test_context(&session,&first)));activity_publication=NULL;
     assert(current_audio(&session)==&first&&!fake_output_active&&activity_calls==before+1);
     rk3_usb_set_output_active(&session,true);assert(fake_output_active&&atomic_load(&session.output_active));
     test_audio(&session,NULL);rk3_usb_set_output_active(&session,false);
-    activity_publication=&session;publish_audio(&session,test_context(&session,&second));activity_publication=NULL;
+    activity_publication=&session;assert(!publish_audio(&session,test_context(&session,&second)));activity_publication=NULL;
     assert(current_audio(&session)==&second&&!fake_output_active&&atomic_load(&session.rt_readers)==0);
     test_audio(&session,NULL);finish(&session);
 }
@@ -1616,7 +1865,7 @@ static void gain_generation_borrow_test(void){
         disconnect_device(&session); /* Actual owner unpublish must not wait for the pinned capture. */
         assert(atomic_load(&session.audio)==NULL&&session.retired_count==1);
         pthread_mutex_lock(&session.mutex);session.generation=10;session.status.state=RK3_USB_READY;pthread_mutex_unlock(&session.mutex);
-        RetiredAudio *current=test_context(&session,&new_audio);publish_audio(&session,current);
+        RetiredAudio *current=test_context(&session,&new_audio);assert(!publish_audio(&session,current));
         assert(current!=retired&&current->generation==10&&session.retired_count==2);
         assert(rk3_usb_input_gain_set(&session,10,0,UINT32_C(0x40400000),NULL)==0);
         uint32_t unchanged=91;assert(rk3_usb_input_gain_get(&session,9,0,&unchanged)==ESTALE&&unchanged==91);
@@ -2262,6 +2511,8 @@ int main(void) {
     gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
     clock_timer_binding_test();clock_timer_stop_restart_test();clock_timer_guard_test();clock_timer_retirement_test();
     clock_timer_reentrant_restart_test();clock_timer_command_pump_test();clock_timer_failure_test();
-    puts("NativeUSB: explicit owner QoS/creation lifetime, worker clock one-shots/lifetime, NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
+    sample_rate_request_test();sample_rate_vectors_test();sample_rate_admission_test();
+    sample_rate_late_ack_test();sample_rate_failure_test();sample_rate_explicit_retry_test();sample_rate_publication_test();
+    puts("NativeUSB: acknowledged five-rate transactions/publication, explicit owner QoS/creation lifetime, worker clock one-shots/lifetime, NI EP1 error matrix/no replay, gated retirement, audio-only panic, cooperative drain and addressed I/O passed");
     return 0;
 }
