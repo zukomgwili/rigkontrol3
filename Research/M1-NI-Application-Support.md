@@ -1,5 +1,10 @@
 # M1: NI application support for Rig Kontrol 3
 
+**Current scope, 2026-10-27:** the user explicitly chose original native
+recognition in Controller Editor and standard MIDI in Guitar Rig 6. The GR6
+native-integration requirement and its blocker below are historical. Original
+driver/controller/audio functionality and SIP remain required.
+
 Publication research verified 2026-10-27. That research used first-party NI
 publications only and performed no application, installer, driver, binary
 recovery or device operation. A separate local UI inspection is recorded below.
@@ -109,12 +114,48 @@ publication-only research above.
   the completed typed info/serial/message modules remain unlinked. No claim
   is made that this was a test of a completed replacement agent.
 
-**Gate disposition:** the retained demand for unchanged GR6 native RK3
-recognition conflicts with NI's removal of that feature. M1 remains incomplete;
-its required recognition gate is blocked pending a human scope decision.
-The user was asked whether to retain original recognition in Controller Editor
-and accept standard MIDI for GR6, or retain the native GR6 criterion despite the support conflict. No answer or waiver is assumed. The GR6 process opened for this inspection
-was quit afterward; process inventory confirms no GR6 or CE process remains.
-Agent expansion and driver coding
-stop at this gate; no new planning issue, security change, driver installation,
-USB owner, timing change or recovery change was introduced.
+**Historical first-gate disposition:** the then-required GR6 native recognition
+conflicted with NI's removal of that feature. The user subsequently resolved
+this conflict explicitly as recorded at the top: native CE recognition plus
+standard GR6 MIDI. That GR6 blocker is lifted; M1 is still incomplete. The GR6
+process opened for the inspection was quit afterward; process inventory at
+that checkpoint confirmed no GR6 or CE process remained. No new planning issue,
+security change, driver installation, USB owner, timing change or recovery
+change was introduced.
+
+## Subsequent Controller Editor launch checks
+
+The user's first Terminal attempt split the unquoted application path at a
+space. The path exists; this was not an application failure. The quoted
+`open -a` attempt then returned Launch Services error `-10669`. A narrowly
+bounded system-log read identified the exact cause at 01:02:22.890 UTC:
+Launch Services reported that Rosetta was not installed. Public SDK error
+declarations did not define that number; its meaning was established by the
+actual diagnostic, not guessed from a nearby error constant. Execute permission
+was present, and the inspected app/executable xattrs contained provenance but
+no quarantine attribute. No permission, quarantine or signature change was made.
+
+The user then installed Rosetta following Apple's normal installation path.
+[Apple's instructions](https://support.apple.com/en-us/102527). The subsequent
+crash report records CE **1.7.4 (R199)** running as **X86-64 (Translated)** on
+macOS **27.0.1 (26A434)** with SIP enabled. At 01:06:49 UTC it crashed with
+`EXC_BAD_ACCESS`, address `0x18`, during a dyld initializer. Its selected stack
+is `CoreGraphics: create_colorspace_with_colorSync_profile` →
+`Controller Editor: _GLOBAL__I_a + 42` → dyld initializer calls. This is a
+pre-main startup failure; the supplied stack does not implicate driver/agent
+IPC. It does not identify the deeper ColorSync cause or prove that every
+possible runtime environment fails.
+
+One reversible packaging discriminator was prepared: a copy at
+`~/Applications/RK3 Legacy Acceptance/Controller Editor.app`, outside the
+expanded installer package. All **459** regular-file/symlink entries and modes
+match the immutable reference, including executable SHA256
+`ef1cee113d431ccd6946ee92631c55a6dedeb2b9a5d8ea12b150f91acc2cfad9`.
+NI deep/strict signature verification passes for source and copy. Private copy
+manifest SHA256:
+`f62f10c3e2cf64c62e72d3d1651a29662a3d3b66e8aee137122dd51bca467145`.
+The computer-use tool again refused CE access, so a single manual launch of
+this copy was requested. **Its result is pending.** If the same startup crash
+recurs, dependent recognition work stops at this application-runtime gate;
+frontend patches, injection, security changes and repeated unchanged launches
+are outside this check. No driver code has been changed.
