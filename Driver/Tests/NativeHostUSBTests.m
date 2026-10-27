@@ -1,8 +1,49 @@
 /* Hardware-free tests of the real adapter, using Objective-C protocol-shaped
  * fakes behind its private factory seam. No USB service is opened. These tests
  * verify binding references/ownership, not physical DMA late-write visibility. */
+#include <CoreFoundation/CoreFoundation.h>
+#include <dispatch/dispatch.h>
+#include <assert.h>
+#include <stdint.h>
+
+static bool fail_queue_attributes,fail_service_queue,observe_keepalive;
+static unsigned queue_attribute_calls,service_queue_calls,factory_calls,keepalive_releases;
+static dispatch_qos_class_t requested_queue_qos;
+static int requested_queue_priority;
+static uintptr_t requested_queue_base,returned_queue_attributes,created_queue_attributes,created_queue;
+static CFRunLoopSourceRef observed_keepalive;
+static dispatch_queue_attr_t record_queue_attributes(dispatch_queue_attr_t base,dispatch_qos_class_t qos,int priority) {
+    ++queue_attribute_calls;requested_queue_base=(uintptr_t)(__bridge void *)base;
+    requested_queue_qos=qos;requested_queue_priority=priority;
+    dispatch_queue_attr_t attributes=fail_queue_attributes ? NULL : dispatch_queue_attr_make_with_qos_class(base,qos,priority);
+    returned_queue_attributes=(uintptr_t)(__bridge void *)attributes;return attributes;
+}
+static dispatch_queue_t record_service_queue(const char *label,dispatch_queue_attr_t attributes) {
+    ++service_queue_calls;created_queue_attributes=(uintptr_t)(__bridge void *)attributes;
+    dispatch_queue_t queue=fail_service_queue ? NULL : dispatch_queue_create(label,attributes);
+    created_queue=(uintptr_t)(__bridge void *)queue;return queue;
+}
+static CFRunLoopSourceRef record_keepalive(CFAllocatorRef allocator,CFIndex order,CFRunLoopSourceContext *context) {
+    CFRunLoopSourceRef source=CFRunLoopSourceCreate(allocator,order,context);
+    if(observe_keepalive) {
+        assert(source&&!observed_keepalive);observed_keepalive=(CFRunLoopSourceRef)CFRetain(source);keepalive_releases=0;
+    }
+    return source;
+}
+static void record_release(CFTypeRef object) {
+    if(observe_keepalive&&object==observed_keepalive)++keepalive_releases;
+    CFRelease(object);
+}
 #define RK3_HOST_USB_TESTING 1
+#define dispatch_queue_attr_make_with_qos_class record_queue_attributes
+#define dispatch_queue_create record_service_queue
+#define CFRunLoopSourceCreate record_keepalive
+#define CFRelease record_release
 #include "../NativeHostUSB.m"
+#undef CFRelease
+#undef CFRunLoopSourceCreate
+#undef dispatch_queue_create
+#undef dispatch_queue_attr_make_with_qos_class
 #include <assert.h>
 #include <stdio.h>
 
@@ -121,9 +162,14 @@ typedef struct __attribute__((packed)) {
 - (void)destroy {++destroys;}
 @end
 static FakeHostInterface *last_interface;
-static bool fail_open;
+static bool fail_open,check_service_queue;
 static id factory(io_service_t service,dispatch_queue_t queue,NSError **error,IOUSBHostInterestHandler interest) {
-    assert(service==42);
+    assert(service==42);++factory_calls;
+    if(check_service_queue) {
+        assert(queue&&(uintptr_t)(__bridge void *)queue==created_queue);
+        int priority=99;assert(dispatch_queue_get_qos_class(queue,&priority)==QOS_CLASS_USER_INTERACTIVE&&priority==0);
+        assert(strcmp(dispatch_queue_get_label(queue),"org.rigkontrol3.ni-arm.usb-host")==0);
+    }
     if(fail_open){if(error)*error=[NSError errorWithDomain:IOUSBHostErrorDomain code:kIOReturnExclusiveAccess userInfo:nil];return nil;}
     last_interface=[FakeHostInterface new];last_interface->queue=queue;
     last_interface->interest=[interest copy];
@@ -163,6 +209,49 @@ static void finish(FakeHostPipe *pipe,int32_t status,size_t actual,bool invalid_
 static RK3HostInterface *open_owner(void) {
     int32_t error=99;RK3HostInterface *owner=rk3_host_open(42,owner_loop,&error);
     assert(owner&&error==0&&rk3_host_connected(owner));return owner;
+}
+static void assert_keepalive_unwound(void) {
+    assert(observed_keepalive&&!CFRunLoopSourceIsValid(observed_keepalive));
+    assert(!CFRunLoopContainsSource(owner_loop,observed_keepalive,kCFRunLoopDefaultMode)&&keepalive_releases==1);
+    CFRelease(observed_keepalive);observed_keepalive=NULL;
+}
+static void test_completion_queue_qos_and_failures(void) {
+    /* Keep the new API shim referenced so the original production path can
+     * compile for the RED check; the actual factory queue must fail instead. */
+    (void)&record_queue_attributes;
+    check_service_queue=true;
+    unsigned attributes=queue_attribute_calls,creates=service_queue_calls,factories=factory_calls;
+    __weak RK3HostState *released_state;
+    @autoreleasepool {
+        RK3HostInterface *owner=open_owner();released_state=state_of(owner);
+        assert(queue_attribute_calls==attributes+1&&service_queue_calls==creates+1&&factory_calls==factories+1);
+        assert(requested_queue_base==(uintptr_t)DISPATCH_QUEUE_SERIAL);
+        assert(requested_queue_qos==QOS_CLASS_USER_INTERACTIVE&&requested_queue_priority==0);
+        assert(returned_queue_attributes&&created_queue_attributes==returned_queue_attributes);
+        assert(state_of(owner)->queue==last_interface->queue&&(uintptr_t)(__bridge void *)state_of(owner)->queue==created_queue);
+        assert(rk3_host_close(owner)==0);rk3_host_release(owner);
+    }
+    assert(released_state==nil);
+    observe_keepalive=true;int32_t error=99;
+    attributes=queue_attribute_calls;creates=service_queue_calls;factories=factory_calls;
+    fail_queue_attributes=true;
+    assert(!rk3_host_open(42,owner_loop,&error)&&error==kIOReturnBadArgument);
+    fail_queue_attributes=false;
+    assert(queue_attribute_calls==attributes+1&&service_queue_calls==creates&&factory_calls==factories);
+    assert_keepalive_unwound();
+    attributes=queue_attribute_calls;creates=service_queue_calls;factories=factory_calls;
+    fail_service_queue=true;
+    assert(!rk3_host_open(42,owner_loop,&error)&&error==kIOReturnNoMemory);
+    fail_service_queue=false;
+    assert(queue_attribute_calls==attributes+1&&service_queue_calls==creates+1&&factory_calls==factories);
+    assert_keepalive_unwound();
+    attributes=queue_attribute_calls;creates=service_queue_calls;factories=factory_calls;
+    fail_open=true;
+    assert(!rk3_host_open(42,owner_loop,&error)&&error==kIOReturnExclusiveAccess);
+    fail_open=false;
+    assert(queue_attribute_calls==attributes+1&&service_queue_calls==creates+1&&factory_calls==factories+1);
+    assert_keepalive_unwound();observe_keepalive=false;check_service_queue=false;
+    puts("NativeHostUSB: completion queue UI/0, serial attributes, factory identity and failure cleanup passed.");
 }
 static void test_open_and_properties(void) {
     int32_t error=0;assert(!rk3_host_open(0,owner_loop,&error)&&error==kIOReturnBadArgument);
@@ -646,6 +735,7 @@ static void test_measurement_pending_fault_freezes_without_waiting(void) {
 }
 int main(void) {@autoreleasepool {
     owner_loop=CFRunLoopGetCurrent();rk3_host_test_factory=factory;
+    test_completion_queue_qos_and_failures();
     test_open_and_properties();test_bulk_and_abort();test_shared_iso_and_lifetime();test_owner_retained_through_delivery();test_rejected_iso_and_allocation();test_removal_interest_and_late_delivery();test_retirement_before_completion_wake();test_zero_count_iso_transactions();test_iso_callbacks_follow_acceptance_per_pipe();test_rejected_iso_has_no_ordered_position();test_reentrant_iso_enqueue_and_nested_delivery();test_reverse_abort_retains_until_ordered_drain();test_zero_count_request_is_ordered_with_payload();test_first_too_old_observation_preserves_order_and_is_bounded();
     test_measurement_interpretation();test_measurement_bank_lifetimes_and_budget();test_measurement_stream_clock_and_fault();
     test_measurement_pending_fault_freezes_without_waiting();

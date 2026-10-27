@@ -252,9 +252,14 @@ RK3HostInterface *rk3_host_open(io_service_t service, CFRunLoopRef worker, int32
         atomic_init(&state->connected,true);
         owner->connected=&state->connected;
         state->interest_worker=(CFRunLoopRef)CFRetain(worker);
-        state->queue=dispatch_queue_create("org.rigkontrol3.ni-arm.usb-host",DISPATCH_QUEUE_SERIAL);
-        state->pipes=[NSMutableArray new];
         owner->state=(__bridge_retained void *)state;
+        /* Classify raw completion service before the existing owner handoff. */
+        dispatch_queue_attr_t attributes=dispatch_queue_attr_make_with_qos_class(
+            DISPATCH_QUEUE_SERIAL,QOS_CLASS_USER_INTERACTIVE,0);
+        if(!attributes) {set_error(error,kIOReturnBadArgument);rk3_host_release(owner);return NULL;}
+        state->queue=dispatch_queue_create("org.rigkontrol3.ni-arm.usb-host",attributes);
+        if(!state->queue) {set_error(error,kIOReturnNoMemory);rk3_host_release(owner);return NULL;}
+        state->pipes=[NSMutableArray new];
         /* IOUSBHostObject.h documents generalInterest on a separate internal
          * serial queue. Only IOMessage.h's exact service-termination message is
          * removal: suspend/resume, power and requesting-close are not. A weak
