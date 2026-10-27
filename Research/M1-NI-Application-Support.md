@@ -154,8 +154,18 @@ match the immutable reference, including executable SHA256
 NI deep/strict signature verification passes for source and copy. Private copy
 manifest SHA256:
 `f62f10c3e2cf64c62e72d3d1651a29662a3d3b66e8aee137122dd51bca467145`.
-The computer-use tool again refused CE access, so a single manual launch of
-this copy was requested. **Its result is pending.** If the same startup crash
-recurs, dependent recognition work stops at this application-runtime gate;
-frontend patches, injection, security changes and repeated unchanged launches
-are outside this check. No driver code has been changed.
+The computer-use tool again refused CE access, so the user performed the single
+manual launch of this copy. **At 01:14:41 UTC it reproduced the same pre-main
+crash:** X86-64 translated CE1.7.4/R199, SIP enabled, `EXC_BAD_ACCESS` at `0x18`,
+`create_colorspace_with_colorSync_profile + 30` called from `_GLOBAL__I_a + 42`
+during dyld initialization. The app image offset of the initializer frame is
+6,629,018 in both reports; different load addresses do not imply a different
+failure. The byte-identical normal-folder placement did not resolve it.
+
+**Current M1 disposition:** blocked on the required unchanged CE application's
+startup on this macOS 27.0.1 host, before recognition can be evaluated. The
+deeper ColorSync cause remains unproved, and this does not establish universal
+incompatibility or a driver/IPC defect. Dependent recognition code stops at
+this early runtime gate. No frontend patches, injection, color-profile changes,
+security changes or repeated unchanged launches were attempted. The original
+reference and the test copy remain unchanged; no driver code has been changed.
