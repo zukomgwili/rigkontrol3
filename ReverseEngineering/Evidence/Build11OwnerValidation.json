@@ -1400,5 +1400,1652 @@
     "source-record.json": "3cfec945520f2e07c6f3f75b923a0d8c1d6978f2bf078a708e861a47299d188c",
     "drivers/manifest.json": "24b73aa69a348447bf06591d72882d7588dac2009ac24d747f6ee252e85c7710"
   },
-  "validation_wrapper_sha256": "90a7a3c1aeab0fe3401ae77906b7f184f0a2ab9613a24449276a0010c9c6f819"
+  "validation_wrapper_sha256": "90a7a3c1aeab0fe3401ae77906b7f184f0a2ab9613a24449276a0010c9c6f819",
+  "saved_trace_followup": {
+    "purpose": "offline-only investigation of remaining completion delay using same saved build11 trace; no new runtime or code change",
+    "initial_compact_evidence_sha256": "73a1ff23fba6edcfd84ca8771a8aa1f6aedbc93f816b6f71c85e7c5ecf8de09d",
+    "source_commit": "b05cdd3a20252683e723f331cd0eb7e6e9b0f353",
+    "analyzed_driver_pid": 26293,
+    "raw_callback_service_tid": 3279215,
+    "bounds_trace_ns_fraction": [
+      "9768204875",
+      "29556641750/3"
+    ],
+    "new_saved_table_exports": 2,
+    "source_contracts": [
+      {
+        "file": "Driver/NativeHostUSB.m",
+        "sha256": "c0261c598c58daa4466349acafe48fa190bc84d8a661c4b37e38867df4f94805",
+        "lines": {
+          "serial_queue_creation": 255,
+          "interface_receives_queue": 277,
+          "last_transaction_timestamp_read": 548,
+          "matched_job_checks": "565-571",
+          "raw_source_mark": "643-646",
+          "owner_publication_and_mark": "651-656",
+          "wake_return_mark": "668-669"
+        },
+        "interpretation": "Interface supplied one serial IO queue; lastTransaction is entry487 in matched prior480+8job, not kernel notification-ready or first visibility."
+      },
+      {
+        "file": "Driver/NativeUSB.c",
+        "sha256": "152ca64a00985a46a1a52decfef72d9341aee48441fccc927ad8865497089086",
+        "lines": {
+          "runloop_pump": "302-309",
+          "worker_thread_binding": "1240-1245",
+          "connected_pump_interval": 1269
+        },
+        "interpretation": "Owner normally services CFRunLoop notifications; 10ms requested pump interval is not a scheduling guarantee."
+      }
+    ],
+    "sdk_contract_provenance": {
+      "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk",
+      "headers": [
+        {
+          "name": "IOUSBHostObject.h",
+          "sha256": "49acd363ecf659d22653dc533c36d81b7ca59db86a92adbc9d904cb003be093d",
+          "relevant_lines": "36-43,63-70,99-102"
+        },
+        {
+          "name": "IOUSBHostPipe.h",
+          "sha256": "1638832f66cf90b6170ff64cce1c992c4de29d94f15d6ae633e3f3504e2314d5",
+          "relevant_lines": "136-138,294-351"
+        },
+        {
+          "name": "IOUSBHostDefinitions.h",
+          "sha256": "c1d90c000b98c1ea75ba338103f03e3d972692df59ac9b2830b534e04ae1fa79",
+          "relevant_lines": "73-97"
+        }
+      ],
+      "interpretation": "Caller-provided serial interface queue services asynchronous IO via its dispatch source; general-interest notifications use a separate queue. Transaction timeStamp is observed completion time with system-load/interrupt-latency caveats, not user dispatch readiness."
+    },
+    "driver_symbol_proof": {
+      "uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F",
+      "load_address": "0x105024000",
+      "raw_handler_frame_address": "0x105034a3f",
+      "frozen_dsym": "build11-b05cdd3a20252683e723f331cd0eb7e6e9b0f353/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM",
+      "atos_result": "__rk3_host_iso_enqueue_block_invoke (in RK3AudioDriver) (NativeHostUSB.m:668)"
+    },
+    "confirmed_preemptions": [
+      {
+        "start_ns": 9791043458,
+        "end_ns": 9814981958,
+        "duration_ns": 23938500,
+        "tid": 3279215,
+        "interval_state": "Preempted",
+        "scheduler_priority": "Default - 31",
+        "switch_out_stack": {
+          "time_ns": 9791043458,
+          "tid": 3279215,
+          "context_sample_state": "Runnable",
+          "frames": [
+            {
+              "symbol": "__psynch_mutexdrop",
+              "address": "0x19dacbba9",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "_pthread_mutex_firstfit_wake",
+              "address": "0x19db0afeb",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "_pthread_mutex_firstfit_unlock_slow",
+              "address": "0x19db08c6b",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "CFRunLoopWakeUp",
+              "address": "0x19dbb0f73",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "__rk3_host_iso_enqueue_block_invoke",
+              "address": "0x105034a3f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "_isochCompletionCallback",
+              "address": "0x1b4d5adcf",
+              "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+            },
+            {
+              "symbol": "IODispatchCalloutFromCFMessage",
+              "address": "0x1a1fef3d3",
+              "image_uuid": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7"
+            },
+            {
+              "symbol": "_IODispatchCalloutWithDispatch",
+              "address": "0x1a1fef20b",
+              "image_uuid": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7"
+            },
+            {
+              "symbol": "dispatch_mig_server",
+              "address": "0x19d96a96b",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_client_callout",
+              "address": "0x19d96659f",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_continuation_pop",
+              "address": "0x19d9511b3",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_source_latch_and_call",
+              "address": "0x19d9642a7",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_source_invoke",
+              "address": "0x19d962f7b",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_lane_serial_drain",
+              "address": "0x19d954e23",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_lane_invoke",
+              "address": "0x19d955abb",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_root_queue_drain_deferred_wlh",
+              "address": "0x19d95ff57",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_workloop_worker_thread",
+              "address": "0x19d95f85b",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_pthread_wqthread",
+              "address": "0x19db09f9b",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "start_wqthread",
+              "address": "0x19db08cdf",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            }
+          ]
+        },
+        "specific_fault_job_identity_recorded": false
+      },
+      {
+        "start_ns": 9815016375,
+        "end_ns": 9837307208,
+        "duration_ns": 22290833,
+        "tid": 3279215,
+        "interval_state": "Preempted",
+        "scheduler_priority": "Default - 31",
+        "switch_out_stack": {
+          "time_ns": 9815016375,
+          "tid": 3279215,
+          "context_sample_state": "Runnable",
+          "frames": [
+            {
+              "symbol": "objc_object::sidetable_clearDeallocating()",
+              "address": "0x19d68dc65",
+              "image_uuid": "C0680DF6-9900-3C29-A071-95A031686EF8"
+            },
+            {
+              "symbol": "objc_destructInstance_nonnull_realized(objc_object*)",
+              "address": "0x19d6b00ef",
+              "image_uuid": "C0680DF6-9900-3C29-A071-95A031686EF8"
+            },
+            {
+              "symbol": "objc_destructInstance",
+              "address": "0x19d68dbf7",
+              "image_uuid": "C0680DF6-9900-3C29-A071-95A031686EF8"
+            },
+            {
+              "symbol": "_Block_release",
+              "address": "0x19d7c71cf",
+              "image_uuid": "6F304731-D95D-3501-B4AD-F2934F7F2446"
+            },
+            {
+              "symbol": "IODispatchCalloutFromCFMessage",
+              "address": "0x1a1fef3d3",
+              "image_uuid": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7"
+            },
+            {
+              "symbol": "_IODispatchCalloutWithDispatch",
+              "address": "0x1a1fef20b",
+              "image_uuid": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7"
+            },
+            {
+              "symbol": "dispatch_mig_server",
+              "address": "0x19d96a96b",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_client_callout",
+              "address": "0x19d96659f",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_continuation_pop",
+              "address": "0x19d9511b3",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_source_latch_and_call",
+              "address": "0x19d9642a7",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_source_invoke",
+              "address": "0x19d962f7b",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_lane_serial_drain",
+              "address": "0x19d954e23",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_lane_invoke",
+              "address": "0x19d955abb",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_root_queue_drain_deferred_wlh",
+              "address": "0x19d95ff57",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_dispatch_workloop_worker_thread",
+              "address": "0x19d95f85b",
+              "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+            },
+            {
+              "symbol": "_pthread_wqthread",
+              "address": "0x19db09f9b",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "start_wqthread",
+              "address": "0x19db08cdf",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            }
+          ]
+        },
+        "specific_fault_job_identity_recorded": false
+      }
+    ],
+    "selected_preemption_total_ns": 46229333,
+    "next_raw_callback_stack": {
+      "time_ns": 9837335625,
+      "tid": 3279215,
+      "context_sample_state": "Runnable",
+      "frames": [
+        {
+          "symbol": "mach_msg2_trap",
+          "address": "0x19dac8c21",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "mach_msg2_internal",
+          "address": "0x19dadb8df",
+          "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+        },
+        {
+          "symbol": "0x19dad1a27",
+          "address": "0x19dad1a27",
+          "image_uuid": null
+        },
+        {
+          "symbol": "0x19dac8fab",
+          "address": "0x19dac8fab",
+          "image_uuid": null
+        },
+        {
+          "symbol": "CFRunLoopWakeUp",
+          "address": "0x19dbb0f33",
+          "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+        },
+        {
+          "symbol": "__rk3_host_iso_enqueue_block_invoke",
+          "address": "0x105034a3f",
+          "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+        },
+        {
+          "symbol": "_isochCompletionCallback",
+          "address": "0x1b4d5adcf",
+          "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+        },
+        {
+          "symbol": "IODispatchCalloutFromCFMessage",
+          "address": "0x1a1fef3d3",
+          "image_uuid": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7"
+        },
+        {
+          "symbol": "_IODispatchCalloutWithDispatch",
+          "address": "0x1a1fef20b",
+          "image_uuid": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7"
+        },
+        {
+          "symbol": "dispatch_mig_server",
+          "address": "0x19d96a96b",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_client_callout",
+          "address": "0x19d96659f",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_continuation_pop",
+          "address": "0x19d9511b3",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_source_latch_and_call",
+          "address": "0x19d9642a7",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_source_invoke",
+          "address": "0x19d962f7b",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_lane_serial_drain",
+          "address": "0x19d954e23",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_lane_invoke",
+          "address": "0x19d955abb",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_root_queue_drain_deferred_wlh",
+          "address": "0x19d95ff57",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_dispatch_workloop_worker_thread",
+          "address": "0x19d95f85b",
+          "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+        },
+        {
+          "symbol": "_pthread_wqthread",
+          "address": "0x19db09f9b",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        },
+        {
+          "symbol": "start_wqthread",
+          "address": "0x19db08cdf",
+          "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+        }
+      ]
+    },
+    "second_resume_to_matched_raw_entry_ns_fraction": [
+      "48376/3",
+      "49126/3"
+    ],
+    "owner_pre_raw_blocked_islands": [
+      {
+        "start_ns": 9768316625,
+        "end_ns": 9791014625,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9768316625,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "mach_msg2_trap",
+              "address": "0x19dac8c21",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "mach_msg2_internal",
+              "address": "0x19dadb8df",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "0x19dad1a27",
+              "address": "0x19dad1a27",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19dac8fab",
+              "address": "0x19dac8fab",
+              "image_uuid": null
+            },
+            {
+              "symbol": "__CFRunLoopServiceMachPort",
+              "address": "0x19dbceaeb",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd333",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      },
+      {
+        "start_ns": 9791023750,
+        "end_ns": 9791039125,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9791023750,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "__psynch_mutexwait",
+              "address": "0x19dacb9dd",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "_pthread_mutex_firstfit_lock_wait",
+              "address": "0x19db0af7b",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "_pthread_mutex_firstfit_lock_slow",
+              "address": "0x19db089b7",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd467",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      },
+      {
+        "start_ns": 9791216833,
+        "end_ns": 9805419708,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9791216833,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "mach_msg2_trap",
+              "address": "0x19dac8c21",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "mach_msg2_internal",
+              "address": "0x19dadb8df",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "0x19dad1a27",
+              "address": "0x19dad1a27",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19dac8fab",
+              "address": "0x19dac8fab",
+              "image_uuid": null
+            },
+            {
+              "symbol": "__CFRunLoopServiceMachPort",
+              "address": "0x19dbceaeb",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd333",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      },
+      {
+        "start_ns": 9805861041,
+        "end_ns": 9815007750,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9805861041,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "mach_msg2_trap",
+              "address": "0x19dac8c21",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "mach_msg2_internal",
+              "address": "0x19dadb8df",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "0x19dad1a27",
+              "address": "0x19dad1a27",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19dac8fab",
+              "address": "0x19dac8fab",
+              "image_uuid": null
+            },
+            {
+              "symbol": "__CFRunLoopServiceMachPort",
+              "address": "0x19dbceaeb",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd333",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      },
+      {
+        "start_ns": 9815022625,
+        "end_ns": 9820396875,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9815022625,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "mach_msg2_trap",
+              "address": "0x19dac8c21",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "mach_msg2_internal",
+              "address": "0x19dadb8df",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "0x19dad1a27",
+              "address": "0x19dad1a27",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19dac8fab",
+              "address": "0x19dac8fab",
+              "image_uuid": null
+            },
+            {
+              "symbol": "__CFRunLoopServiceMachPort",
+              "address": "0x19dbceaeb",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd333",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      },
+      {
+        "start_ns": 9820404666,
+        "end_ns": 9820424708,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9820404666,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "__psynch_mutexwait",
+              "address": "0x19dacb9dd",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "_pthread_mutex_firstfit_lock_wait",
+              "address": "0x19db0af7b",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "_pthread_mutex_firstfit_lock_slow",
+              "address": "0x19db089b7",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd467",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      },
+      {
+        "start_ns": 9820468791,
+        "end_ns": 9835383708,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9820468791,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "mach_msg2_trap",
+              "address": "0x19dac8c21",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "mach_msg2_internal",
+              "address": "0x19dadb8df",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "0x19dad1a27",
+              "address": "0x19dad1a27",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19dac8fab",
+              "address": "0x19dac8fab",
+              "image_uuid": null
+            },
+            {
+              "symbol": "__CFRunLoopServiceMachPort",
+              "address": "0x19dbceaeb",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd333",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      },
+      {
+        "start_ns": 9835392083,
+        "end_ns": 9835408791,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9835392083,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "__psynch_mutexwait",
+              "address": "0x19dacb9dd",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "_pthread_mutex_firstfit_lock_wait",
+              "address": "0x19db0af7b",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "_pthread_mutex_firstfit_lock_slow",
+              "address": "0x19db089b7",
+              "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd467",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      },
+      {
+        "start_ns": 9835450333,
+        "end_ns": 9837330708,
+        "interval_state": "Blocked",
+        "switch_out_stack": {
+          "time_ns": 9835450333,
+          "tid": 3279214,
+          "context_sample_state": "Blocked",
+          "frames": [
+            {
+              "symbol": "mach_msg2_trap",
+              "address": "0x19dac8c21",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "mach_msg2_internal",
+              "address": "0x19dadb8df",
+              "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+            },
+            {
+              "symbol": "0x19dad1a27",
+              "address": "0x19dad1a27",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19dac8fab",
+              "address": "0x19dac8fab",
+              "image_uuid": null
+            },
+            {
+              "symbol": "__CFRunLoopServiceMachPort",
+              "address": "0x19dbceaeb",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "__CFRunLoopRun",
+              "address": "0x19dbcd333",
+              "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+            },
+            {
+              "symbol": "0x19dca782b",
+              "address": "0x19dca782b",
+              "image_uuid": null
+            },
+            {
+              "symbol": "pump_callbacks",
+              "address": "0x10502b18f",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "worker_main",
+              "address": "0x10502843b",
+              "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+            },
+            {
+              "symbol": "0x19db0dcff",
+              "address": "0x19db0dcff",
+              "image_uuid": null
+            },
+            {
+              "symbol": "0x19db08ceb",
+              "address": "0x19db08ceb",
+              "image_uuid": null
+            }
+          ]
+        }
+      }
+    ],
+    "owner_enqueue_cpu_samples": [
+      {
+        "time_ns": 9837538708,
+        "tid": 3279214,
+        "context_sample_state": "Running",
+        "frames": [
+          {
+            "symbol": "dyld4::APIs::dyld_get_active_platform()",
+            "address": "0x19d720fd5",
+            "image_uuid": "D341DDCB-7969-3A9C-8E03-0CF4751398A9"
+          },
+          {
+            "symbol": "_CFExecutableLinkedOnOrAfter",
+            "address": "0x19db4f457",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "+[NSConcretePointerFunctions initializeSlice:withOptions:]",
+            "address": "0x19f27a9fb",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "-[NSConcretePointerArray initWithOptions:]",
+            "address": "0x19f27a92f",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "-[__NSBundleTables init]",
+            "address": "0x19f27a7db",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "__32+[__NSBundleTables bundleTables]_block_invoke",
+            "address": "0x19f27a773",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "_dispatch_client_callout",
+            "address": "0x19d96659f",
+            "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+          },
+          {
+            "symbol": "_dispatch_once_callout",
+            "address": "0x19d94f623",
+            "image_uuid": "022BF08F-0B3A-3225-9E65-16D1553CE90D"
+          },
+          {
+            "symbol": "+[__NSBundleTables bundleTables]",
+            "address": "0x19f27a757",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "-[NSBundle _initWithPath:unique:options:]",
+            "address": "0x19f3b0f03",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "+[NSBundle mainBundle]",
+            "address": "0x19f27a5e7",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "-[IOUSBHostPipe enqueueIORequestWithData:frameList:frameListCount:firstFrameNumber:options:error:completionHandler:version:]",
+            "address": "0x1b4d5abff",
+            "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+          },
+          {
+            "symbol": "-[IOUSBHostPipe enqueueIORequestWithData:transactionList:transactionListCount:firstFrameNumber:options:error:completionHandler:]",
+            "address": "0x1b4d5ae43",
+            "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+          },
+          {
+            "symbol": "rk3_host_iso_enqueue",
+            "address": "0x105034743",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "submit_input",
+            "address": "0x10502e3f3",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "rk3_native_audio_iso_service",
+            "address": "0x10502d74f",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "deliver_iso_prefix",
+            "address": "0x105034b87",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "__rk3_host_iso_enqueue_block_invoke_2",
+            "address": "0x105034b87",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "__CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__",
+            "address": "0x19dbce4af",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__CFRunLoopDoBlocks",
+            "address": "0x19dbce3ef",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__CFRunLoopRun",
+            "address": "0x19dbcd7fb",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFRunLoopRunSpecificWithOptions",
+            "address": "0x19dca782b",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "pump_callbacks",
+            "address": "0x10502b18f",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "worker_main",
+            "address": "0x10502843b",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "_pthread_start",
+            "address": "0x19db0dcff",
+            "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+          },
+          {
+            "symbol": "thread_start",
+            "address": "0x19db08ceb",
+            "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+          }
+        ]
+      },
+      {
+        "time_ns": 9838538416,
+        "tid": 3279214,
+        "context_sample_state": "Running",
+        "frames": [
+          {
+            "symbol": "res_getTableItemByKey",
+            "address": "0x1a199497d",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "res_getResource",
+            "address": "0x1a1994917",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "0x1a1aa809c",
+            "address": "0x1a1aa82db",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "0x1a1aa5510",
+            "address": "0x1a1aa57ef",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "0x1a1a22f84",
+            "address": "0x1a1a22fe3",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "0x1a1a228f8",
+            "address": "0x1a1a22cff",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "0x1a1a217d8",
+            "address": "0x1a1a21a7f",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "ulocimp_addLikelySubtags(char const*, icu::ByteSink&, UErrorCode&)",
+            "address": "0x1a1a21797",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "uloc_addLikelySubtags",
+            "address": "0x1a199619f",
+            "image_uuid": "7C675D41-84B1-395F-80CA-4FF1837F0DA0"
+          },
+          {
+            "symbol": "specialized static Locale.localeIdentifierWithLikelySubtags(_:)",
+            "address": "0x19fef5683",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "@objc static NSLocale._localeIdentifierByAddingLikelySubtags(_:)",
+            "address": "0x19fef7d23",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "_CFLocaleCopyLocaleIdentifierByAddingLikelySubtags",
+            "address": "0x19db89d7f",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyDefaultLanguageForLanguage",
+            "address": "0x19dcb19d7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleIsLanguageDefaultLanguageOfOther",
+            "address": "0x19dcb18d7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_copyBundleLocalizationsFromResources",
+            "address": "0x19dcb16c3",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyBundleLocalizations",
+            "address": "0x19dcb096b",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "CFBundleCopyBundleLocalizations",
+            "address": "0x19db87b6b",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyLanguageSearchListInBundle",
+            "address": "0x19db96357",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_copyQueryTable",
+            "address": "0x19db9618b",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_copyResourceURLsFromBundle",
+            "address": "0x19db95b57",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyFindResources",
+            "address": "0x19db94f27",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "CFBundleCopyResourceURL",
+            "address": "0x19db948e7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleGetStringsSources",
+            "address": "0x19dd15bb7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_copyStringTable",
+            "address": "0x19dd173db",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyLocalizedStringForLocalizationTableURLAndMarkdownOption",
+            "address": "0x19dd16b67",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "CFBundleCopyLocalizedStringForLocalization",
+            "address": "0x19dbb4d33",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "-[NSBundle localizedStringForKey:value:table:]",
+            "address": "0x19f2a0aeb",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "-[IOUSBHostPipe enqueueIORequestWithData:frameList:frameListCount:firstFrameNumber:options:error:completionHandler:version:]",
+            "address": "0x1b4d5ac23",
+            "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+          },
+          {
+            "symbol": "-[IOUSBHostPipe enqueueIORequestWithData:transactionList:transactionListCount:firstFrameNumber:options:error:completionHandler:]",
+            "address": "0x1b4d5ae43",
+            "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+          },
+          {
+            "symbol": "rk3_host_iso_enqueue",
+            "address": "0x105034743",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "submit_input",
+            "address": "0x10502e3f3",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "rk3_native_audio_iso_service",
+            "address": "0x10502d74f",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "deliver_iso_prefix",
+            "address": "0x105034b87",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "__rk3_host_iso_enqueue_block_invoke_2",
+            "address": "0x105034b87",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "__CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__",
+            "address": "0x19dbce4af",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__CFRunLoopDoBlocks",
+            "address": "0x19dbce3ef",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__CFRunLoopRun",
+            "address": "0x19dbcd7fb",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFRunLoopRunSpecificWithOptions",
+            "address": "0x19dca782b",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "pump_callbacks",
+            "address": "0x10502b18f",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "worker_main",
+            "address": "0x10502843b",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "_pthread_start",
+            "address": "0x19db0dcff",
+            "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+          },
+          {
+            "symbol": "thread_start",
+            "address": "0x19db08ceb",
+            "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+          }
+        ]
+      },
+      {
+        "time_ns": 9848538958,
+        "tid": 3279214,
+        "context_sample_state": "Running",
+        "frames": [
+          {
+            "symbol": "stat",
+            "address": "0x19dad48fd",
+            "image_uuid": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05"
+          },
+          {
+            "symbol": "_CFGetFileProperties",
+            "address": "0x19db7e4b7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFURLExists",
+            "address": "0x19db7e3d3",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__96-[_CFXPreferences(SourceAdditions) withSourceForIdentifier:user:byHost:container:cloud:perform:]_block_invoke.228",
+            "address": "0x19dccace7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "-[_CFXPreferences withSourceForIdentifier:user:byHost:container:cloud:perform:]",
+            "address": "0x19dccaa53",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "-[CFPrefsSearchListSource addSourceForIdentifier:user:byHost:container:]",
+            "address": "0x19db7ceeb",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__108-[_CFXPreferences(SearchListAdditions) withSearchListForIdentifier:container:cloudConfigurationURL:perform:]_block_invoke.157",
+            "address": "0x19dd0e9a7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "-[_CFXPreferences withSearchLists:]",
+            "address": "0x19dd4e377",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__108-[_CFXPreferences(SearchListAdditions) withSearchListForIdentifier:container:cloudConfigurationURL:perform:]_block_invoke",
+            "address": "0x19db77f93",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "-[_CFXPreferences withSearchListForIdentifier:container:cloudConfigurationURL:perform:]",
+            "address": "0x19dd0e6f3",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "-[_CFXPreferences copyAppValueForKey:identifier:container:configurationURL:]",
+            "address": "0x19db7789b",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFPreferencesCopyAppValueWithContainerAndConfiguration",
+            "address": "0x19db777d3",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyUserLanguages",
+            "address": "0x19db96683",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyLanguageSearchListInBundle",
+            "address": "0x19db9635f",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_copyQueryTable",
+            "address": "0x19db9618b",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_copyResourceURLsFromBundle",
+            "address": "0x19db95b57",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyFindResources",
+            "address": "0x19db94f27",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "CFBundleCopyResourceURL",
+            "address": "0x19db948e7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleGetStringsSources",
+            "address": "0x19dd15bb7",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_copyStringTable",
+            "address": "0x19dd173db",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFBundleCopyLocalizedStringForLocalizationTableURLAndMarkdownOption",
+            "address": "0x19dd16b67",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "CFBundleCopyLocalizedStringForLocalization",
+            "address": "0x19dbb4d33",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "-[NSBundle localizedStringForKey:value:table:]",
+            "address": "0x19f2a0aeb",
+            "image_uuid": "4317F7C6-73D2-3BE9-B010-F318F1198A1B"
+          },
+          {
+            "symbol": "-[IOUSBHostPipe enqueueIORequestWithData:frameList:frameListCount:firstFrameNumber:options:error:completionHandler:version:]",
+            "address": "0x1b4d5ac23",
+            "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+          },
+          {
+            "symbol": "-[IOUSBHostPipe enqueueIORequestWithData:transactionList:transactionListCount:firstFrameNumber:options:error:completionHandler:]",
+            "address": "0x1b4d5ae43",
+            "image_uuid": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B"
+          },
+          {
+            "symbol": "rk3_host_iso_enqueue",
+            "address": "0x105034743",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "submit_input",
+            "address": "0x10502e3f3",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "rk3_native_audio_iso_service",
+            "address": "0x10502d74f",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "deliver_iso_prefix",
+            "address": "0x105034b87",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "__rk3_host_iso_enqueue_block_invoke_2",
+            "address": "0x105034b87",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "__CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__",
+            "address": "0x19dbce4af",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__CFRunLoopDoBlocks",
+            "address": "0x19dbce3ef",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "__CFRunLoopRun",
+            "address": "0x19dbcd7fb",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "_CFRunLoopRunSpecificWithOptions",
+            "address": "0x19dca782b",
+            "image_uuid": "727E905E-F344-3823-8E13-E7A096388321"
+          },
+          {
+            "symbol": "pump_callbacks",
+            "address": "0x10502b18f",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "worker_main",
+            "address": "0x10502843b",
+            "image_uuid": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F"
+          },
+          {
+            "symbol": "_pthread_start",
+            "address": "0x19db0dcff",
+            "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+          },
+          {
+            "symbol": "thread_start",
+            "address": "0x19db08ceb",
+            "image_uuid": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41"
+          }
+        ]
+      }
+    ],
+    "selected_table_counts": {
+      "time_profile_driver_samples": 19,
+      "owner_time_profile_samples": 3,
+      "context_driver_rows_including_sentinels": 560,
+      "context_driver_rows_with_backtrace": 266,
+      "owner_pre_raw_blocked_islands": 9
+    },
+    "findings": [
+      "An actual raw ISO completion on the production serial IOUSBHost service path was descheduled for23.938500ms at Default31 while inside CFRunLoopWakeUp. Later service on that serial path cannot pass this unfinished handler.",
+      "A further22.290833ms preemption begins in IOKit dispatch-message block cleanup on the same thread. The second stack lacks the RK3 raw handler, so its exact callback/job/queue instance is not independently identified.",
+      "These selected active completion/dispatcher path stalls total46.229333ms during the observed pre-R span. The second resumes16.125..16.375us before matchedR; this does not timestamp readiness of the particular fault notification.",
+      "All9 ownerBlocked islands overlapping the observed lastTransaction-to-R envelope have switch-out stacks in CFRunLoop:6Mach-port event waits and3brief mutex waits. Owner blocked duration is not evidence of a long synchronous USB request there.",
+      "The3 owner CPU samples in the failed enqueue bracket show bundle/localization/preferences work AFTER R. They do not explain the earlier67ms gap or identify the API internal rejection-decision timestamp."
+    ],
+    "hypothesis_disposition": {
+      "H1_callback_delivery_thread_descheduling": "Supported for an earlier actual raw ISO callback and IOKit dispatcher on the observed service thread; exact fault job queued/ready time absent.",
+      "H2_serial_path_occupancy": "An unfinished earlier raw handler necessarily holds its documented serial IO service path during its preemption. No separate long blocking driver operation or queue backlog depth is established.",
+      "H3_timestamp_or_visibility": "Matched preceding job/range prevents an arbitrary unmatched-cache explanation for this event. Transaction completion stamp still cannot reveal when all results/notification were available to the user queue."
+    },
+    "next_candidate": {
+      "status": "proposed only; no implementation or new capture in this offline task",
+      "scope": "Explicit latency QoS classification at creation of the EXISTING serial IOUSBHost service queue, coherent with the already-classified owner; preserve queue identity/serialness/name, handoff and object lifetimes. Record exact production-seam test/failure plan in existingM2 before coding.",
+      "limits": "No recovered NI numeric priority, fixed effective priority or deadline guarantee; no NI ring/calendar/clock/recovery, retry/lead/backend/security change. Candidate would still need frozen installed validation."
+    },
+    "limits": [
+      "No exact job ID, pipe, cookie or notification-ready/queue-entry mark is present in these switch stacks; the earlier callback is not claimed to be the faulting matched job.",
+      "46.229333ms of observed service-path preemption is not the specific fault-job queue-wait duration, all67.118458ms, wire completion latency or proof of all historical faults.",
+      "GCD threads can service different queues; the same TID alone does not establish queue continuity, particularly at the second cleanup stack.",
+      "Initial preemptors identify displacement events only, not continuous CPU occupation throughout either interval.",
+      "Context switch sample label Runnable and duration-state table label Preempted have different meanings; interval lengths are taken from the latter.",
+      "Requested QoS or a getter is not a fixed effective scheduling priority or real-time guarantee. No change has been made or validated.",
+      "Only the original failed traced run is analyzed. No additional hardware test, rate qualification or physical MIDI/control acceptance has occurred."
+    ],
+    "artifact_hashes": {
+      "remaining-time-profile.xml": "ed8ddc556e4b917b552deed7cf8418f715d2c32961110a44549e37172a70550b",
+      "remaining-context-switch-sample.xml": "45e323667c82035d6259a7e6baface0ca94081df52a176a1c5c202414902cc1e",
+      "remaining-selected-time-profile.json": "078307f213db47c127b763218ef3acd133658b8f1dbafb9854d77ea51ab69f60",
+      "remaining-selected-context-switch.json": "620d83a23f538aa5eee1398d761ff09fbb2024bbc7eace920e30b14ead08d98c",
+      "remaining-selected-driver-states.json": "4197e6e805aac88efc8765a8378f2278e47d42029dea1e70602a3ec2f34f9c26",
+      "remaining-pid26293-independent.json": "9977cc1aa57b822ea24314c3d95565d9bba3e3e297894a58affe42846a72f9ae"
+    },
+    "images": {
+      "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05": {
+        "name": "libsystem_kernel.dylib",
+        "UUID": "F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05",
+        "arch": "arm64e",
+        "load-addr": "0x19dac8000",
+        "path": "/usr/lib/system/libsystem_kernel.dylib"
+      },
+      "5A1828C3-CBC2-3B85-BD07-C8ED10021A41": {
+        "name": "libsystem_pthread.dylib",
+        "UUID": "5A1828C3-CBC2-3B85-BD07-C8ED10021A41",
+        "arch": "arm64e",
+        "load-addr": "0x19db07000",
+        "path": "/usr/lib/system/libsystem_pthread.dylib"
+      },
+      "727E905E-F344-3823-8E13-E7A096388321": {
+        "name": "CoreFoundation",
+        "UUID": "727E905E-F344-3823-8E13-E7A096388321",
+        "arch": "arm64e",
+        "load-addr": "0x19db4d000",
+        "path": "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+      },
+      "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F": {
+        "name": "RK3AudioDriver",
+        "UUID": "5C8B8B08-B20A-33BF-BDCF-4DBFA5B3948F",
+        "arch": "arm64",
+        "load-addr": "0x105024000",
+        "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver"
+      },
+      "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B": {
+        "name": "IOUSBHost",
+        "UUID": "B0D41EEF-C9BF-39DD-A1C4-226DCB94E78B",
+        "arch": "arm64e",
+        "load-addr": "0x1b4d4a000",
+        "path": "/System/Library/Frameworks/IOUSBHost.framework/Versions/A/IOUSBHost"
+      },
+      "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7": {
+        "name": "IOKit",
+        "UUID": "0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7",
+        "arch": "arm64e",
+        "load-addr": "0x1a1fea000",
+        "path": "/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit"
+      },
+      "022BF08F-0B3A-3225-9E65-16D1553CE90D": {
+        "name": "libdispatch.dylib",
+        "UUID": "022BF08F-0B3A-3225-9E65-16D1553CE90D",
+        "arch": "arm64e",
+        "load-addr": "0x19d94b000",
+        "path": "/usr/lib/system/libdispatch.dylib"
+      },
+      "C0680DF6-9900-3C29-A071-95A031686EF8": {
+        "name": "libobjc.A.dylib",
+        "UUID": "C0680DF6-9900-3C29-A071-95A031686EF8",
+        "arch": "arm64e",
+        "load-addr": "0x19d684000",
+        "path": "/usr/lib/libobjc.A.dylib"
+      },
+      "6F304731-D95D-3501-B4AD-F2934F7F2446": {
+        "name": "libsystem_blocks.dylib",
+        "UUID": "6F304731-D95D-3501-B4AD-F2934F7F2446",
+        "arch": "arm64e",
+        "load-addr": "0x19d7c6000",
+        "path": "/usr/lib/system/libsystem_blocks.dylib"
+      },
+      "D341DDCB-7969-3A9C-8E03-0CF4751398A9": {
+        "name": "dyld",
+        "UUID": "D341DDCB-7969-3A9C-8E03-0CF4751398A9",
+        "arch": "arm64e",
+        "load-addr": "0x19d706000",
+        "path": "/usr/lib/dyld"
+      },
+      "4317F7C6-73D2-3BE9-B010-F318F1198A1B": {
+        "name": "Foundation",
+        "UUID": "4317F7C6-73D2-3BE9-B010-F318F1198A1B",
+        "arch": "arm64e",
+        "load-addr": "0x19f277000",
+        "path": "/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation"
+      },
+      "7C675D41-84B1-395F-80CA-4FF1837F0DA0": {
+        "name": "libicucore.A.dylib",
+        "UUID": "7C675D41-84B1-395F-80CA-4FF1837F0DA0",
+        "arch": "arm64e",
+        "load-addr": "0x1a1993000",
+        "path": "/usr/lib/libicucore.A.dylib"
+      }
+    }
+  }
 }
