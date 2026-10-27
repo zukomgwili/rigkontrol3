@@ -1,0 +1,315 @@
+{
+  "schema": 1,
+  "bead": "rigkontrol3-40h.1",
+  "qualification_bead": "rigkontrol3-40h.3",
+  "recorded_utc": "2026-10-27T14:30:13.029971+00:00",
+  "version": "0.2.8/build13",
+  "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261027T141749Z-e61d2f53",
+  "result": "PASS_installed_five_stopped_format_commits",
+  "M2_complete": false,
+  "M3_complete": false,
+  "preinstall_offline_and_package_record": {
+    "path": "ReverseEngineering/Evidence/Build13RateRestorationValidation.json",
+    "sha256": "877a0880ba1d637a1010ca66c991bacdc19cc622cdc2194dd0a1945e903db790",
+    "historical_record_unchanged": true
+  },
+  "installed_verification": {
+    "SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261027T141749Z-e61d2f53",
+    "manifest_sha256": "1f1ca4e62c723c9136049809fdedc61fd3957c4f77736d5e929b8d8ef7667660",
+    "files": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143"
+    },
+    "signatures": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      },
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      }
+    },
+    "SIP": "System Integrity Protection status: enabled.\n"
+  },
+  "session_journal_verification": "Protected root-only SESSION could not be independently read: unprivileged PermissionDenied and sudo-n needs authentication. No extra password request; exact installed bundles were verified directly. Installer prepares/hashes its backup journal before SESSION output.",
+  "live_baseline": {
+    "device": 128,
+    "nominal_rate": 44100,
+    "nominal_settable": true,
+    "buffer_frames": 512,
+    "running_somewhere": 0,
+    "flags": 1,
+    "generation": 1,
+    "error": 0,
+    "native_sample_rate": 44100,
+    "available_rates": [
+      [
+        44100,
+        44100
+      ],
+      [
+        48000,
+        48000
+      ],
+      [
+        88200,
+        88200
+      ],
+      [
+        96000,
+        96000
+      ],
+      [
+        192000,
+        192000
+      ]
+    ]
+  },
+  "plan": "Read-only installation verification then exactly one normal public stopped format sequence48000/88200/96000/192000/44100, recorded before private code/rate SETs in existing beads. No direct USB/MIDI/LED, driver Initialize, IOProc or AudioDeviceStart. Stop first fault; no retry/compensation.",
+  "private_helper": {
+    "source_sha256": "bcd748b450f2cebe2ef825e25e5cf6b067e8ed437e9815c0b9305dc2e16be883",
+    "binary_sha256": "9ddaa5535b6091fe978619bcc1e41910678842fbc24fa11a744f37c12ea3d25d",
+    "self_test_sha256": "dcc8770c932c03b3da55ce7d6088b6160f64ac4c36cf31fba5eb542fc3a43ff3",
+    "self_test_exit": 0,
+    "preflight": {
+      "device": 128,
+      "nominal_rate": 44100,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 0,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 44100,
+      "available_rates": [
+        [
+          44100,
+          44100
+        ],
+        [
+          48000,
+          48000
+        ],
+        [
+          88200,
+          88200
+        ],
+        [
+          96000,
+          96000
+        ],
+        [
+          192000,
+          192000
+        ]
+      ]
+    },
+    "planned_argv": [
+      ".build/native/rate-restore/installed/rate-transition",
+      "128",
+      "1"
+    ],
+    "outer_timeout_seconds": 30,
+    "backup_session_verify": "unprivileged_permission_denied; sudo-n_requires_password; no extra authentication requested"
+  },
+  "helper_safety_review": {
+    "result": "PASS",
+    "actionable_findings": 0,
+    "limits": "5s is polling budget around synchronous calls;30s parent cap bounds the child. Sequential properties are not an atomic wire trace.",
+    "strict_ARM_compile": 0,
+    "offline_self_test": 0
+  },
+  "execution": {
+    "argv": [
+      ".build/native/rate-restore/installed/rate-transition",
+      "128",
+      "1"
+    ],
+    "pid": 74513,
+    "started_utc": "2026-10-27T14:27:27.637193+00:00",
+    "ended_utc": "2026-10-27T14:27:28.062644+00:00",
+    "elapsed_seconds": 0.4254650409857277,
+    "parent_cap_seconds": 30,
+    "timed_out": false,
+    "exit": 0,
+    "reaped": true,
+    "stdout_sha256": "89e845d5d486156577a71c339cc2643b460e0b0a308c099faace2c180e623514",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result": "PASS"
+  },
+  "public_nominal_SET_results": [
+    {
+      "set_rate": 48000,
+      "status": 0
+    },
+    {
+      "set_rate": 88200,
+      "status": 0
+    },
+    {
+      "set_rate": 96000,
+      "status": 0
+    },
+    {
+      "set_rate": 192000,
+      "status": 0
+    },
+    {
+      "set_rate": 44100,
+      "status": 0
+    }
+  ],
+  "public_native_stream_timing_snapshots": [
+    {
+      "rate": 44100,
+      "native_rate": 44100,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "running_somewhere": 0,
+      "input_latency": 64,
+      "output_latency": 128,
+      "input_offset": 128,
+      "output_offset": 128,
+      "streams": [
+        129,
+        130
+      ],
+      "both_physical_virtual_stereo_float32": true
+    },
+    {
+      "rate": 48000,
+      "native_rate": 48000,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "running_somewhere": 0,
+      "input_latency": 68,
+      "output_latency": 136,
+      "input_offset": 136,
+      "output_offset": 136,
+      "streams": [
+        129,
+        130
+      ],
+      "both_physical_virtual_stereo_float32": true
+    },
+    {
+      "rate": 88200,
+      "native_rate": 88200,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "running_somewhere": 0,
+      "input_latency": 88,
+      "output_latency": 176,
+      "input_offset": 176,
+      "output_offset": 176,
+      "streams": [
+        129,
+        130
+      ],
+      "both_physical_virtual_stereo_float32": true
+    },
+    {
+      "rate": 96000,
+      "native_rate": 96000,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "running_somewhere": 0,
+      "input_latency": 92,
+      "output_latency": 184,
+      "input_offset": 184,
+      "output_offset": 184,
+      "streams": [
+        129,
+        130
+      ],
+      "both_physical_virtual_stereo_float32": true
+    },
+    {
+      "rate": 192000,
+      "native_rate": 192000,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "running_somewhere": 0,
+      "input_latency": 140,
+      "output_latency": 280,
+      "input_offset": 280,
+      "output_offset": 280,
+      "streams": [
+        129,
+        130
+      ],
+      "both_physical_virtual_stereo_float32": true
+    },
+    {
+      "rate": 44100,
+      "native_rate": 44100,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "running_somewhere": 0,
+      "input_latency": 64,
+      "output_latency": 128,
+      "input_offset": 128,
+      "output_offset": 128,
+      "streams": [
+        129,
+        130
+      ],
+      "both_physical_virtual_stereo_float32": true
+    }
+  ],
+  "post_state": {
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "matching_processes": [
+      "72936 Core Audio Driver (RigKontrol3Audio.driver)"
+    ],
+    "no_owned_test_child": true,
+    "GR6_closed": true,
+    "no_audio_started_by_test": true,
+    "final_rate": 44100
+  },
+  "interpretation": "Every public rate change settled in actual installed ACK-gated production code with matching native rate, physical/virtual stereoFloat32 formats, original latency/offsets, stable generation1/idle/no error. This is indirect format-command commit evidence, not a raw ACK capture or audio/stability test.",
+  "unchanged": [
+    "No production source or system bundle change after the reviewed build13 installation.",
+    "NI ring, timing estimator, calendar, retry/recovery policies, controller mapping/calibration and LED feedback policy retained.",
+    "SIP enabled; no security setting change."
+  ],
+  "remaining": [
+    "Sustained audio/clock/PCM/listening and affected rate stability on build13 remain unperformed in existing M3.",
+    "Build12 physical and three600s48k results remain evidence for build12 only.",
+    "Other existing M2/M3 gain/directmonitor/recovery/DIN/toe/external/latency/rollback gates are not completed by this stopped-format test."
+  ],
+  "private_evidence_sha256": {
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/verification.json": "819e5babfa73e98f8a84d1bc61fbc2945f29bd4032b496beb2b29edff0b5548e",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/preflight-rates.json": "3ac433cb4bcb0bc86ebe66974deb577d743b8ea56d221edd293527bdad1acb55",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/helper-record.json": "a6ab5a8bbda18d4659afa4bf527c38627fb52065442fb81ae7f52d2701ed3f0a",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/rate-transition.c": "bcd748b450f2cebe2ef825e25e5cf6b067e8ed437e9815c0b9305dc2e16be883",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/rate-transition": "9ddaa5535b6091fe978619bcc1e41910678842fbc24fa11a744f37c12ea3d25d",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/self-test.log": "dcc8770c932c03b3da55ce7d6088b6160f64ac4c36cf31fba5eb542fc3a43ff3",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/transition-result.json": "e0288f5650c4077643e232fb4387d54dda88315738cdd720c9d0ec4e2ef5c610",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/transition-stdout.log": "89e845d5d486156577a71c339cc2643b460e0b0a308c099faace2c180e623514",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/transition-stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installed/post-state.json": "70ce9c2fcaaea0f61ec5a5fd8ae904e04ad813ad73fedc1ad78a8f1b3c2cf47f"
+  }
+}

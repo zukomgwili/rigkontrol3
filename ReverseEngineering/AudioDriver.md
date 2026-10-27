@@ -745,7 +745,10 @@ rules are unchanged. Host PCM remains stereo Float32 with the existing physical
 
 Hardware-free tests exercise the actual HAL, worker and ISO paths, including
 fractional input counts and ring wrapping. They do not establish installed
-hardware acceptance at the four newly exposed rates. Build 12 remains installed
-with its completed 48 kHz physical and stability checks. The new candidate needs
-installation and the affected checks in `rigkontrol3-40h.3`. Source plans, review findings and
-actual test results are recorded in `rigkontrol3-40h.1`.
+audio acceptance at the four newly exposed rates. The installed build 13 passed
+one stopped format-change sequence through all five rates, with matching native
+rate, both stream formats and original latency/offset metadata, ending at
+44.1 kHz. This proves the public format commit path; it does not qualify audio
+playback or stability. Those affected checks remain in `rigkontrol3-40h.3`.
+Source plans, reviews and actual results are recorded in `rigkontrol3-40h.1`
+and [the installed rate record](Evidence/Build13InstalledRateValidation.json).
