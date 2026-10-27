@@ -1,0 +1,984 @@
+{
+  "schema": 1,
+  "bead": "rigkontrol3-40h.3",
+  "related_beads": [
+    "rigkontrol3-40h.1",
+    "rigkontrol3-40h.2"
+  ],
+  "recorded_utc": "2026-10-27T17:14:39.487822+00:00",
+  "version": "0.2.8/build13",
+  "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "candidate_manifest_sha256": "1f1ca4e62c723c9136049809fdedc61fd3957c4f77736d5e929b8d8ef7667660",
+  "repository_head_before_test": "a87c1f4120f2ff6f149ed29594bb0fc7bc985eb1",
+  "SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261027T141749Z-e61d2f53",
+  "result": "PASS_guitar_wah_all8_MIDI_local_LED_incoming_feedback_restored",
+  "M2_complete": false,
+  "M3_complete": false,
+  "lift_and_shift_complete": false,
+  "plan": {
+    "recorded_in_beads_before_test": true,
+    "text": "BUILD 13 PHYSICAL SUBSET PLAN \u2014 2026-10-27, before test configuration, private edits or new physical instructions beyond low-level readiness.\n\nScope: one guided build13 guitar/audio + eight-switch/main-expression/local-LED + incoming-MIDI LED-feedback session in existing M3 (.3). Reuse the existing Guitar Rig 6 Cry Wah test setup and unchanged private monitor/feedback/status tools; no implementation, installation, mapping/calibration/LED-policy, NI timing/ring/calendar/clock/recovery/QoS or security change. SIP remains enabled. No new Bead. Build13 seven fresh silent stability/original-rate gates already passed; those remain separate evidence, not listening/control proof.\n\nBefore new test actions: verify frozen build13 source e61aa5ab / signed manifest 1f1ca4e6 against all12 actual installed hashes, signatures/Info and SIP; inspect sole owner/public-native health. Guitar Rig was selected for inspection and currently shows the existing 'RK3 Build12 Physical Test' Cry Wah preset with unsaved state, no version dialog; do not mistake its historical preset label for installed driver identity. Do not overwrite unrelated presets. Ask user to lower RK3 headphones before audible test; no unity standalone monitor or second audio client. Inspect Guitar Rig input/output RK3, 48k/128, routing input1->stereo output and enabled native MIDI source; change only necessary host test settings through UI, preserving original before/after settings. Reuse valid CC4 wah and CC80 switch1 assignments. If absent, restore only these host assignments with MIDI Learn (one bounded connection refresh if endpoint stale, with failure recorded); no driver changes or mapping invention.\n\nObservers: one persistent native MIDI recorder until this physical session finishes, one read-only expected-rate native status watcher (48k), and one error/fault/timing log observer for the actual sole owner. Record argv/PIDs/logs/pins/start/end and cleanly stop/reap owned observers. No duplicate USB owner or standalone audio monitor. Start observers after final host rate/buffer configuration and retain throughout user checks. Expected native flags3/generation stable/error0 during Guitar Rig audio; stop affected test at first transport/health/clock/process fault or user-reported crackle/dropout/missed/phantom control. No retry/repair/security change/diagnostic expansion within this task; preserve evidence and report. User may take time; keep recording active rather than timing out their physical test.\n\nGuided sequence: (1) low-level readiness, then 30s guitar listening in existing wah test rack. User raises headphone level gradually and reports clear normal-level audio, acceptable delay, no crackling/dropouts. (2) Verify wah follows expression and switch1 latches effect once per press, unchanged on release. If prior mappings work, no re-learning. (3) >=120s combined playing: from allLEDs off, switch1 wah on/sweep full heel-to-toe/back twice/off; switches2..8 each press/release twice, about1s held, LEDs on after first and off after second, no release toggle. Finish allLEDs off/heel. MIDI expected exact current switchCCs80,81,82,83,76,77,78,79, not80..87; expressionCC4 expected full0..127 from saved calibration. Record any extra intentional switch1 presses separately, never silently dismiss duplicates. Switches2..8 are MIDI/local-LED controls in this wah-only preset, not seven additional audible effects.\n\n(4) With audio continuing and no pedal presses, send one known incoming feedback pattern LEDs1,3,5,7 on, others off through standard native MIDI destination; obtain physical confirmation. Then even pattern and confirmation. Then allLEDs off. These are deliberate feedback commands, not automatic Guitar Rig effect-state synchronization; no unsupported host-feedback claim. (5) Restore ordinary wah switch1/pedal operation after feedback: play, on/sweep/off and confirm allLEDs off/audio clear. MIDI last switch values/CC4 state and user result recorded. No mouse-driven host LED sync claim unless actual host sends states.\n\nFinish: bounded observer SIGINT/reap with recorded exit policy (MIDI zero events exit1 only with valid zero final footer; real events exit0). Save final idle/running health and app state honestly; do not terminate user Guitar Rig unnecessarily, restore only owned test LED pattern to alloff and leave chosen host sample rate for use. Rehash installed bundles/signatures/SIP, capture compact physical evidence with exact user observations separately from recorded MIDI/status. Independent result review; update existing .3/.1/.2/parent as relevant but do not close wider milestones. No sleep/unplug/DIN/toe/external/gain/directmonitor/true-loopback/rollback or extra stability campaign in this subset. Remaining existing gates stay explicit. Export passive JSONL into active worktree only; preserve primary index blob113d42992a0ee90acfb640fc694b469abba536a6; commit/rebase/push Git and separately bd dolt push.\n",
+    "sha256": "408da4d1c70325e36491a5a594182bcd3f8661c32725c69f9fc3957ed1a135c7"
+  },
+  "installed_before": {
+    "installed_files": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143"
+    },
+    "signatures": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      },
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      }
+    },
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "readback_exit": 0,
+    "live": {
+      "device": 128,
+      "nominal_rate": 48000,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 0,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 48000,
+      "available_rates": [
+        [
+          44100,
+          44100
+        ],
+        [
+          48000,
+          48000
+        ],
+        [
+          88200,
+          88200
+        ],
+        [
+          96000,
+          96000
+        ],
+        [
+          192000,
+          192000
+        ]
+      ]
+    },
+    "processes": [
+      "72936 Core Audio Driver (RigKontrol3Audio.driver)"
+    ]
+  },
+  "installed_after": {
+    "installed_files": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143"
+    },
+    "signatures": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      },
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      }
+    },
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "readback_exit": 0,
+    "live": {
+      "device": 128,
+      "nominal_rate": 48000,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 48000,
+      "available_rates": [
+        [
+          44100,
+          44100
+        ],
+        [
+          48000,
+          48000
+        ],
+        [
+          88200,
+          88200
+        ],
+        [
+          96000,
+          96000
+        ],
+        [
+          192000,
+          192000
+        ]
+      ]
+    },
+    "owned_observers_absent": {
+      "1146": true,
+      "1147": true,
+      "1148": true
+    },
+    "owner_processes": [
+      "72936 Core Audio Driver (RigKontrol3Audio.driver)"
+    ],
+    "guitar_rig_processes": [
+      "862 /Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+    ]
+  },
+  "session_state": {
+    "result": "PASS_physical_subset",
+    "started_utc": "2026-10-27T17:03:37.805159+00:00",
+    "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+    "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-physical/session-1",
+    "driver_pid": 72936,
+    "generation": 1,
+    "device": 128,
+    "rate": 48000,
+    "host": "Guitar Rig 6",
+    "host_observation": "Existing RK3 Build12 Physical Test rack; Audio CoreAudio/RK3 NI ARM/Running/48000/128; inputs1L2R/output1L2R; native controller MIDI enabled, Omni; no setting change made. User manually opened app after CUA returned cached closed-app view.",
+    "user_readiness": "Ready \u2014 guitar and headphones connected, level low",
+    "preflight": {
+      "device": 128,
+      "nominal_rate": 48000,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 48000,
+      "available_rates": [
+        [
+          44100,
+          44100
+        ],
+        [
+          48000,
+          48000
+        ],
+        [
+          88200,
+          88200
+        ],
+        [
+          96000,
+          96000
+        ],
+        [
+          192000,
+          192000
+        ]
+      ]
+    },
+    "pins": {
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor": "ad5adb79c04b93e9d17bdbe7dac6e017e67437d41947c319a8154f1484195364",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-feedback": "7d88388a6bc8835c8a06dded7ae34ab87bf3a348627449041ff2b166ad18b9fc",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch": "7c88bafa07b269be8062e28c105bd9a04d6ccb7f078bd30ea62a8a7837abe042"
+    },
+    "switch_ccs": [
+      80,
+      81,
+      82,
+      83,
+      76,
+      77,
+      78,
+      79
+    ],
+    "expression_cc": 4,
+    "phases": [
+      {
+        "name": "initial_listening",
+        "started_utc": "2026-10-27T17:04:37.003814+00:00",
+        "midi_before": "Native Controller monitor connected; recording until stopped. PID=1148\n",
+        "ended_utc": "2026-10-27T17:05:54.361303+00:00",
+        "user_answer": "Clear, normal level and acceptable delay",
+        "result": "PASS_user_listening"
+      },
+      {
+        "name": "combined_guitar_all8_wah_localLED",
+        "started_utc": "2026-10-27T17:05:54.530501+00:00",
+        "midi_before": "Native Controller monitor connected; recording until stopped. PID=1148\nTotal controller CC messages: 0\n",
+        "target_minimum_playing_seconds": 120,
+        "ended_utc": "2026-10-27T17:09:10.678695+00:00",
+        "observed_window_seconds": 196.148194,
+        "user_answer": "All checks passed",
+        "midi_after": "Native Controller monitor connected; recording until stopped. PID=1148\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nCC4 count=1266 min=0 max=127 last=77\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 1267\nCC4 count=6016 min=0 max=127 last=71\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 6017\nCC4 count=6583 min=0 max=127 last=0\nCC76 count=1 min=127 max=127 last=127\nCC77 count=1 min=127 max=127 last=127\nCC78 count=1 min=127 max=127 last=127\nCC79 count=1 min=127 max=127 last=127\nCC80 count=2 min=0 max=127 last=0\nCC81 count=1 min=127 max=127 last=127\nCC82 count=1 min=127 max=127 last=127\nCC83 count=1 min=127 max=127 last=127\nTotal controller CC messages: 6592\nCC4 count=6583 min=0 max=127 last=0\nCC76 count=2 min=0 max=127 last=0\nCC77 count=2 min=0 max=127 last=0\nCC78 count=2 min=0 max=127 last=0\nCC79 count=2 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nCC81 count=2 min=0 max=127 last=0\nCC82 count=2 min=0 max=127 last=0\nCC83 count=2 min=0 max=127 last=0\nTotal controller CC messages: 6599\n",
+        "midi_summary": {
+          "4": {
+            "count": 6583,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "76": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "77": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "78": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "79": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "81": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "82": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "83": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "all8_exact_expected_counts": true,
+        "expression_full_range": true,
+        "result": "PASS_user_and_midi"
+      },
+      {
+        "name": "incoming_odd_LED_pattern",
+        "started_utc": "2026-10-27T17:09:28.910395+00:00",
+        "on_switches": [
+          1,
+          3,
+          5,
+          7
+        ],
+        "commands": [
+          {
+            "cc": 80,
+            "value": 127,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC80=127 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 81,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC81=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 82,
+            "value": 127,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC82=127 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 83,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC83=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 76,
+            "value": 127,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC76=127 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 77,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC77=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 78,
+            "value": 127,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC78=127 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 79,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC79=0 (channel1)\n",
+            "stderr": ""
+          }
+        ],
+        "result": "PASS_user_LED_confirmation",
+        "user_answer": "Yes \u2014 odd-numbered pattern matches",
+        "ended_utc": "2026-10-27T17:09:48.318341+00:00"
+      },
+      {
+        "name": "incoming_even_LED_pattern",
+        "started_utc": "2026-10-27T17:09:48.318559+00:00",
+        "on_switches": [
+          2,
+          4,
+          6,
+          8
+        ],
+        "commands": [
+          {
+            "cc": 80,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC80=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 81,
+            "value": 127,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC81=127 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 82,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC82=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 83,
+            "value": 127,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC83=127 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 76,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC76=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 77,
+            "value": 127,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC77=127 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 78,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC78=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 79,
+            "value": 127,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC79=127 (channel1)\n",
+            "stderr": ""
+          }
+        ],
+        "result": "PASS_user_LED_confirmation",
+        "user_answer": "Yes \u2014 even-numbered pattern matches",
+        "ended_utc": "2026-10-27T17:10:26.306645+00:00"
+      },
+      {
+        "name": "all_LED_off_and_ordinary_operation_restored",
+        "started_utc": "2026-10-27T17:10:26.306861+00:00",
+        "on_switches": [],
+        "commands": [
+          {
+            "cc": 80,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC80=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 81,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC81=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 82,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC82=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 83,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC83=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 76,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC76=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 77,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC77=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 78,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC78=0 (channel1)\n",
+            "stderr": ""
+          },
+          {
+            "cc": 79,
+            "value": 0,
+            "exit": 0,
+            "stdout": "Controller feedback accepted: CC79=0 (channel1)\n",
+            "stderr": ""
+          }
+        ],
+        "midi_before": "Native Controller monitor connected; recording until stopped. PID=1148\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nCC4 count=1266 min=0 max=127 last=77\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 1267\nCC4 count=6016 min=0 max=127 last=71\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 6017\nCC4 count=6583 min=0 max=127 last=0\nCC76 count=1 min=127 max=127 last=127\nCC77 count=1 min=127 max=127 last=127\nCC78 count=1 min=127 max=127 last=127\nCC79 count=1 min=127 max=127 last=127\nCC80 count=2 min=0 max=127 last=0\nCC81 count=1 min=127 max=127 last=127\nCC82 count=1 min=127 max=127 last=127\nCC83 count=1 min=127 max=127 last=127\nTotal controller CC messages: 6592\nCC4 count=6583 min=0 max=127 last=0\nCC76 count=2 min=0 max=127 last=0\nCC77 count=2 min=0 max=127 last=0\nCC78 count=2 min=0 max=127 last=0\nCC79 count=2 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nCC81 count=2 min=0 max=127 last=0\nCC82 count=2 min=0 max=127 last=0\nCC83 count=2 min=0 max=127 last=0\nTotal controller CC messages: 6599\nCC4 count=6771 min=0 max=127 last=0\nCC76 count=2 min=0 max=127 last=0\nCC77 count=2 min=0 max=127 last=0\nCC78 count=2 min=0 max=127 last=0\nCC79 count=2 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nCC81 count=2 min=0 max=127 last=0\nCC82 count=2 min=0 max=127 last=0\nCC83 count=2 min=0 max=127 last=0\nTotal controller CC messages: 6787\n",
+        "ended_utc": "2026-10-27T17:12:10.982518+00:00",
+        "user_answer": "Yes \u2014 restored and everything works",
+        "midi_after": "Native Controller monitor connected; recording until stopped. PID=1148\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nCC4 count=1266 min=0 max=127 last=77\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 1267\nCC4 count=6016 min=0 max=127 last=71\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 6017\nCC4 count=6583 min=0 max=127 last=0\nCC76 count=1 min=127 max=127 last=127\nCC77 count=1 min=127 max=127 last=127\nCC78 count=1 min=127 max=127 last=127\nCC79 count=1 min=127 max=127 last=127\nCC80 count=2 min=0 max=127 last=0\nCC81 count=1 min=127 max=127 last=127\nCC82 count=1 min=127 max=127 last=127\nCC83 count=1 min=127 max=127 last=127\nTotal controller CC messages: 6592\nCC4 count=6583 min=0 max=127 last=0\nCC76 count=2 min=0 max=127 last=0\nCC77 count=2 min=0 max=127 last=0\nCC78 count=2 min=0 max=127 last=0\nCC79 count=2 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nCC81 count=2 min=0 max=127 last=0\nCC82 count=2 min=0 max=127 last=0\nCC83 count=2 min=0 max=127 last=0\nTotal controller CC messages: 6599\nCC4 count=6771 min=0 max=127 last=0\nCC76 count=2 min=0 max=127 last=0\nCC77 count=2 min=0 max=127 last=0\nCC78 count=2 min=0 max=127 last=0\nCC79 count=2 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nCC81 count=2 min=0 max=127 last=0\nCC82 count=2 min=0 max=127 last=0\nCC83 count=2 min=0 max=127 last=0\nTotal controller CC messages: 6787\nCC4 count=6771 min=0 max=127 last=0\nCC76 count=2 min=0 max=127 last=0\nCC77 count=2 min=0 max=127 last=0\nCC78 count=2 min=0 max=127 last=0\nCC79 count=2 min=0 max=127 last=0\nCC80 count=3 min=0 max=127 last=127\nCC81 count=2 min=0 max=127 last=0\nCC82 count=2 min=0 max=127 last=0\nCC83 count=2 min=0 max=127 last=0\nTotal controller CC messages: 6788\nCC4 count=9230 min=0 max=127 last=0\nCC76 count=2 min=0 max=127 last=0\nCC77 count=2 min=0 max=127 last=0\nCC78 count=2 min=0 max=127 last=0\nCC79 count=2 min=0 max=127 last=0\nCC80 count=4 min=0 max=127 last=0\nCC81 count=2 min=0 max=127 last=0\nCC82 count=2 min=0 max=127 last=0\nCC83 count=2 min=0 max=127 last=0\nTotal controller CC messages: 9248\n",
+        "midi_summary": {
+          "4": {
+            "count": 9230,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 4,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "76": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "77": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "78": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "79": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "81": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "82": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "83": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "expected_switch_counts_match": true,
+        "expression_fresh_after_feedback": true,
+        "expression_at_heel": true,
+        "result": "PASS_user_and_midi"
+      }
+    ],
+    "observers": {
+      "driver": {
+        "pid": 1146,
+        "exec_session": 61261,
+        "exit": 0
+      },
+      "status": {
+        "pid": 1147,
+        "exec_session": 93127,
+        "exit": 0
+      },
+      "midi": {
+        "pid": 1148,
+        "exec_session": 18608,
+        "exit": 0
+      }
+    },
+    "bookkeeping_note": "Initial observer PID discovery assertion failed because ps comm field truncates paths; no test/observer/driver failed. Full command-column read identified owned processes without restarting anything.",
+    "initial_alloff_commands": [
+      {
+        "cc": 80,
+        "value": 0,
+        "exit": 0,
+        "stdout": "Controller feedback accepted: CC80=0 (channel1)\n",
+        "stderr": ""
+      },
+      {
+        "cc": 81,
+        "value": 0,
+        "exit": 0,
+        "stdout": "Controller feedback accepted: CC81=0 (channel1)\n",
+        "stderr": ""
+      },
+      {
+        "cc": 82,
+        "value": 0,
+        "exit": 0,
+        "stdout": "Controller feedback accepted: CC82=0 (channel1)\n",
+        "stderr": ""
+      },
+      {
+        "cc": 83,
+        "value": 0,
+        "exit": 0,
+        "stdout": "Controller feedback accepted: CC83=0 (channel1)\n",
+        "stderr": ""
+      },
+      {
+        "cc": 76,
+        "value": 0,
+        "exit": 0,
+        "stdout": "Controller feedback accepted: CC76=0 (channel1)\n",
+        "stderr": ""
+      },
+      {
+        "cc": 77,
+        "value": 0,
+        "exit": 0,
+        "stdout": "Controller feedback accepted: CC77=0 (channel1)\n",
+        "stderr": ""
+      },
+      {
+        "cc": 78,
+        "value": 0,
+        "exit": 0,
+        "stdout": "Controller feedback accepted: CC78=0 (channel1)\n",
+        "stderr": ""
+      },
+      {
+        "cc": 79,
+        "value": 0,
+        "exit": 0,
+        "stdout": "Controller feedback accepted: CC79=0 (channel1)\n",
+        "stderr": ""
+      }
+    ],
+    "stop_requested_utc": "2026-10-27T17:12:34.780540+00:00",
+    "native_rows_at_stop_request": 5078,
+    "ended_utc": "2026-10-27T17:13:29.317395+00:00",
+    "midi_summary": {
+      "4": {
+        "count": 9230,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "80": {
+        "count": 4,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "76": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "77": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "78": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "79": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "81": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "82": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "83": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      }
+    },
+    "midi_total": 9248,
+    "native_summary": {
+      "rows": 5078,
+      "first": {
+        "tick": 3918031040462,
+        "status": 0,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "version": 1,
+        "rate": 48000,
+        "native_rate": 48000,
+        "bad": false
+      },
+      "last": {
+        "tick": 3930786831219,
+        "status": 0,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "version": 1,
+        "rate": 48000,
+        "native_rate": 48000,
+        "bad": false
+      },
+      "all_expected_rate_flags3_G1_error0": true,
+      "strictly_increasing_ticks": true
+    },
+    "watched_driver_records": 0,
+    "cleanup_escalations": [],
+    "final_UI_observation": "Guitar Rig open on existing RK3 Build12 Physical Test* Cry Wah rack; knob at heel and component power grey/off. No preset overwrite/save or mapping edit performed; user reports all physicalLEDs off.",
+    "log_sha256": {
+      "midi.log": "1f6bca17a9d5ab36233c1e49fe50f4a5d94b08662111cc6e39ffaa7d81705dac",
+      "status.log": "1367653d35e2f3227a25b822319a8fd2b602a8012ced127f5c80f8edc91652bb",
+      "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+    }
+  },
+  "session_state_sha256": "1685fdaa215f23b9115ef6bb3d7751c5df62b33dbfcbcfc340c009fc6afc01a0",
+  "user_answers": [
+    {
+      "stage": "readiness",
+      "answer": "Ready \u2014 guitar and headphones connected, level low"
+    },
+    {
+      "stage": "manual_app_launch",
+      "answer": "Opened \u2014 Guitar Rig 6 is running"
+    },
+    {
+      "stage": "initial_listening",
+      "answer": "Clear, normal level and acceptable delay"
+    },
+    {
+      "stage": "combined_guitar_all8_wah_localLED",
+      "answer": "All checks passed"
+    },
+    {
+      "stage": "incoming_odd_LED_pattern",
+      "answer": "Yes \u2014 odd-numbered pattern matches"
+    },
+    {
+      "stage": "incoming_even_LED_pattern",
+      "answer": "Yes \u2014 even-numbered pattern matches"
+    },
+    {
+      "stage": "restored_ordinary_operation",
+      "answer": "Yes \u2014 restored and everything works"
+    }
+  ],
+  "host_UI_observations": {
+    "audio": "CoreAudio, Rig Kontrol 3 (NI ARM), status Running, sample rate48000, latency slider128",
+    "inputs": "InputL=1 RK3L, InputR=2 RK3R; sidechains not connected; mainrack left-input selection",
+    "outputs": "Stereo output1 RK3L,2 RK3R",
+    "MIDI": "Omni; Native Controller Mapping (Controller) enabled; DIN input unchecked; GR6 Virtual Input enabled as already configured",
+    "preset": "Existing RK3 Build12 Physical Test with Cry Wah and prior CC4/CC80 learn assignments; label retained, no overwrite/save, final namehas* for ordinary performance parameter changes",
+    "final": "Wah knob at heel and component power grey/off; user confirms all physicalLEDs off",
+    "method": "Current CUA AX and screenshot observations, after user manually launched app. Initial closed-app cached snapshot and unavailable launch API were not treated as live running verification."
+  },
+  "fresh_results": {
+    "initial_listening": "User confirms clear normal-level guitar and acceptable delay, no crackling/dropouts requested in question",
+    "combined_window_seconds": 196.148194,
+    "combined_user_instructions_minimum_playing_seconds": 120,
+    "combined_user_confirmation": "All checks passed",
+    "combined_switch_stats": {
+      "80": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "81": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "82": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "83": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "76": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "77": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "78": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "79": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      }
+    },
+    "combined_expression_stats": {
+      "count": 6583,
+      "min": 0,
+      "max": 127,
+      "last": 0
+    },
+    "final_switch_stats": {
+      "80": {
+        "count": 4,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "81": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "82": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "83": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "76": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "77": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "78": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "79": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      }
+    },
+    "final_expression_stats": {
+      "count": 9230,
+      "min": 0,
+      "max": 127,
+      "last": 0
+    },
+    "switch_number_to_CC": {
+      "1": 80,
+      "2": 81,
+      "3": 82,
+      "4": 83,
+      "5": 76,
+      "6": 77,
+      "7": 78,
+      "8": 79
+    },
+    "incoming_feedback_commands": 32,
+    "incoming_feedback_all_commands_accepted": true,
+    "odd_physical_confirmed": [
+      1,
+      3,
+      5,
+      7
+    ],
+    "even_physical_confirmed": [
+      2,
+      4,
+      6,
+      8
+    ],
+    "final_alloff_ordinary_operation_confirmed": true,
+    "native": {
+      "rows": 5078,
+      "first": {
+        "tick": 3918031040462,
+        "status": 0,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "version": 1,
+        "rate": 48000,
+        "native_rate": 48000,
+        "bad": false
+      },
+      "last": {
+        "tick": 3930786831219,
+        "status": 0,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "version": 1,
+        "rate": 48000,
+        "native_rate": 48000,
+        "bad": false
+      },
+      "all_expected_rate_flags3_G1_error0": true,
+      "strictly_increasing_ticks": true
+    },
+    "watched_driver_records": 0,
+    "midi_total": 9248,
+    "observer_exits": {
+      "driver": 0,
+      "status": 0,
+      "midi": 0
+    },
+    "cleanup_escalations": []
+  },
+  "preserved": [
+    "No driver code, bundle, installation or security change. SIP enabled before and after.",
+    "No NI ring/calendar/timing/clock/recovery/QoS changes or new backend.",
+    "No host audio/MIDI setting or learn assignment change was needed; existing48k/128 setup reused. No preset overwrite or save.",
+    "No calibration or controller mapping/LED-policy change. Standard incoming MIDI commands deliberately set the local LED/state baseline for tests.",
+    "Pinned unchanged historical build12 diagnostic tools were reused against the exact installed build13 driver; no old driver/result is counted as fresh acceptance.",
+    "No standalone audio monitor, duplicate USB owner, extra stability campaign or new planning-only Bead.",
+    "Only the three owned observers were stopped/reaped, all exit0; user Guitar Rig left running at48k/128. Separate public readback client reports its own512-frame buffer and does not replace hostUI128 proof."
+  ],
+  "limits": [
+    "Audio clarity, level, acceptable delay, audible wah, release behavior and physical LEDs are the user reports above; no PCM recording or true-loopback millisecond latency was measured.",
+    "The196.148194s interval is the observer/question window. Continuous actual playing duration was requested (>=120s) and confirmed by the user, not independently measured from an audio recording.",
+    "MIDI monitor records cumulative CC counts/extrema/latest values, not per-edge timestamps; exact2changes per2presses plus human release confirmation supports the latch check, not a measured per-event latency guarantee.",
+    "Only Cry Wah was mapped audibly in this reused test preset. Switches2..8 were verified as native MIDI/localLED controls, not seven additional audible effects.",
+    "Local latch LEDs and explicit incoming-MIDI feedback patterns passed. Automatic Guitar Rig mouse/preset/effect-state LED synchronization was not provided or claimed.",
+    "Read-only native status samples and the owner error/fault/timing log predicate found no watched fault; this is bounded observation, not absence of every unobserved internal event. No same-active-client clock API was instrumented in Guitar Rig.",
+    "This subset did not test last-output/input-only restart, sleep/wake, USB detach/reconnect, toe/external controls, DIN, gain/direct monitoring, true-loopback latency or rollback/reinstall. Wider existing M1/M2/M3 exits remain open."
+  ]
+}
