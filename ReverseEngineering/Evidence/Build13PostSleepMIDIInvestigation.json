@@ -1,0 +1,1004 @@
+{
+  "schema": 1,
+  "issue": "rigkontrol3-40h.2",
+  "date": "2026-10-27",
+  "status": "INCOMPLETE_LIVE_MIDI_SUBSCRIBER_BOUNDARY_UNRESOLVED",
+  "root_cause": "UNPROVEN",
+  "production_code_changed": false,
+  "installed_package": "0.2.8/build13",
+  "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "repository_base": "64d51dd5e0ac55b65cbd4148dafe9f31e844cb3b",
+  "prior_failure_evidence": {
+    "path": "ReverseEngineering/Evidence/Build13RecoveryValidation.json",
+    "sha256": "c7b559bb0eac5a6fbdd9b829a7820889b7c985c77c130d529554104690cf3887",
+    "symptom": "After actual sleep, expected channel1 CC80 off and CC4 sweep were absent from selected recorder; physical LED off but GR6 wah stayed on. Failed layer unproven."
+  },
+  "scope": {
+    "SIP": "enabled_before_and_after",
+    "NI_timing_ring_calendar_recovery_QoS": "unchanged",
+    "mapping_calibration_LED_policy": "unchanged",
+    "app_MIDI_USB_reset": false,
+    "new_sleep": false,
+    "new_MIDI_subscriptions": 5,
+    "new_subscription_warning": "Five fresh controlled subscriptions were opened sequentially, all closed. The first failed before human action and the second timed out before recorded action. None continues the original GR6/recorder subscription.",
+    "no_new_beads": true
+  },
+  "plans": "Initial, exact snapshot, and fresh-action plans plus bounded compatibility amendments recorded in existing .2 before associated reads/code/execution. No production correction admitted.",
+  "read_only_snapshot": {
+    "kind": "readonly_failed_state_snapshot",
+    "delivery_verdict": "NOT_TESTED",
+    "execution": {
+      "argv": [
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/postsleep-investigation/tools/state-snapshot"
+      ],
+      "started_utc": "2026-10-27T19:16:02.845073+00:00",
+      "hard_cap_seconds": 10,
+      "delivery_verdict": "NOT_TESTED",
+      "pid": 23546,
+      "exit": 0,
+      "result": "CAPTURE_PROCESS_COMPLETED",
+      "elapsed_seconds": 0.37559129198780283,
+      "ended_utc": "2026-10-27T19:16:03.220849+00:00",
+      "reaped": true,
+      "sha256": {
+        "stdout.ndjson": "01f542b6f654ae22519f2eda7599625f2caeae517c114db620e9242eecbce2ac",
+        "stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "native_info": [
+      {
+        "event": "native_info",
+        "snapshot": 1,
+        "edge": "before",
+        "object": 126,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "version": 1,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "rate": 48000,
+        "digital_snapshot": 2147483648,
+        "uid_match": true,
+        "schema_identity_valid": true
+      },
+      {
+        "event": "native_info",
+        "snapshot": 1,
+        "edge": "after",
+        "object": 126,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "version": 1,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "rate": 48000,
+        "digital_snapshot": 2147483648,
+        "uid_match": true,
+        "schema_identity_valid": true
+      },
+      {
+        "event": "native_info",
+        "snapshot": 2,
+        "edge": "before",
+        "object": 126,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "version": 1,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "rate": 48000,
+        "digital_snapshot": 2147483648,
+        "uid_match": true,
+        "schema_identity_valid": true
+      },
+      {
+        "event": "native_info",
+        "snapshot": 2,
+        "edge": "after",
+        "object": 126,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "version": 1,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "rate": 48000,
+        "digital_snapshot": 2147483648,
+        "uid_match": true,
+        "schema_identity_valid": true
+      }
+    ],
+    "windows": [
+      {
+        "event": "native_reports",
+        "snapshot": 1,
+        "view": "head",
+        "after_sequence": 0,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "bounded_schema": true,
+        "version": 1,
+        "count": 32,
+        "next_sequence": 83091,
+        "latest_sequence": 83315,
+        "dropped": 83059
+      },
+      {
+        "event": "native_reports",
+        "snapshot": 1,
+        "view": "independent_tail",
+        "after_sequence": 83283,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "bounded_schema": true,
+        "version": 1,
+        "count": 32,
+        "next_sequence": 83315,
+        "latest_sequence": 83315,
+        "dropped": 0
+      },
+      {
+        "event": "native_reports",
+        "snapshot": 2,
+        "view": "head",
+        "after_sequence": 0,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "bounded_schema": true,
+        "version": 1,
+        "count": 32,
+        "next_sequence": 83091,
+        "latest_sequence": 83315,
+        "dropped": 83059
+      },
+      {
+        "event": "native_reports",
+        "snapshot": 2,
+        "view": "independent_tail",
+        "after_sequence": 83283,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "bounded_schema": true,
+        "version": 1,
+        "count": 32,
+        "next_sequence": 83315,
+        "latest_sequence": 83315,
+        "dropped": 0
+      }
+    ],
+    "midi_inventory": [
+      {
+        "event": "midi_device_count",
+        "count": 10,
+        "limit": 64
+      },
+      {
+        "event": "midi_identity_matches",
+        "count": 1,
+        "selected_device_ref": 3534889,
+        "identity_query_errors": 8,
+        "identity_shape_errors": 0
+      },
+      {
+        "event": "midi_object",
+        "kind": "device",
+        "ref": 3534889,
+        "entity_ref": 0,
+        "device_ref": 3534889,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": -1483967809,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_entity_count",
+        "device_ref": 3534889,
+        "count": 1,
+        "limit": 8
+      },
+      {
+        "event": "midi_object",
+        "kind": "entity",
+        "ref": 3534890,
+        "entity_ref": 3534890,
+        "device_ref": 3534889,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": -1046341785,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_endpoint_counts",
+        "entity_ref": 3534890,
+        "sources": 1,
+        "destinations": 1,
+        "limit_each": 32
+      },
+      {
+        "event": "midi_object",
+        "kind": "source",
+        "ref": 3534891,
+        "entity_ref": 3534890,
+        "device_ref": 3534889,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": -1923072596,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_object",
+        "kind": "destination",
+        "ref": 3534892,
+        "entity_ref": 3534890,
+        "device_ref": 3534889,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": 969347294,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_global_source_count",
+        "count": 2,
+        "limit": 32
+      },
+      {
+        "event": "midi_object",
+        "kind": "registered_source",
+        "ref": 3534891,
+        "entity_ref": 3534890,
+        "device_ref": 3534889,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": -1923072596,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_inventory_end",
+        "matched_registered_sources": 1,
+        "unresolved_global_sources": 0
+      }
+    ],
+    "report_types": {
+      "03": 128
+    },
+    "unique_report_payloads": [
+      "030000000000500400000000000000000000000000000000000000000000000000"
+    ],
+    "limits": [
+      "No fresh action; no delivery verdict",
+      "Head and tail are independent; duplicated across snapshots; not complete history",
+      "Numeric object identities apply only within this process",
+      "No private MIDIServer cursor or source enable state",
+      "Later fresh action captures supersede this idle snapshot for report-ingress evidence; it remains only an inventory snapshot."
+    ]
+  },
+  "fresh_action_attempts": [
+    {
+      "number": 1,
+      "result": "INCONCLUSIVE_PRE_ACTION_WRAPPER_ERROR",
+      "human_question_sent": false,
+      "human_action_recorded": false,
+      "error": "macOS /bin/bash3.2 rejects read -t0.2",
+      "execution": {
+        "started_utc": "2026-10-27T19:29:02.530193+00:00",
+        "hard_cap_seconds": 315,
+        "scope": "fresh subscriber plus nondestructive raw history; no sleep/reset",
+        "wrapper_pid": 25725,
+        "exit": 2,
+        "result": "EXITED",
+        "process_group_empty": true,
+        "elapsed_seconds": 1.3569725419802126,
+        "ended_utc": "2026-10-27T19:29:03.887177+00:00",
+        "wrapper_reaped": true,
+        "files": {
+          "midi-baseline.log": "f9d54270437e741c95105bf2ac78128ae0c8ac4267781a202d06403aef6872df",
+          "midi.log": "7a808656534f102f8299db8d131744979528238087e1c48fc093bd009e241bcc",
+          "midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "raw.ndjson": "840f29f70572ecf4a21a48f2f22b086a40cd199e7276a370bfb8dedae16a062a"
+        }
+      },
+      "observer_exits": {
+        "raw": 0,
+        "midi": 1
+      },
+      "accepted_CC_count": 0,
+      "cleanup": "owned process group empty and shell reaped",
+      "correction": "Used already-installed Bash5.3.20 with integer1 timeout; CPU-verified timeout>128 vs EOF1; no install. Original sources archived with matching hashes."
+    },
+    {
+      "number": 2,
+      "result": "INCONCLUSIVE_NO_REQUESTED_ACTION_BEFORE_CAP",
+      "human_question_sent": true,
+      "human_reply_received_before_stop": false,
+      "execution": {
+        "started_utc": "2026-10-27T19:30:41.592767+00:00",
+        "hard_cap_seconds": 315,
+        "scope": "fresh subscriber plus nondestructive raw history; no sleep/reset",
+        "wrapper_pid": 26113,
+        "exit": 1,
+        "result": "EXITED",
+        "process_group_empty": true,
+        "elapsed_seconds": 301.88998079200974,
+        "ended_utc": "2026-10-27T19:35:43.482715+00:00",
+        "wrapper_reaped": true,
+        "files": {
+          "midi-baseline.log": "2db49a140dc7fe3c4039bb31288f991434948cf75d31a7432cee2b7e6d2f4136",
+          "midi.log": "9438ca90da595d2f632c966cb73d701d83b3bf5e843a17b773a58aec779df2de",
+          "midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "raw.exit": "1121cfccd5913f0a63fec40a6ffd44ea64f9dc135c66634ba001d10bcf4302a2",
+          "raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "raw.ndjson": "25bdc4d680dcf621caa396bc66b0a6b143036309aaba5c0dfde073009ee94847"
+        }
+      },
+      "raw_summary": {
+        "fresh_report_count": 498,
+        "types": {
+          "03": 498
+        },
+        "sequence_range": [
+          88337,
+          88834
+        ],
+        "axis2_raw_range": [
+          80,
+          81
+        ],
+        "native_states": [
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483648
+          ]
+        ],
+        "watch_end": [
+          {
+            "event": "watch_end",
+            "reason": "duration_cap",
+            "exit": 3,
+            "cursor": 88834,
+            "fresh_reports": 498,
+            "gap_or_dropped": false,
+            "exact_count_inference_valid": false,
+            "record_budget_used_conservative": 1564,
+            "delivery_verdict": "NOT_TESTED"
+          }
+        ]
+      },
+      "assessment": {
+        "verdict": "INCONCLUSIVE",
+        "raw_witness": false,
+        "observer_valid": false,
+        "footer_valid": true,
+        "observer_exits": {
+          "raw": 3,
+          "midi": 1
+        },
+        "raw_report_count": 498,
+        "raw_digital_values": [],
+        "raw_bit4_rises": 0,
+        "raw_axis2_range": [
+          80,
+          81
+        ],
+        "history_overruns": 0,
+        "baseline_counts": {},
+        "final_counts": {},
+        "switch1_CC80_delta": 0,
+        "pedal_CC4_delta": 0,
+        "complete_and_reaped": false,
+        "scope": "Fresh controlled subscription only; GR6 existing-subscription outcome requires human observation; no automatic-recovery claim"
+      },
+      "cleanup": "Raw300s duration cap; wrapper noticed exit while awaiting reply, MIDI clean stop, group empty and shell reaped.",
+      "late_human_reply": {
+        "value": "LED, wah power and pedal all respond; Ready now",
+        "after_window_closed": true,
+        "not_assigned_to_captured_actions": true
+      }
+    },
+    {
+      "number": 3,
+      "observer": "existing channel1 CC monitor",
+      "result": "RED_EXPECTED_MAPPED_MIDI_DELIVERY",
+      "assessment_process_exit": 1,
+      "human": {
+        "reply": "Finished \u2014 all controls respond",
+        "source": "human asynchronous reply to this specific action request",
+        "no_auto_recovery_claim": true
+      },
+      "execution": {
+        "started_utc": "2026-10-27T19:38:01.323427+00:00",
+        "hard_cap_seconds": 315,
+        "scope": "fresh subscriber plus nondestructive raw history; no sleep/reset",
+        "wrapper_pid": 27264,
+        "exit": 0,
+        "result": "EXITED",
+        "process_group_empty": true,
+        "elapsed_seconds": 24.292346542002633,
+        "ended_utc": "2026-10-27T19:38:25.615781+00:00",
+        "wrapper_reaped": true,
+        "files": {
+          "midi-baseline.log": "bd845e47835b96de52da47e56ef24777c5848233ad36c8702497f4437271196d",
+          "midi.log": "0fea20c3b45dc1af481d90260eaced4465e8dd992022aacc7d64eb8bf266aaf6",
+          "midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "raw.ndjson": "914f0df7520f6d25f658b06fcdf233d291f6b00dd7dcd7eda8cfdae5f144af8a"
+        }
+      },
+      "raw_summary": {
+        "fresh_report_count": 186,
+        "types": {
+          "03": 180,
+          "04": 4,
+          "05": 2
+        },
+        "sequence_range": [
+          89294,
+          89479
+        ],
+        "raw_digital_values": [
+          16,
+          0,
+          16,
+          0
+        ],
+        "axis2_raw_range": [
+          57,
+          806
+        ],
+        "native_states": [
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483648
+          ],
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483664
+          ]
+        ],
+        "watch_end": [
+          {
+            "event": "watch_end",
+            "reason": "signal_stop",
+            "exit": 0,
+            "cursor": 89479,
+            "fresh_reports": 186,
+            "gap_or_dropped": false,
+            "exact_count_inference_valid": true,
+            "record_budget_used_conservative": 377,
+            "delivery_verdict": "NOT_TESTED"
+          }
+        ]
+      },
+      "assessment": {
+        "verdict": "RED_EXPECTED_MAPPED_MIDI_DELIVERY",
+        "raw_witness": true,
+        "observer_valid": true,
+        "footer_valid": true,
+        "observer_exits": {
+          "raw": 0,
+          "midi": 1
+        },
+        "raw_report_count": 186,
+        "raw_digital_values": [
+          16,
+          0,
+          16,
+          0
+        ],
+        "raw_bit4_rises": 2,
+        "raw_axis2_range": [
+          57,
+          806
+        ],
+        "history_overruns": 0,
+        "baseline_counts": {},
+        "final_counts": {},
+        "switch1_CC80_delta": 0,
+        "pedal_CC4_delta": 0,
+        "complete_and_reaped": true,
+        "scope": "Fresh controlled subscription only; GR6 existing-subscription outcome requires human observation; no automatic-recovery claim"
+      },
+      "cleanup": "owned process group empty and wrapper reaped; raw0/MIDI1 with complete zero-count footers"
+    },
+    {
+      "number": 4,
+      "observer": "same monitor plus unfiltered callback/packet observation",
+      "result": "RED_EXPECTED_MAPPED_MIDI_DELIVERY",
+      "assessment_process_exit": 1,
+      "human": {
+        "reply": "Finished \u2014 all controls respond",
+        "source": "human asynchronous reply to this specific action request",
+        "no_auto_recovery_claim": true
+      },
+      "execution": {
+        "started_utc": "2026-10-27T19:41:35.107484+00:00",
+        "hard_cap_seconds": 315,
+        "scope": "fresh subscriber plus nondestructive raw history; no sleep/reset",
+        "wrapper_pid": 27961,
+        "exit": 0,
+        "result": "EXITED",
+        "process_group_empty": true,
+        "elapsed_seconds": 53.30287541699363,
+        "ended_utc": "2026-10-27T19:42:28.410359+00:00",
+        "wrapper_reaped": true,
+        "files": {
+          "midi-baseline.log": "7a41d2f1aca55f68f34b9a2ee00bc723f970bf2c1b365145e2f84c236887269b",
+          "midi.log": "57a89167d1669fd7c3612cb2ea8839ce9d53e5445b60be97ed26ecb47e354393",
+          "midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "raw.ndjson": "218f4eeb77224d3a47fda352ab72782982e2e1e50373ecf870ced36865440c15"
+        }
+      },
+      "raw_summary": {
+        "fresh_report_count": 340,
+        "types": {
+          "03": 331,
+          "04": 6,
+          "05": 3
+        },
+        "sequence_range": [
+          89731,
+          90070
+        ],
+        "raw_digital_values": [
+          16,
+          0,
+          256,
+          0,
+          16,
+          0
+        ],
+        "axis2_raw_range": [
+          57,
+          900
+        ],
+        "native_states": [
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483648
+          ],
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483664
+          ],
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483904
+          ]
+        ],
+        "watch_end": [
+          {
+            "event": "watch_end",
+            "reason": "signal_stop",
+            "exit": 0,
+            "cursor": 90070,
+            "fresh_reports": 340,
+            "gap_or_dropped": false,
+            "exact_count_inference_valid": true,
+            "record_budget_used_conservative": 651,
+            "delivery_verdict": "NOT_TESTED"
+          }
+        ]
+      },
+      "assessment": {
+        "verdict": "RED_EXPECTED_MAPPED_MIDI_DELIVERY",
+        "raw_witness": true,
+        "observer_valid": true,
+        "footer_valid": true,
+        "observer_exits": {
+          "raw": 0,
+          "midi": 1
+        },
+        "raw_report_count": 340,
+        "raw_digital_values": [
+          16,
+          0,
+          256,
+          0,
+          16,
+          0
+        ],
+        "raw_bit4_rises": 2,
+        "raw_axis2_range": [
+          57,
+          900
+        ],
+        "history_overruns": 0,
+        "baseline_counts": {},
+        "final_counts": {},
+        "switch1_CC80_delta": 0,
+        "pedal_CC4_delta": 0,
+        "complete_and_reaped": true,
+        "scope": "Fresh controlled subscription only; GR6 existing-subscription outcome requires human observation; no automatic-recovery claim"
+      },
+      "cleanup": "owned process group empty and wrapper reaped; raw0/MIDI1 with complete zero-count footers",
+      "unfiltered_observer_log": "SELECTED source=3534891 entity=3534890 device=3534889 entity_status=0 device_status=0 unique_status=0 unique_id=-1923072596 timebase_numer=125 timebase_denom=3 absolute_now=4144410404769\nNative Controller monitor connected; recording until stopped. PID=27964\nUNFILTERED callbacks=0 packets=0\nTotal controller CC messages: 0\nUNFILTERED callbacks=0 packets=0\nTotal controller CC messages: 0\nUNFILTERED callbacks=0 packets=0\nTotal controller CC messages: 0\n"
+    },
+    {
+      "number": 5,
+      "observer": "packet observer with only main wait changed to CFRunLoop service",
+      "result": "INCONCLUSIVE",
+      "assessment_process_exit": 2,
+      "human": {
+        "reply": "Finished \u2014 all controls respond",
+        "source": "human asynchronous reply to this specific action request",
+        "no_auto_recovery_claim": true
+      },
+      "execution": {
+        "started_utc": "2026-10-27T19:43:47.408480+00:00",
+        "hard_cap_seconds": 315,
+        "scope": "fresh subscriber plus nondestructive raw history; no sleep/reset",
+        "wrapper_pid": 28343,
+        "exit": 0,
+        "result": "EXITED",
+        "process_group_empty": true,
+        "elapsed_seconds": 32.73079949998646,
+        "ended_utc": "2026-10-27T19:44:20.139275+00:00",
+        "wrapper_reaped": true,
+        "files": {
+          "midi-baseline.log": "d4b994220492ef3c60ad2d2c2bf478223cad78b556445e351785bbe048a9fb00",
+          "midi.log": "eff394b27085b372ce15900c8ecc0b4bae5ca3aacecf2dbdb4f97c8191b457bf",
+          "midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "raw.ndjson": "46afbeb1d54128c536e8861efe6e8f35f4f4771b0630263804178b80c69f1471"
+        }
+      },
+      "raw_summary": {
+        "fresh_report_count": 1945,
+        "types": {
+          "03": 1933,
+          "04": 8,
+          "05": 4
+        },
+        "sequence_range": [
+          90761,
+          92705
+        ],
+        "raw_digital_values": [
+          16,
+          0,
+          16,
+          0,
+          16,
+          0,
+          16,
+          0
+        ],
+        "axis2_raw_range": [
+          67,
+          891
+        ],
+        "native_states": [
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483648
+          ],
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483664
+          ]
+        ],
+        "watch_end": [
+          {
+            "event": "watch_end",
+            "reason": "signal_stop",
+            "exit": 0,
+            "cursor": 92705,
+            "fresh_reports": 1945,
+            "gap_or_dropped": false,
+            "exact_count_inference_valid": true,
+            "record_budget_used_conservative": 2383,
+            "delivery_verdict": "NOT_TESTED"
+          }
+        ]
+      },
+      "assessment": {
+        "verdict": "INCONCLUSIVE",
+        "raw_witness": false,
+        "observer_valid": true,
+        "footer_valid": true,
+        "observer_exits": {
+          "raw": 0,
+          "midi": 1
+        },
+        "raw_report_count": 1945,
+        "raw_digital_values": [
+          16,
+          0,
+          16,
+          0,
+          16,
+          0,
+          16,
+          0
+        ],
+        "raw_bit4_rises": 4,
+        "raw_axis2_range": [
+          67,
+          891
+        ],
+        "history_overruns": 0,
+        "baseline_counts": {},
+        "final_counts": {},
+        "switch1_CC80_delta": 0,
+        "pedal_CC4_delta": 0,
+        "complete_and_reaped": true,
+        "scope": "Fresh controlled subscription only; GR6 existing-subscription outcome requires human observation; no automatic-recovery claim"
+      },
+      "cleanup": "owned process group empty and wrapper reaped; raw0/MIDI1 with complete zero-count footers",
+      "unfiltered_observer_log": "SELECTED source=3534891 entity=3534890 device=3534889 entity_status=0 device_status=0 unique_status=0 unique_id=-1923072596 timebase_numer=125 timebase_denom=3 absolute_now=4147586810490\nNative Controller monitor connected; recording until stopped. PID=28346\nUNFILTERED callbacks=0 packets=0\nTotal controller CC messages: 0\nUNFILTERED callbacks=0 packets=0\nTotal controller CC messages: 0\nUNFILTERED callbacks=0 packets=0\nTotal controller CC messages: 0\n",
+      "exact_count_limit": "Four raw bit4 rising edges were observed, rather than the requested two. Strict assessor INCONCLUSIVE retained; no exact-count PASS. Zero unfiltered callbacks is still directly observed with fresh physical inputs."
+    }
+  ],
+  "findings": [
+    "Fresh raw switch and pedal actions were captured in attempts3/4/5 with no reported history overrun; native metadata stayed connected/audio-running,G1,48kHz,error0. Raw USB report ingress is functioning during these observations.",
+    "Expected CC80 and CC4 counts were zero in new native-controller subscribers despite raw action witnesses. Attempt4 additionally observed zero unfiltered read callbacks/packets; therefore its CC parser filter cannot explain that result.",
+    "Attempt4 sourceRef3534891,entity3534890,device3534889,sourceUniqueID-1923072596 and parent/UniqueID query statuses0 match the inventory. No private MIDIServer driver endpoint refs or listener state was captured.",
+    "Changing only the diagnostic client main wait from nanosleep to CFRunLoopRunInMode did not produce read callbacks in attempt5. This is a one-attempt observation, not universal proof that client lifecycle cannot matter.",
+    "The user reported LED, GR6 wah power and pedal response in attempts3/4/5. Preserve that functional observation alongside the recorder failure; do not call all MIDI or current GR6 operation broken.",
+    "Source review proves local controller/LED tracking may continue even when MIDI delivery gates suppress messages. Those runtime gates are not captured; no specific gate fault has been established.",
+    "NI original DIN timestamps are assigned at delivery-time; the current implementation uses report receipt timestamps. This is a parity difference, not a proven post-sleep cause, and it does not establish original controller timestamp policy.",
+    "No production fix or timing/recovery change is justified by the current evidence.",
+    "Captured input replay through actual production input_tick produces the expected two CC80 changes and63 CC4 values0..127 in a known enabled fixture. The same input with a deliberately disabled source emits no MIDI but preserves local controller/LED tracking. This verifies code behavior and an observational ambiguity; it does not establish the failed runtime gate."
+  ],
+  "remaining_boundary": "Actual MIDIServer source binding/listener/cursor gates, MIDIReceived return and delivery to subscriber callbacks versus the user-observed working GR6 connection. No additional live comparisons or driver changes admitted in this bounded turn. The next smallest step is a plan in existing .2 for observing this actual publication-to-subscriber boundary; no new planning bead or driver fix is authorized by these findings alone. Current functional GR6 response is human-confirmed; original immediate automatic post-sleep recovery not requalified.",
+  "reviews": {
+    "snapshot_probe": "independent_PASS_before_execution",
+    "fresh_observer_and_wrapper": "independent_PASS_after_cleanup_footer_and_exit_guards",
+    "compatibility_delta": "independent_PASS_before_replacement",
+    "result_record": "PASS_independent_capture_record_and_final_offline_replay_delta; no corrections"
+  },
+  "post_capture_verification": {
+    "recorded_utc": "2026-10-27T19:49:02.631466+00:00",
+    "installed_hashes_unchanged": true,
+    "installed_file_count": 12,
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "processes": "10580 /Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6\n72936 Core Audio Driver (RigKontrol3Audio.driver)\n",
+    "owned_observer_PIDs_absent": true,
+    "production_diff": ""
+  },
+  "private_artifact_sha256": {
+    ".build/native/postsleep-investigation/preparation.json": "e30ef7961640e2c35ad224b921da8cd2309e675122e9cc47514e4a3511356083",
+    ".build/native/postsleep-investigation/verification-before.json": "aa8a99dde976f1ca7b4f3e234df9751ddb6215d76f959b7b112fa4134b6f23b0",
+    ".build/native/postsleep-investigation/verification-after.json": "cb23d58e7313e42a08edc627f3016d2c7920bd519e80c4e0b0743fd2b6b22572",
+    ".build/native/postsleep-investigation/capture-1/execution.json": "9e1e076277f2fae20b1cdb83fdc79efa88ed996ec4892ca35e99e61c727f5160",
+    ".build/native/postsleep-investigation/capture-1/stdout.ndjson": "01f542b6f654ae22519f2eda7599625f2caeae517c114db620e9242eecbce2ac",
+    ".build/native/postsleep-investigation/capture-1/summary.json": "d1d601d5a4d2fdbf2204b61fe593d920b204310237528fbed4f2633685719532",
+    ".build/native/postsleep-investigation/tools/state-snapshot.c": "0108b4e245b94b6dc945b09cc9fb172e252d8577e60ec4ef880c75f3f5a74d2d",
+    ".build/native/postsleep-investigation/tools/state-snapshot": "d534fac01e3339887249327607a36322c51b5a003cf19ed3b779633fc6a6fcf0",
+    ".build/native/postsleep-investigation/tools/rawwatch.c": "768bf1661c94894cfce39a31d4c20a82f2a8f82d015015624cdc2e3c43463c4a",
+    ".build/native/postsleep-investigation/tools/rawwatch": "3899b149b230f352edcf198f41321b24fe85adfc639a774d787252a06d1ce21e",
+    ".build/native/postsleep-investigation/tools/rk3-midi-monitor": "0103e3730e2c31f9a4caebfe42e301aae111f625c248a2b1122c9d232afae4bb",
+    ".build/native/postsleep-investigation/tools/fresh-action.sh": "4b5bcbe700d07108dcda0c6a6e283c0f77ede768e1dfe2cb514b1d92dd7fe4f5",
+    ".build/native/postsleep-investigation/tools/run-fresh-action.py": "8ba89664d2f00a5bd7ff42cfd7c41050268a729870440986b701bc7ca12677ac",
+    ".build/native/postsleep-investigation/tools/assess-fresh.py": "8f10eb5fd4e0621b48d4ca4fca873b1e97cc38ac1780beecdab87b272dd0f760",
+    ".build/native/postsleep-investigation/tools/assess-offline-final.json": "92f365eb2eee3db78b602ac455398e64403d517675946a7846a8067152f9dd3d",
+    ".build/native/postsleep-investigation/tools/final-offline-1793128404212415000/result.json": "102abd9bcdc7fe61b11221711a2f16bb9d031cb3785ccce2d0b3b59cb93f5774",
+    ".build/native/postsleep-investigation/tools/raw-final-offline-1793128987914461000/result.json": "40c3c0c46668b23459c891f2c1412871799e8511cbf3e69f8c589b62eb1de402",
+    ".build/native/postsleep-investigation/fresh-action-admission-precheck.json": "a88882bdec21af7a454bab1c5a51507d85c0ba6681436ebf8d82001c206a32f3",
+    ".build/native/postsleep-investigation/fresh-action-1/execution.json": "879bb5d8c0b95dee0d732a683d67b8c774e07735f3bff69f3d3d271503ff452e",
+    ".build/native/postsleep-investigation/fresh-action-1/frozen-tools/fresh-action.sh": "df829c9573d854656da60704f5d6dc8f03edda81ff75fa6f53f2ab83cd368a3d",
+    ".build/native/postsleep-investigation/fresh-action-1/frozen-tools/run-fresh-action.py": "8ebec38bf5a890d27f3785cb101918031b190021f9abbd884a9b219eda2437e7",
+    ".build/native/postsleep-investigation/fresh-action-1/midi-baseline.log": "f9d54270437e741c95105bf2ac78128ae0c8ac4267781a202d06403aef6872df",
+    ".build/native/postsleep-investigation/fresh-action-1/midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    ".build/native/postsleep-investigation/fresh-action-1/midi.log": "7a808656534f102f8299db8d131744979528238087e1c48fc093bd009e241bcc",
+    ".build/native/postsleep-investigation/fresh-action-1/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/fresh-action-1/raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    ".build/native/postsleep-investigation/fresh-action-1/raw.ndjson": "840f29f70572ecf4a21a48f2f22b086a40cd199e7276a370bfb8dedae16a062a",
+    ".build/native/postsleep-investigation/fresh-action-1/raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/fresh-action-2/assessment.json": "ac0b49b5c21415936e3faad65bc3195b4325585bb7e7b12b6d1fed1bdab782b8",
+    ".build/native/postsleep-investigation/fresh-action-2/execution.json": "f20bd4d25bd8cc666798b3bc86650c956f4bda95751ab6a73a099f66ec3ea9f9",
+    ".build/native/postsleep-investigation/fresh-action-2/midi-baseline.log": "2db49a140dc7fe3c4039bb31288f991434948cf75d31a7432cee2b7e6d2f4136",
+    ".build/native/postsleep-investigation/fresh-action-2/midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    ".build/native/postsleep-investigation/fresh-action-2/midi.log": "9438ca90da595d2f632c966cb73d701d83b3bf5e843a17b773a58aec779df2de",
+    ".build/native/postsleep-investigation/fresh-action-2/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/fresh-action-2/raw-summary.json": "fc2b2ebc2c70a93e8ceb5aed5ddeac525e7c9f349e159beb71f216163fbd7ba3",
+    ".build/native/postsleep-investigation/fresh-action-2/raw.exit": "1121cfccd5913f0a63fec40a6ffd44ea64f9dc135c66634ba001d10bcf4302a2",
+    ".build/native/postsleep-investigation/fresh-action-2/raw.ndjson": "25bdc4d680dcf621caa396bc66b0a6b143036309aaba5c0dfde073009ee94847",
+    ".build/native/postsleep-investigation/fresh-action-2/raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/rk3-postsleep-investigation-plan.txt": "f3e6fe5bf8d78566397e5bacc02b0b07b0932d838738c23931b430dc1883c81b",
+    "/private/tmp/rk3-postsleep-snapshot-plan.txt": "a029e009db0b59aa029fdfd4dbae7c5f91c769487485a5c8a6a9bab8a6837183",
+    "/private/tmp/rk3-postsleep-fresh-action-plan.txt": "11c0f489f30296590edb61fdcbe458e61639759a138d280c21f33c2b8274b1ee",
+    ".build/native/postsleep-investigation/tools/midi-packet-watch.c": "b8f612486c98c7351be26239be7d0e4a362518fefbd8552cff85bfc3e78adc5a",
+    ".build/native/postsleep-investigation/tools/midi-packet-watch": "987bb77324a0982f112391e5d2d6de17962bc77cf6c532e19ff68b63a13f0acb",
+    ".build/native/postsleep-investigation/tools/packet-watch-offline.json": "682f9f8ae9216503ca3f8937c8c5d6c1e567cc946678066f9ec14829461f0d46",
+    ".build/native/postsleep-investigation/tools/midi-runloop-watch.c": "853d926ede8c38f7cabcb936fdb537037220052df69dea999d46492b9f1feecd",
+    ".build/native/postsleep-investigation/tools/midi-runloop-watch": "54a6618974d94ac2d78ce81ee7e9e6fba25353f41931d11d1d96c066bc514e89",
+    ".build/native/postsleep-investigation/tools/runloop-watch-offline.json": "febc8a216e0aaa567d04a59641e3952993a4899c677f3e0525ee48202a3a7c23",
+    ".build/native/postsleep-investigation/fresh-action-2/frozen-tools/fresh-action.sh": "086ab575c357386a346884eb5b2ba4b8e34a42cef6e8b8963cdfd80906981f8a",
+    ".build/native/postsleep-investigation/fresh-action-2/frozen-tools/run-fresh-action.py": "52c1d7b1b55bccb09ebc59ba0ead6ba0b3c8829fa198e17ea1b98f7e43f9c506",
+    ".build/native/postsleep-investigation/fresh-action-3/assessment.json": "19a51461e3ee48224606d4b4182f2f3e529c28962e6db77ed79a5c0617b3c23d",
+    ".build/native/postsleep-investigation/fresh-action-3/execution.json": "5a2c89e692185b67cc1c2ab89fcdb36d8a1e0b6cd11f7972836ed71903a2b45d",
+    ".build/native/postsleep-investigation/fresh-action-3/frozen-tools/fresh-action.sh": "23cb3741b4bcefb15dd9bd8d539f860d04f468ac5044ee78974556293539aa06",
+    ".build/native/postsleep-investigation/fresh-action-3/frozen-tools/run-fresh-action.py": "d94485e19fa757e1635beaf79759c54650604064a361905716f63dc042f4ab9c",
+    ".build/native/postsleep-investigation/fresh-action-3/human.json": "784be2967444758e2f4b1b1b28fd832977ce74127332c96582684b9bd42d4ff6",
+    ".build/native/postsleep-investigation/fresh-action-3/midi-baseline.log": "bd845e47835b96de52da47e56ef24777c5848233ad36c8702497f4437271196d",
+    ".build/native/postsleep-investigation/fresh-action-3/midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    ".build/native/postsleep-investigation/fresh-action-3/midi.log": "0fea20c3b45dc1af481d90260eaced4465e8dd992022aacc7d64eb8bf266aaf6",
+    ".build/native/postsleep-investigation/fresh-action-3/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/fresh-action-3/raw-summary.json": "91127b8a17a26c15af8915b2826ab757cc2d695f89632f2ba71c94c7468bec02",
+    ".build/native/postsleep-investigation/fresh-action-3/raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    ".build/native/postsleep-investigation/fresh-action-3/raw.ndjson": "914f0df7520f6d25f658b06fcdf233d291f6b00dd7dcd7eda8cfdae5f144af8a",
+    ".build/native/postsleep-investigation/fresh-action-3/raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/fresh-action-4/assessment.json": "7d14d3457b64c01a437eeca85dbc5d98744bd2f34d38c388882171f83674c0b8",
+    ".build/native/postsleep-investigation/fresh-action-4/execution.json": "7e0806edf9b578d892559f9cd71d61f6944a8222b2d57049c8931fdca9a286b8",
+    ".build/native/postsleep-investigation/fresh-action-4/frozen-tools/fresh-action.sh": "b1a2a445b7df58d4ff3a36f9869e3d01a4cbd6e623d4969267f7d7601a53ea79",
+    ".build/native/postsleep-investigation/fresh-action-4/frozen-tools/run-fresh-action.py": "ef8c111928adf3bbd233fb63fe1896368f991b023d28c461dd1dc5cb11663c12",
+    ".build/native/postsleep-investigation/fresh-action-4/human.json": "784be2967444758e2f4b1b1b28fd832977ce74127332c96582684b9bd42d4ff6",
+    ".build/native/postsleep-investigation/fresh-action-4/midi-baseline.log": "7a41d2f1aca55f68f34b9a2ee00bc723f970bf2c1b365145e2f84c236887269b",
+    ".build/native/postsleep-investigation/fresh-action-4/midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    ".build/native/postsleep-investigation/fresh-action-4/midi.log": "57a89167d1669fd7c3612cb2ea8839ce9d53e5445b60be97ed26ecb47e354393",
+    ".build/native/postsleep-investigation/fresh-action-4/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/fresh-action-4/raw-summary.json": "0eff238827433ac7cdf68418b09f441075933575b4e71c50e1b9699126033d55",
+    ".build/native/postsleep-investigation/fresh-action-4/raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    ".build/native/postsleep-investigation/fresh-action-4/raw.ndjson": "218f4eeb77224d3a47fda352ab72782982e2e1e50373ecf870ced36865440c15",
+    ".build/native/postsleep-investigation/fresh-action-4/raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/fresh-action-5/assessment.json": "c58b2c0e9fa18a33807b38f7d1de322e7bbe81fa8c6d49025f9e1b9913386a08",
+    ".build/native/postsleep-investigation/fresh-action-5/execution.json": "066271b5fd1f25ef5fcc18f1a1a9b38d6440f95368d9cf380add445caa924cab",
+    ".build/native/postsleep-investigation/fresh-action-5/human.json": "784be2967444758e2f4b1b1b28fd832977ce74127332c96582684b9bd42d4ff6",
+    ".build/native/postsleep-investigation/fresh-action-5/midi-baseline.log": "d4b994220492ef3c60ad2d2c2bf478223cad78b556445e351785bbe048a9fb00",
+    ".build/native/postsleep-investigation/fresh-action-5/midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    ".build/native/postsleep-investigation/fresh-action-5/midi.log": "eff394b27085b372ce15900c8ecc0b4bae5ca3aacecf2dbdb4f97c8191b457bf",
+    ".build/native/postsleep-investigation/fresh-action-5/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/fresh-action-5/raw-summary.json": "b5a023de1ddd7ee981e6d6078842238277b851b49ca8ee95c409eb447df7a97c",
+    ".build/native/postsleep-investigation/fresh-action-5/raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    ".build/native/postsleep-investigation/fresh-action-5/raw.ndjson": "46afbeb1d54128c536e8861efe6e8f35f4f4771b0630263804178b80c69f1471",
+    ".build/native/postsleep-investigation/fresh-action-5/raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/verification-final.json": "fe923014a177f4bdf6d8a1f28fc967aa4532bdb10acf0a8755b6913755a0540d",
+    ".build/native/postsleep-investigation/offline-replay/ReplayTests.c": "f63949b11165f567a8b75a8998630ded9994da71f6bddad1d30783f9586d8d85",
+    ".build/native/postsleep-investigation/offline-replay/capture3-reports.h": "571af793a4f93d5f95a4a88a778fe39b130e7aea6936a7202030befa2a5eb552",
+    ".build/native/postsleep-investigation/offline-replay/fixture.json": "54262a4e1212c1be96acd10e42dfd59ccfe08960c07eab6a30b31770c7869618",
+    ".build/native/postsleep-investigation/offline-replay/replay-tail.inc": "f4d1cea844648220f55b5382350be2e4cb76b90e578fe231b29ce4cb01414bd4",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/ReplayTests-sanitize": "e9392ac12b2f6d71d0f7c25dc08d22e952c439cd0451050415de129d94614a17",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/ReplayTests-strict": "668c12d93db8183b640561fb8671bd79eaca41eac19e0746d392b1ae8725a8ce",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/result.json": "3ca2780fdfbb769c1a00d1a8188df1a14787903faf52cf21bba92ffb27b78364",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/sanitize-compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/sanitize-compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/sanitize-run.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/sanitize-run.stdout": "d6ca0c7bf4ef278896afb59a01d194469f113d490197169f0b506a3678515e22",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/strict-compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/strict-compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/strict-run.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/strict-run.stdout": "d6ca0c7bf4ef278896afb59a01d194469f113d490197169f0b506a3678515e22"
+  },
+  "limitations": [
+    "Does not identify the late post-sleep failing layer or justify a driver change.",
+    "Numeric AudioObjectID126 vs128 classified only within snapshot process; no cross-process stale-ID inference.",
+    "Raw report host times are not wire times; digital_snapshot is cached momentary input, not LED/effect state.",
+    "Monitor parses explicit channel1 B0 CC triples only, not all MIDI or CoreMIDI notifications.",
+    "History head/tail are bounded independent windows, not full pre-failure replay.",
+    "Original USB/recovery/audio qualification remains open; previous physical/rate passes are not broadened."
+  ],
+  "ranked_predictions_before_causal_tests": [
+    {
+      "rank": 1,
+      "prediction": "If CC filtering alone causes zero, unfiltered packet callbacks will show valid incoming data.",
+      "observed": "Attempt4 had zero callbacks, rejecting filter-only explanation for that capture. Client/driver dispatch boundary remains open."
+    },
+    {
+      "rank": 2,
+      "prediction": "If native binding/listener/cursor gate suppresses MIDI, raw/local policy can progress while MIDIReceived is skipped.",
+      "observed": "Source permits this path; runtime guard states unobserved. Not proved causal."
+    },
+    {
+      "rank": 3,
+      "prediction": "If timestamp clock-domain mismatch causes delivery delay, emitted timestamps will be outside current mach_absolute_time domain.",
+      "observed": "NativeUSB.c547 stamps mach_absolute_time; observer same clock. No emitted packet reached observer, so emitted-time causal check remains unproved; no retiming performed."
+    }
+  ],
+  "source_comparison": {
+    "bounds": "Selected Native MIDI struct, HAL reads/discovery/binding/start/stop/EnableSource/input_tick/delivery functions, existing tests, existing published original MIDI contracts, monitor and SDK read-callback comments. One timestamp provenance symbol query NativeUSB.c547; no original binary/decompiler/ASM reads.",
+    "references": [
+      "Driver/MIDI/RK3MIDIDriver.c:414",
+      "Driver/MIDI/RK3MIDIDriver.c:455",
+      "Driver/MIDI/RK3MIDIDriver.c:515",
+      "Driver/MIDI/RK3MIDIDriver.c:642",
+      "Driver/MIDI/RK3MIDIDriver.c:761",
+      "Driver/MIDI/RK3MIDIDriverTests.c:158",
+      "Driver/MIDI/RK3MIDIDriverTests.c:179",
+      "ReverseEngineering/MIDIDriver.md:124",
+      "Driver/NativeUSB.c:547"
+    ],
+    "independent_reviews": "Two bounded source reviews found no capture-proven production correction. Existing tests stop at mocked MIDIReceived and manually bound state; no real subscriber dispatch or sleep callback contract is established."
+  },
+  "offline_production_replay": {
+    "status": "PASS_STRICT_ARM_AND_ASAN_UBSAN_KNOWN_STATE_CONTROLS",
+    "fixture": "All186 literal captured3 raw reports, sequence89294..89479 and original stored host timestamps; initialized known G7 released/empty baseline and saved88..648 calibration. Failed MIDIServer runtime state is not replayed.",
+    "result_path": ".build/native/postsleep-investigation/offline-replay/run-1793130514580720000/result.json",
+    "result_sha256": "3ca2780fdfbb769c1a00d1a8188df1a14787903faf52cf21bba92ffb27b78364",
+    "enabled": {
+      "reports": 186,
+      "CC80_values": [
+        127,
+        0
+      ],
+      "CC4_count": 63,
+      "CC4_min": 0,
+      "CC4_max": 127,
+      "CC4_last": 0,
+      "total_MIDI": 65,
+      "cursor": 89479
+    },
+    "disabled": {
+      "reports": 186,
+      "total_MIDI": 0,
+      "local_button_values_after_four_raw_reports": [
+        127,
+        127,
+        0,
+        0
+      ],
+      "LED_output_on_then_off": true,
+      "cursor": 89479
+    },
+    "source_and_tests_unchanged": true,
+    "strict_compile_run_exit": [
+      0,
+      0
+    ],
+    "asan_ubsan_compile_run_exit": [
+      0,
+      0
+    ],
+    "limitations": "Controlled source-enabled/disabled fixtures prove mapper behavior and possible suppression; they do not show that actual post-sleep listener state was disabled or identify a live routing fault. MIDIReceived is mocked, not actual client dispatch."
+  }
+}
