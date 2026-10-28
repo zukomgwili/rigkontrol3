@@ -729,32 +729,34 @@ static void test_stopped_disable_wins_and_does_not_query_hal(void) {
 }
 
 static void test_stopped_reenable_and_repeated_stop_keep_held_baseline(void) {
-    Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
-    controller_batch(driver,1,0x10);controller_batch(driver,2,0);
-    controller_batch(driver,3,0x10);controller_batch(driver,4,0);controller_batch(driver,5,0x10);
-    assert(deliveries==3&&delivered[2]==127);
-    lifecycle_stop(driver);
-    unsigned infos=info_queries,reports=report_queries;
-    assert(enable_source(driver_ref(driver),124,false)==noErr);
-    assert(enable_source(driver_ref(driver),124,true)==noErr);
-    assert(info_queries==infos&&report_queries==reports); /* no zero snapshot is captured */
-    lifecycle_stop(driver); /* a second I/O Stop must not erase listener intent */
-    digital_snapshot=UINT32_C(0x80000010);
-    /* The retained history contains multiple old edges. A bogus zero enable
-     * snapshot/sequence would replay two toggles, despite ending held. */
-    input_batch=(RK3NativeReports){.version=1,.count=5,.next_sequence=5,.latest_sequence=5};
-    for(unsigned index=0;index<5;++index)
-        input_batch.reports[index]=(RK3NativeReport){.sequence=index+1,.host_time=9876,.length=3,
-            .bytes={4,index%2==0?0x10:0,0}};
-    lifecycle_start(driver);input_tick(NULL,driver);
-    assert(deliveries==3&&driver->controller.raw_buttons==0x10);
-    controller_batch(driver,6,0);assert(deliveries==3&&driver->controller.button_values[4]==127);
-    controller_batch(driver,7,0x10);
-    assert(deliveries==4&&delivered[1]==80&&delivered[2]==0);
-    lifecycle_din(driver,8);assert(deliveries==5&&delivered_source==123);
-    unsigned wah=controller_cc_counts[4];lifecycle_pedal(driver,9,0);lifecycle_pedal(driver,10,1023);
-    assert(controller_cc_counts[4]==wah+1&&controller_cc_source[4]==124&&controller_cc_last[4]==127);
-    lifecycle_done(driver);digital_snapshot=UINT32_C(0x80000000);
+    for(unsigned repeated_stop=0;repeated_stop<2;++repeated_stop) {
+        Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+        controller_batch(driver,1,0x10);controller_batch(driver,2,0);
+        controller_batch(driver,3,0x10);controller_batch(driver,4,0);controller_batch(driver,5,0x10);
+        assert(deliveries==3&&delivered[2]==127);
+        lifecycle_stop(driver);
+        unsigned infos=info_queries,reports=report_queries;
+        assert(enable_source(driver_ref(driver),124,false)==noErr);
+        assert(enable_source(driver_ref(driver),124,true)==noErr);
+        assert(info_queries==infos&&report_queries==reports);
+        if(repeated_stop)lifecycle_stop(driver); /* repeated Stop must retain intent too */
+        digital_snapshot=UINT32_C(0x80000010);
+        /* Without a second Stop, bogus zero-seed state would share the current
+         * epoch and replay two old toggles. Test both epoch shapes explicitly. */
+        input_batch=(RK3NativeReports){.version=1,.count=5,.next_sequence=5,.latest_sequence=5};
+        for(unsigned index=0;index<5;++index)
+            input_batch.reports[index]=(RK3NativeReport){.sequence=index+1,.host_time=9876,.length=3,
+                .bytes={4,index%2==0?0x10:0,0}};
+        lifecycle_start(driver);input_tick(NULL,driver);
+        assert(deliveries==3&&driver->controller.raw_buttons==0x10);
+        controller_batch(driver,6,0);assert(deliveries==3&&driver->controller.button_values[4]==127);
+        controller_batch(driver,7,0x10);
+        assert(deliveries==4&&delivered[1]==80&&delivered[2]==0);
+        lifecycle_din(driver,8);assert(deliveries==5&&delivered_source==123);
+        unsigned wah=controller_cc_counts[4];lifecycle_pedal(driver,9,0);lifecycle_pedal(driver,10,1023);
+        assert(controller_cc_counts[4]==wah+1&&controller_cc_source[4]==124&&controller_cc_last[4]==127);
+        lifecycle_done(driver);digital_snapshot=UINT32_C(0x80000000);
+    }
 }
 
 static void test_restart_without_listener_stays_silent(void) {
