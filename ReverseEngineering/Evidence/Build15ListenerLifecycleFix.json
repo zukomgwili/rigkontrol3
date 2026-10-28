@@ -1,0 +1,544 @@
+{
+  "schema": 1,
+  "issue": "rigkontrol3-40h.2",
+  "cross_reference": "rigkontrol3-40h.3",
+  "date": "2026-10-28",
+  "status": "FIX15_SIGNED_REVIEWED_OFFLINE_PASS_PENDING_INSTALLED_VALIDATION",
+  "cause": "ARMStopclearedlistenerintent; the capturedStartresumedI/OwithoutanotherEnableSourcecallback. InternalCoreMIDInativesubscriptioncontinuitywasnotdirectlymeasured.",
+  "cause_evidence": {
+    "path": "ReverseEngineering/Evidence/Build14MIDIBoundaryRuntime.json",
+    "sha256": "f6e92c80f5ecf5121fa5b06243bcfb94d4bae14bf513e1635871b6a82c634324",
+    "summary": "SameinstanceStart/Stop/Enable1/0/1->2/1/1, flags5->1; worker+raw794healthy,122postmessagesgate-suppressedbeforeMIDIReceived, actualpublishattempt1onlypre/fr0/error0"
+  },
+  "NI_parity_basis": "OriginalcompleteStop0x25c0 retainsdevicearray+listenerflagsandonlyclearsMIDIDeviceRef+0x270; EnableSource0x26d6 writesperportintent. SDKStart/StopcontrolsI/O/refCons, EnableSourceclientpresence. Directmethodproofscoped; nofullindirectcalltreeclaim.",
+  "plan_before_code": "Existing.2 frozenlistenerfixplan+minimumamendment recorded beforeC; exactoriginalNIreadboundsandruntimecause stored beforeimplementation; no newplanning-onlybeads",
+  "implementation": {
+    "source_commit": "f71f7aad546694819a41ccf429cd10b6ab60d50f",
+    "final_test_commit": "bdc0b121cf90f763d2148c335a6faf5e942c2021",
+    "C_sha256": "f2b95bc0214065332498ab81ececb7a50250a106af8cfcdb86fb5d64cab2f798",
+    "final_tests_sha256": "d55d2c09b85e5d5c654b408d3b45c7ea88fa01eb65f182d51a19185be280d438",
+    "MIDIInfo_sha256": "274b8fea6bd6c85d0d324f71b79b4f38d46a3636890bdb2a12e29b3376a4306d",
+    "delta": [
+      "RetainexistingDIN/controllerenabledintentflagsacrossI/OStop/Start; stopoffline/started/epoch/worker/timer/refConsteardownunchanged",
+      "RemembertwoexactsourceendpointIDsunderexistingmutex; stoppedEnableSourceupdatesintent/listenerepochunderinitiallockwithoutHALreadorzero-seed",
+      "Exactsameprovidedsourcebindingretainsintent; successfullycompletedStartwithmissing/replacedregisteredsourceclearsobsoleteintent; absentphysicalHALaloneisnotclientdisconnect",
+      "DINbaseline_pendingfromretainedintentdropsstalehistory; controllerexistingepoch/snapshot/latestbarrierpreserved",
+      "FailedStartremainsinactivewhileknownintentretainedpendinglaterexactvalidbinding; no inventedclientdisconnectonsetupfailure",
+      "StripALLtemporaryDIAG14codeanddiagnostic-onlytests; committedmeasuredsource14/candidate/logsremainimmutable"
+    ],
+    "unchanged": [
+      "Audio13bundleall6filebytes",
+      "USB/ring/queue/QoS/audio timing/sample rates/gain/USB and audio recovery policies",
+      "MIDIeventtimestamps/deliveryguards/errorlatch/parser/calibration/CCmapping/LEDpolicy",
+      "No newmodule/ABI/timer/thread/property/driverAPI/securitysettings"
+    ]
+  },
+  "regression": {
+    "real_seam": "ActualproductionStart->EnableDIN/controlleronce->preMIDI->Stop->Start(noEnablecallback)->freshcontroller/DIN/pedal, withonlyexternalSDK/topology/worker/timerattachmentmocked",
+    "no_hardware": "NoMIDIServer/USB/MIDIClient/Port/Send fromofflinefixture; realsoftwareCFtimerobjects/contextleases andotheroldthreadtestsretained",
+    "baseline_and_RED": {
+      "utc": "2026-10-28T10:04:22.387593+00:00",
+      "scope": "Exact production Start/Stop/EnableSource bodies, hardware-free external SDK/topology/worker attachment seam; real CFtimer lifetimes, noautomaticcallback dispatch; existing actualpthreadrace tests retained",
+      "old_suite_with_new_plumbing": {
+        "compile_exit": 0,
+        "run_exit": 0,
+        "stdout": ".build/native/listener-lifecycle-tests/plumbing-baseline.stdout",
+        "stderr": ".build/native/listener-lifecycle-tests/plumbing-baseline.stderr"
+      },
+      "red": {
+        "utc": "2026-10-28T09:56:26.397043+00:00",
+        "command": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/listener-lifecycle-tests/MIDIDriverTests-red",
+        "returncode": -6,
+        "source_matches_fffd158": true,
+        "source_sha256": "7c51f66ccf9182783dcbb8ca9353b84720e58668f90725a5bd74f4557543f402",
+        "tests_sha256": "1c4d034aaad6bbdf873664f3b65c1b4df3bb6fdcf1ab0b2afa07926adabaa35b",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "fc8e3ac937d3e0943603d50b9002749c132a9f78f2c856c429eb2ec95c5d74b7",
+        "stderr": "RK3 MIDI output command failed (entry dropped): 2003329396\nRK3 MIDI output command failed (entry dropped): 2003329396\nLIFECYCLE_RESUME controller callbacks=2 expected=3\nAssertion failed: (deliveries==3&&delivered_source==124&&delivered[1]==80&&delivered[2]==0), function test_start_stop_start_keeps_listener_intent, file RK3MIDIDriverTests.c, line 690.\n",
+        "scope": "CPU-only exact production Start/EnableSource/Stop/Start; no newCoreMIDIclient orhardware API"
+      },
+      "green_strict": {
+        "compile_exit": 0,
+        "run_exit": 0,
+        "command": ".build/native/listener-lifecycle-tests/MIDIDriverTests-green-final"
+      },
+      "green_asan_ubsan": {
+        "compile_exit": 0,
+        "run_exit": 0,
+        "command": ".build/native/listener-lifecycle-tests/MIDIDriverTests-sanitize-final"
+      },
+      "new_lifecycle_groups": [
+        "realStart_Enableonce_Stop_Start_noEnable freshCC80_DIN_andCC4resume",
+        "explicitDisablewhileStoppedwinsanddoesnotqueryHAL",
+        "StoppedDisableEnable_repeatedStop_heldbaseline_releaseSilent_nextPressWorks",
+        "neverEnabledlistenersremainSilent",
+        "physicalHALabsence_retainsregisteredlistenerintent_butI/Ooffline",
+        "successfulStartmissinglogicalDINorControllerclearsOnlyitsintent",
+        "replacedregisteredSourcesdontinherit_andnewExplicitStoppedEnableWorks",
+        "failedStartremainsI/Oinactive_thenSameSourcevalidStartresumesWithoutEnable"
+      ],
+      "intermediate_fixture_corrections": {
+        "green-v1_and_v2": "Pedal fixture originally sent onlyone toe frame; first analogframe correctly establishes silentbaseline. Testcorrected heel_then_toe, noproductionchange.",
+        "green-v3": "NewfailedStarttest wronglyrequired logicalintentfalse; rootBeadsclarificationrequired I/Oinactive notlistenerdisconnect. Testnowchecksnoquery/noReceive thenrestoredsamebindingwithoutEnable actuallyresumes; noCchange."
+      },
+      "source_sha256": "f2b95bc0214065332498ab81ececb7a50250a106af8cfcdb86fb5d64cab2f798",
+      "tests_sha256": "61c5bb98ee0a590d7ecb3a50da5ebe8ec706fa9d2e165182b126e5274b92cbca",
+      "pins": {
+        ".build/native/listener-lifecycle-tests/plumbing-baseline.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+        ".build/native/listener-lifecycle-tests/plumbing-baseline.stderr": "d117a510f8224dd61e82bcd2439a1af6f11a65248d490c60ec74be81311f2c09",
+        ".build/native/listener-lifecycle-tests/red.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        ".build/native/listener-lifecycle-tests/red.stderr": "fc8e3ac937d3e0943603d50b9002749c132a9f78f2c856c429eb2ec95c5d74b7",
+        ".build/native/listener-lifecycle-tests/red-result.json": "b915af9752110ddcfa1054a8f8c9f5f81bbdc74f729be65c1a5dbaef00cf5fbb",
+        ".build/native/listener-lifecycle-tests/green-final.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+        ".build/native/listener-lifecycle-tests/green-final.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae",
+        ".build/native/listener-lifecycle-tests/sanitize-final.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+        ".build/native/listener-lifecycle-tests/sanitize-final.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae"
+      }
+    },
+    "final_held_fixture": {
+      "utc": "2026-10-28T10:12:31.477572+00:00",
+      "scope": "Same5edgeheldfixture nowexecutes bothWITH andWITHOUT secondStop afterstoppedre-enable. No-secondStop preserves epoch match and directly covers accidentalzero-enable-seed; oldv2secondStopalone couldmaskit. OnlyTests changed; productionC remains signedcandidate15source. Other13 nativecomponents previouslypassedfullstrict/sanitize.",
+      "source_sha256": "f2b95bc0214065332498ab81ececb7a50250a106af8cfcdb86fb5d64cab2f798",
+      "tests_sha256": "d55d2c09b85e5d5c654b408d3b45c7ea88fa01eb65f182d51a19185be280d438",
+      "strict_compile_exit": 0,
+      "strict_run_exit": 0,
+      "asan_ubsan_compile_exit": 0,
+      "asan_ubsan_run_exit": 0,
+      "pins": {
+        ".build/native/listener-lifecycle-tests/green-held-v3.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+        ".build/native/listener-lifecycle-tests/green-held-v3.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae",
+        ".build/native/listener-lifecycle-tests/sanitize-held-v3.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+        ".build/native/listener-lifecycle-tests/sanitize-held-v3.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae"
+      }
+    },
+    "coverage": [
+      "RestartwithoutEnableSourcecallresumesfreshCC80/DIN/heel-to-toeCC4",
+      "ExplicitdisablewhileStoppedwins/noHALreads; stoppedEnabletrue doesnotseedunknownsnapshot",
+      "FivecachedheldedgesdiscardedbothwithandwithoutsecondStop, releasequiet/nextpressonce",
+      "Noexistinglistener/missingorreplacedregisteredendpointnoinheritedintent",
+      "Physicalproviderabsenceseparatefromregisteredendpointabsence",
+      "FailedStartinactive/noHALdeliverythenlaterSAMEendpointStartresumesknownintent",
+      "StopclearsRefCons/idempotentStop/start rebindslifetimebalanced"
+    ],
+    "test_history_limit": "Earlysingle-edge/v2repeatedStopcasealone didnotprovezeroseednonreplay; finalv3coversbothscenarios. NoCpolicychangetofitintermediatefixturemisexpectation."
+  },
+  "full_offline": {
+    "strict14": {
+      "exit": 0,
+      "stdout_sha256": "b3ec09acdeed7f14adc64d386fe7e62e1f4ec40752994ef368eab28c2bc92839",
+      "stderr_sha256": "a345900dd05dc629858f009afaaec90bfd52c1370aad080a353092292b4bcd36"
+    },
+    "sanitize14": {
+      "exit": 0,
+      "stdout_sha256": "776253f8701c5725b5b3017a8e49f64b7f3b86a442654e3f9da33040d90fc4b0",
+      "stderr_sha256": "bc08bc2ac84134287baba99d631fe19965611f687607b04d164d453de10e9108"
+    },
+    "source_sha256": "f2b95bc0214065332498ab81ececb7a50250a106af8cfcdb86fb5d64cab2f798",
+    "tests_sha256": "61c5bb98ee0a590d7ecb3a50da5ebe8ec706fa9d2e165182b126e5274b92cbca"
+  },
+  "gate_scope": "All14strict/sanitizercomponentspassedfinalC f2 withTests61c5; subsequenttest-onlyfixturestrengtheningretargetedcompleteMIDIDriverTestsstrict+ASanUBSanfinald55d. Other13componentsandcandidateproductionCunchanged; no unnecessarybroadrepeat.",
+  "reviews": {
+    "NI_policy": "PASS /root/ni_power_contract exactC f2b95... againstalreadyrecoveredNI Stop/Start/EnableSource",
+    "technical": "PASS /root/midi_measurement_review C f2b95/Info274b/sourceintentlocking/baselines/lifetime",
+    "final_test_fixture": "PASS /root/midi_measurement_review v3Tests d55d... with/without repeatedStop",
+    "package": "PASS /root/midi_measurement_review independently12pins/6Audio13exact/22checks/actualARM64UUID/factory/noDIAG14",
+    "runtime": "PENDING_INSTALL_AND_ONE_SLEEP_TEST"
+  },
+  "candidate": {
+    "source_commit": "f71f7aad546694819a41ccf429cd10b6ab60d50f",
+    "candidate": ".build/native/candidates/build15-midi-f71f7aad5466",
+    "MIDI": "0.2.10/build15 listener intent lifecycle correction",
+    "Audio": "0.2.8/build13 unchanged all6SHA256entries",
+    "audio_exact_build13": true,
+    "code_sign_identity_kind": "Apple Development",
+    "manifest_sha256": "1802616c18bfabb437cfac2fa677536979da6dbb4d74a6f0abe98ff2352f42b7",
+    "files": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": "274b8fea6bd6c85d0d324f71b79b4f38d46a3636890bdb2a12e29b3376a4306d",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "a025895d90014c96472a51823ddb1bfef84b400e597c54339f389db8593caec0",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "e2a606ed123e952bf8e6e2c7633a315073a2872acde73a5f3f3f7cb38fbe4a12",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "75d731c9809cd3375c13d8727b614ea91975cebff9a6f206e8dcf318e377a086",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "66d0b757579fe39c7c5ff3e21745e7280e8a8252670d2e22a7321cb418cfa616",
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "eeb1d8a903136ba52a037095c305912278a49f1de4c28d406c7bba9463e518c9"
+    },
+    "checks": {
+      "midi-compile": {
+        "argv": [
+          "xcrun",
+          "clang",
+          "-std=c11",
+          "-arch",
+          "arm64",
+          "-mmacosx-version-min=13.0",
+          "-O2",
+          "-g",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-pedantic",
+          "-fvisibility=hidden",
+          "-bundle",
+          "-I/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/reviewed-source/Driver",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/reviewed-source/Driver/MIDI/RK3MIDIDriver.c",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/reviewed-source/Driver/MIDIEvent.c",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/reviewed-source/Driver/MIDI/MIDIStream.c",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/reviewed-source/Driver/Controller.c",
+          "-framework",
+          "CoreAudio",
+          "-framework",
+          "CoreMIDI",
+          "-framework",
+          "CoreFoundation",
+          "-o",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+        ],
+        "exit": 0
+      },
+      "midi-dsym": {
+        "argv": [
+          "xcrun",
+          "dsymutil",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver",
+          "-o",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM"
+        ],
+        "exit": 0
+      },
+      "midi-sign": {
+        "argv": [
+          "/usr/bin/codesign",
+          "--force",
+          "--sign",
+          "54D90F6A85BC38A583CFD9C8AC20F98A97CC4F33",
+          "--timestamp=none",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin"
+        ],
+        "exit": 0
+      },
+      "midi-signature": {
+        "argv": [
+          "/usr/bin/codesign",
+          "--verify",
+          "--strict",
+          "--verbose=2",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin"
+        ],
+        "exit": 0
+      },
+      "midi-signature-details": {
+        "argv": [
+          "/usr/bin/codesign",
+          "--display",
+          "--verbose=4",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin"
+        ],
+        "exit": 0
+      },
+      "midi-architecture": {
+        "argv": [
+          "xcrun",
+          "lipo",
+          "-verify_arch",
+          "arm64",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+        ],
+        "exit": 0
+      },
+      "midi-exports": {
+        "argv": [
+          "xcrun",
+          "nm",
+          "-gU",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+        ],
+        "exit": 0
+      },
+      "midi-dependencies": {
+        "argv": [
+          "xcrun",
+          "otool",
+          "-L",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+        ],
+        "exit": 0
+      },
+      "midi-uuid": {
+        "argv": [
+          "xcrun",
+          "dwarfdump",
+          "--uuid",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+        ],
+        "exit": 0
+      },
+      "midi-dsym-uuid": {
+        "argv": [
+          "xcrun",
+          "dwarfdump",
+          "--uuid",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM"
+        ],
+        "exit": 0
+      },
+      "audio-signature": {
+        "argv": [
+          "/usr/bin/codesign",
+          "--verify",
+          "--strict",
+          "--verbose=2",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3Audio.driver"
+        ],
+        "exit": 0
+      },
+      "audio-signature-details": {
+        "argv": [
+          "/usr/bin/codesign",
+          "--display",
+          "--verbose=4",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3Audio.driver"
+        ],
+        "exit": 0
+      },
+      "audio-architecture": {
+        "argv": [
+          "xcrun",
+          "lipo",
+          "-verify_arch",
+          "arm64",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver"
+        ],
+        "exit": 0
+      },
+      "audio-exports": {
+        "argv": [
+          "xcrun",
+          "nm",
+          "-gU",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver"
+        ],
+        "exit": 0
+      },
+      "audio-dependencies": {
+        "argv": [
+          "xcrun",
+          "otool",
+          "-L",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver"
+        ],
+        "exit": 0
+      },
+      "audio-uuid": {
+        "argv": [
+          "xcrun",
+          "dwarfdump",
+          "--uuid",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver"
+        ],
+        "exit": 0
+      },
+      "audio-dsym-uuid": {
+        "argv": [
+          "xcrun",
+          "dwarfdump",
+          "--uuid",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM"
+        ],
+        "exit": 0
+      },
+      "midi-factory-compile": {
+        "argv": [
+          "xcrun",
+          "clang",
+          "-std=c11",
+          "-arch",
+          "arm64",
+          "-mmacosx-version-min=13.0",
+          "-O2",
+          "-g",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-pedantic",
+          "-fvisibility=hidden",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/reviewed-source/Driver/MIDI/FactorySmokeTest.c",
+          "-framework",
+          "CoreMIDI",
+          "-framework",
+          "CoreFoundation",
+          "-o",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/package-checks/midi-factory"
+        ],
+        "exit": 0
+      },
+      "audio-factory-compile": {
+        "argv": [
+          "xcrun",
+          "clang",
+          "-std=c11",
+          "-arch",
+          "arm64",
+          "-mmacosx-version-min=13.0",
+          "-O2",
+          "-g",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-pedantic",
+          "-fvisibility=hidden",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/reviewed-source/Driver/Tests/AudioFactoryTests.c",
+          "-framework",
+          "CoreAudio",
+          "-framework",
+          "CoreFoundation",
+          "-o",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/package-checks/audio-factory"
+        ],
+        "exit": 0
+      },
+      "midi-factory": {
+        "argv": [
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/package-checks/midi-factory",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3MIDI.plugin"
+        ],
+        "exit": 0
+      },
+      "audio-factory": {
+        "argv": [
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/midi-listener-fix/package-checks/audio-factory",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers/RigKontrol3Audio.driver"
+        ],
+        "exit": 0
+      },
+      "installer-check": {
+        "argv": [
+          "/bin/sh",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/Tools/install-native-drivers.sh",
+          "--check",
+          "--source",
+          "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build15-midi-f71f7aad5466/drivers"
+        ],
+        "exit": 0
+      }
+    }
+  },
+  "preinstall_app_state": {
+    "utc": "2026-10-28T10:16:14.720347+00:00",
+    "action": "CUA CmdQ afterdiagnosis/frozenfix, noSave dialog; getAXpostquitprocNotFound consistentwithclosedprocess",
+    "processes": [
+      {
+        "pid": 68055,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ],
+    "GR6_closed": true,
+    "no_reopen_before_install": true
+  },
+  "installed_fix": false,
+  "installed_current": "MIDI0.2.9/build14 measurement +Audio0.2.8/build13; sourcefix15notyetinstalled",
+  "SIP": "enabled throughout/nochange",
+  "runtime_plan": {
+    "next_required_human_action": "NormaladminTerminalinstallationfrozen--sourcecandidatewithrollbackandrestartservices; no passwordinchat",
+    "after_install": "Verify12candidatepins/strictsignatures/loadedMIDI15/sourceUUID andAudio13; cleanGR6open/noinputrefreshormappingchange",
+    "test": "ONEactualSleep/wakecomparisonusingtestedpaired/raworchestrator900capwithprepositive/privateA/raw, quietstate andfreshpostOFF+fullpedalsweep/privateB, humanGUIandLED; noDIAG14collectionneededinfixedbinary",
+    "limits": "OfflineRED/GREEN+signaturesarenotinstalledrecoveryproof. M1/M3remainopenuntilactualcriteria; noaudio/all8/USBhardwarequalificationclaimedfromthispackage."
+  },
+  "source_pins": {
+    ".build/native/candidates/build15-midi-f71f7aad5466/drivers/manifest.json": "1802616c18bfabb437cfac2fa677536979da6dbb4d74a6f0abe98ff2352f42b7",
+    ".build/native/candidates/build15-midi-f71f7aad5466/provenance.json": "d8593901f0ecacf2bab5ad6f1f5c8f8ba139e10e3c86fbc91555bb99c36c10cc",
+    ".build/native/listener-lifecycle-tests/green-final.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae",
+    ".build/native/listener-lifecycle-tests/green-final.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+    ".build/native/listener-lifecycle-tests/green-held-v2.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae",
+    ".build/native/listener-lifecycle-tests/green-held-v2.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+    ".build/native/listener-lifecycle-tests/green-held-v3.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae",
+    ".build/native/listener-lifecycle-tests/green-held-v3.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+    ".build/native/listener-lifecycle-tests/green-v1.stderr": "698c97f7ca7b109136166fec09badfccfbd62fb2fd18220769051f08e410e20b",
+    ".build/native/listener-lifecycle-tests/green-v1.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/listener-lifecycle-tests/green-v2.stderr": "b8ae68642c55b0dd87b26b9c3caf0e1a9ed5a8e0ed23c0dc0067262a8011aba7",
+    ".build/native/listener-lifecycle-tests/green-v2.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/listener-lifecycle-tests/green-v3.stderr": "4b4f2124dc0a071ea9ece914286c46b1c372335be5a25fd0a573765255513b63",
+    ".build/native/listener-lifecycle-tests/green-v3.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/listener-lifecycle-tests/held-fixture-v2-results.json": "61d65dbb529ba813380745466165c1344301a89054a2876d0f67aaef6584fcc0",
+    ".build/native/listener-lifecycle-tests/held-fixture-v3-results.json": "514a3ce04f46646d75755b2123bcb451bcd8eff827a19e44393ce49a52b90be0",
+    ".build/native/listener-lifecycle-tests/listener-test-results.json": "607f1309a3f1183dc78b5c490c40a594500662ef99486e92bf32b7789270ea7b",
+    ".build/native/listener-lifecycle-tests/plumbing-baseline.stderr": "d117a510f8224dd61e82bcd2439a1af6f11a65248d490c60ec74be81311f2c09",
+    ".build/native/listener-lifecycle-tests/plumbing-baseline.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+    ".build/native/listener-lifecycle-tests/red-result.json": "b915af9752110ddcfa1054a8f8c9f5f81bbdc74f729be65c1a5dbaef00cf5fbb",
+    ".build/native/listener-lifecycle-tests/red.stderr": "fc8e3ac937d3e0943603d50b9002749c132a9f78f2c856c429eb2ec95c5d74b7",
+    ".build/native/listener-lifecycle-tests/red.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/listener-lifecycle-tests/sanitize-final.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae",
+    ".build/native/listener-lifecycle-tests/sanitize-final.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+    ".build/native/listener-lifecycle-tests/sanitize-held-v2.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae",
+    ".build/native/listener-lifecycle-tests/sanitize-held-v2.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+    ".build/native/listener-lifecycle-tests/sanitize-held-v3.stderr": "bd5c84a02e76814e974a6d5bc25f23775c3a5d587bb746dcdf047952acedccae",
+    ".build/native/listener-lifecycle-tests/sanitize-held-v3.stdout": "14fb61d9c24d1ba05300cd91cbff9a473d374851189b365b1a410bba21004fed",
+    ".build/native/midi-listener-fix/build-package.py": "c88bb526e6331649c68ae20f35e1265d6c3ecb41be2259e0ca3e7ff3b6232ad7",
+    ".build/native/midi-listener-fix/candidate.json": "d8593901f0ecacf2bab5ad6f1f5c8f8ba139e10e3c86fbc91555bb99c36c10cc",
+    ".build/native/midi-listener-fix/offline-results.json": "aa296fd7ecf1dcb7dbd27a8ea05559eed0d2ef75b3532f95e56f6a8b65765d95",
+    ".build/native/midi-listener-fix/package-checks/audio-architecture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-architecture.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-dependencies.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-dependencies.stdout": "448f23f86ddf37dfbc80a3eb9d623ea02393d12b705321f743dc24a77db9a6b4",
+    ".build/native/midi-listener-fix/package-checks/audio-dsym-uuid.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-dsym-uuid.stdout": "968963283e62adcb3b6a29f7cb59c24a0154b4d2a5dc40bb4f11acc34e112671",
+    ".build/native/midi-listener-fix/package-checks/audio-exports.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-exports.stdout": "71f659a45c6fc06fbce0eb0a1049666c8731d31d89e2edcdca1d6230ea36ecd4",
+    ".build/native/midi-listener-fix/package-checks/audio-factory-compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-factory-compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-factory.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-factory.stdout": "14c080cf3d2a89673df18cc9880642b8ec43195839e62380610ca02528659726",
+    ".build/native/midi-listener-fix/package-checks/audio-signature-details.stderr": "ab6c70791a335e5a6c1e7b10efbc7a4038e8bc3762658ce1dee790d13e59d7f9",
+    ".build/native/midi-listener-fix/package-checks/audio-signature-details.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-signature.stderr": "8ddd5422d349babdc5e76c0cd5d774dfd2d2999f33a9c028b0d3886dcc724fdb",
+    ".build/native/midi-listener-fix/package-checks/audio-signature.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-uuid.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/audio-uuid.stdout": "30095a39610bbca43ed8853dde7dfea650a0a3741686ba4186e62009553f6bd5",
+    ".build/native/midi-listener-fix/package-checks/installer-check.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/installer-check.stdout": "040f405a5e7ea27a26ab7b924b0d0695e0706763edaaccb70ad0c7efdb10b3a6",
+    ".build/native/midi-listener-fix/package-checks/midi-architecture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-architecture.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-dependencies.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-dependencies.stdout": "a8f4d6eec6d6b683aacc45fa5f86501f4e9b72cc5e3390c03cbd00e486c43704",
+    ".build/native/midi-listener-fix/package-checks/midi-dsym-uuid.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-dsym-uuid.stdout": "4724aa5eb8daf81f2b359665c1d82793b79fa4736386292aae7c757ba76c735b",
+    ".build/native/midi-listener-fix/package-checks/midi-dsym.stderr": "e713a999f17e26ceac92e68295675052bd4bd5241f71d9b7ace927d444e8b369",
+    ".build/native/midi-listener-fix/package-checks/midi-dsym.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-exports.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-exports.stdout": "d22bb906e21265f7fc9d53b897b7113fb5686dd73e8607ac2b6d41ccaf017186",
+    ".build/native/midi-listener-fix/package-checks/midi-factory-compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-factory-compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-factory.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-factory.stdout": "6cde62b008918e14d88a5d2ea9d225604730a34d64f7028559c26e7c094ba267",
+    ".build/native/midi-listener-fix/package-checks/midi-sign.stderr": "333b269cc146b1a716896f16b8fa39df823421f1b9393b8712f7e3678444b1db",
+    ".build/native/midi-listener-fix/package-checks/midi-sign.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-signature-details.stderr": "d744c5ac64a669eac13f97835c7c773e63ae66d5a30bdcf930d5ce9f82069378",
+    ".build/native/midi-listener-fix/package-checks/midi-signature-details.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-signature.stderr": "4cb2fb5fff87ee27f1ed81871f66c6c3b5eb8b1005677f9c70767d352b97f47d",
+    ".build/native/midi-listener-fix/package-checks/midi-signature.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-uuid.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/package-checks/midi-uuid.stdout": "6bdfc0317ae3e0748ff335ab4a35e6b8ffa189053a7849642408a670654417cd",
+    ".build/native/midi-listener-fix/package-checks/results.json": "5e40f99d592cf1bcdd1a8bc972aaa213e43b42f3f673b439dd52a8a621fe96ff",
+    ".build/native/midi-listener-fix/preinstall-app-state.json": "190c05275ca34502e94d995b12168b5949619f88f7320bc7f617f88df28694a3",
+    ".build/native/midi-listener-fix/reviews.json": "8eba9433dec4bbbc6fb7605ad32becdb02d31983e6ab19388fdfb7785e9cd246",
+    ".build/native/midi-listener-fix/sanitize14.stderr": "bc08bc2ac84134287baba99d631fe19965611f687607b04d164d453de10e9108",
+    ".build/native/midi-listener-fix/sanitize14.stdout": "776253f8701c5725b5b3017a8e49f64b7f3b86a442654e3f9da33040d90fc4b0",
+    ".build/native/midi-listener-fix/strict14.stderr": "a345900dd05dc629858f009afaaec90bfd52c1370aad080a353092292b4bcd36",
+    ".build/native/midi-listener-fix/strict14.stdout": "b3ec09acdeed7f14adc64d386fe7e62e1f4ec40752994ef368eab28c2bc92839",
+    "Driver/MIDI/Info.plist": "274b8fea6bd6c85d0d324f71b79b4f38d46a3636890bdb2a12e29b3376a4306d",
+    "Driver/MIDI/RK3MIDIDriver.c": "f2b95bc0214065332498ab81ececb7a50250a106af8cfcdb86fb5d64cab2f798",
+    "Driver/MIDI/RK3MIDIDriverTests.c": "d55d2c09b85e5d5c654b408d3b45c7ea88fa01eb65f182d51a19185be280d438"
+  },
+  "final_evidence_review": {
+    "reviewer": "/root/midi_measurement_review",
+    "result": "PASS facts/limits/all85pins",
+    "reviewed_sha256": "766a09fc4e6305dcdca678a2246bb888b262098f3b40d75505123f760ccc3782",
+    "changes_after_review": "Only this review record and moreprecise causewording; no source/package/log/installedstatechange"
+  }
+}
