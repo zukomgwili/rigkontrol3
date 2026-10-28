@@ -1,7 +1,7 @@
 {
   "bead": "rigkontrol3-40h.3",
   "created_utc": "2026-10-28T16:47:29.332859+00:00",
-  "state": "SIGNED_REVIEWED_AUDIO17_MIDI16_MEASUREMENT_READY_FOR_INSTALLATION",
+  "state": "ONE_MEASUREMENT_COMPLETE_AND_PREVIOUS_BUILD16_RESTORED",
   "purpose": "ONE bounded driver-side host-client lifecycle measurement; not an NI parity fix or qualification pass",
   "baseline_source_commit": "4494b8d78c4e3ebfc6b8fdbe41a15f36c51adcbc",
   "plan_before_code": {
@@ -180,21 +180,22 @@
     "installer": "existinginstall-native-drivers.sh unchanged; transactionreplacesbothbundles and --restart-services restartsCoreAudio+MIDIServer; rollbackbackups preserved/SIPenabled",
     "hardware_qualification": false,
     "installed": false,
-    "loaded_UUID_observed": false
+    "loaded_UUID_observed": false,
+    "ever_installed_for_one_capture": true
   },
   "next_live_measurement": {
-    "state": "PRIVATE_COLLECTOR_IMPLEMENTATION_AND_CPU_CHECKS_IN_PROGRESS; live requiresinstalled17verification+independentsourceadmission",
+    "state": "ONE_CAPTURE_COMPLETE; no additional run admitted",
     "bounds": "one silent input/output stop/restartcycle with logicalrolecounters+nativebefore/afterphasesnapshots;20sactive/60sparent+TERM2KILL2/reap; noautomaticretry",
     "gates": "stopAPI/cohort/newnativeerror/unknowncriticalidentity/overflow/reuse/partialcriticalsnapshot/cleanupfault=>INCONCLUSIVE/FAULT; no NIparityPASS",
     "preserve": "strictunusedbufferNULLfailure andoriginalNIlastoutputownership/clear/no-stalereplay remain separatelyopen; noforcedglobal0/mixpolicy/timing/recoverychange",
     "exact_collector_plan": "existingM3comment /private/tmp/rk3-trace-collector-frozen-plan.txt; originalcurrentrateacceptedincl44100, no rate setter; onecapture+onepost-exitreadonlydump"
   },
-  "installed_state_changed": false,
+  "installed_state_changed": true,
   "NI_timing_recovery_policy_changed": false,
   "NativeInfo_ABI_changed": false,
   "MIDI_code_or_calibration_mappings_changed": false,
   "new_NI_binary_reads": 0,
-  "new_live_tests": 0,
+  "new_live_tests": 1,
   "security_changes": false,
   "limitations": [
     "Temporary observation adds bounded execution cost; no timing-neutral or stabilitypass claim.",
@@ -224,5 +225,8 @@
   "before_install_integrity": {
     "installed16_all12_exact": true,
     "SIP": "System Integrity Protection status: enabled."
-  }
+  },
+  "measurement_result": "ReverseEngineering/Evidence/Build17HostClientLifecycleValidation.json",
+  "restoration_SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261028T171036Z-3800915e",
+  "new_post_exit_readers": 1
 }

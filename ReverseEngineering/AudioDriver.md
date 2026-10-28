@@ -600,6 +600,15 @@ prove an extra output consumer. The original last-output-client trigger and
 no-stale-replay qualification remain open; the separate public IOProc
 unused-buffer NULL failure also remains open. See the
 [output lifecycle decision](Evidence/Build16OutputLifecycleDecision.json).
+The subsequent [build 17 native trace](Evidence/Build17HostClientLifecycleValidation.json)
+recorded both requested IOProcs under one native device client in the test
+process. ReadInput and WriteMix continued for that client after the public
+output callback stopped. The public output stop/restart produced no native
+StopIO/StartIO or activity update while input continued; native StopIO arrived
+only after final input Stop. This is the observed host/native mapping in that
+setup. It does not supply NI's output-stream client count or qualify ring clear
+and stale-replay behavior. The temporary measurement bundle was removed and
+the previous build 16 restored.
 Likewise, actual sleep/wake must verify that host StopIO/StartIO restores the
 original wire clear, clock-anchor reset and timer behavior. No speculative
 EP1 wake retry was added.

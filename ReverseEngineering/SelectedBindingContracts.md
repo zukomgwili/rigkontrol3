@@ -253,6 +253,15 @@ themselves supply the missing per-direction ownership witness. Stop this row
 at that limit; no idle timeout, invented client count, forced global inactivity
 or new output-mixing policy is justified. It does not block independent gates.
 
+The [build 17 native trace](Evidence/Build17HostClientLifecycleValidation.json)
+now establishes the observed aggregation: two same-process IOProcs used one
+native device client. ReadInput and WriteMix continued after the public output
+callback stopped; native StopIO appeared only when input stopped too. Remove
+was first observed in the post-exit snapshot. This narrows the missing binding
+to a real output-stream ownership signal; it does not make the device client's
+combined lifetime a per-output count. Original ring-clear/replay acceptance
+remains open. The previous non-measurement build 16 is restored.
+
 ## 10. Sleep/wake: original state operations portable, host event mapping open
 
 **C7/P9:** NI device power`0x1fe0` enters/awakens engine; `enterSleep@0xbc50`
