@@ -1,0 +1,156 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "created_utc": "2026-10-28T16:47:29.332859+00:00",
+  "state": "REVIEWED_SOURCE_CPU_PASS_AWAITING_SIGNED_PACKAGE",
+  "purpose": "ONE bounded driver-side host-client lifecycle measurement; not an NI parity fix or qualification pass",
+  "baseline_source_commit": "4494b8d78c4e3ebfc6b8fdbe41a15f36c51adcbc",
+  "plan_before_code": {
+    "admission": ".build/native/build17-audio-lifecycle/admission.txt",
+    "source_bounds": ".build/native/build17-audio-lifecycle/source-bounds.json",
+    "frozen_implementation": ".build/native/build17-audio-lifecycle/frozen-implementation.txt",
+    "stored_before_reads_and_code": "existingM3comments; no newbead"
+  },
+  "change": {
+    "normal_build": "RK3_AUDIO_LIFECYCLE_TRACE defaults0; all diagnostic hooks/property preprocessed out; normal property list6",
+    "measurement_build": "explicitmacro1; audio-onlyversion0.2.12/build17 stagedprivately; exactMIDI0.2.11/build16 copied/no recompile/resign",
+    "hooks": [
+      "AddDeviceClient/RemoveDeviceClient actualclientID andprovidedPID",
+      "StartIO/StopIO entry+exit around unmodifiedexistingbodies/returnpaths",
+      "WillDoIOOperation distinctcapabilityquerycounters",
+      "DoIOOperation integerclientID/stream/category invocationcounters only",
+      "Successful explicitstreamIsActive setter object/value/callerPID; no guessedclientID"
+    ],
+    "RT_limits": "fixed64slotlockfreeatomics/probe<=64; no PCM/buffer/timestampinspection, allocation/locks/logging/property/USBcalls added toIOcallback",
+    "journal": "256immutableone-shot events; release/acquire publication; cappedreservations andexplicitpendingholes",
+    "snapshot": "natrreadonlyCFData global/main/device only, privatev1/build17/22576bytes;64clients96B +256events64B +48Bheader; zeroreserved/hostARMorder",
+    "metadata": "ID0 valid viaID+1key; PIDunknown/publishing/ready distinct; setterPIDnotclient0; no slotreuse; repeatedAdd/changedPID fault",
+    "interpretation": "DoIO counters are invocations, not successful PCMtransfer orownership; capabilities notownership; snapshot/reservationorder not atomicexecutiontimeline"
+  },
+  "schema_header": "Driver/AudioLifecycleTrace.h",
+  "source_pins": {
+    "Driver/AudioLifecycleTrace.h": "a941bc53a70b2fd279659ba5601e30e8a74da52567b5732674066de8b6228396",
+    "Driver/Audio/AudioLifecycleTraceState.h": "df72bf2631bebc8faa447b468f263f840e8a3f46f690462c9fcde5f7352bc951",
+    "Driver/Tests/AudioLifecycleTraceTests.c": "64b2a2438933262c88c6ad86b65ef8bc28c3571477e7a63bb5d3f9d130a30359",
+    "Driver/Audio/RK3AudioDriver.c": "64bb7db40ee234c1f4fcdc328b5dff19954ce3d1ad2be419bec01f27156fbfd1",
+    "Driver/Tests/AudioDriverTests.c": "1794affce9ba408b40c12dff9ae0f44179487319067abe62a7256e4338791da6",
+    "Tools/build-native.sh": "bc2d664409b3920308fcc21ae8df73fd1438260dc0d2a47821089fa5f06c6b19"
+  },
+  "preserved18_source_pins": {
+    "Driver/AudioClock.c": "b8ee00b61446c9231b1401b3d7a79cf196eb162343b0941d00757867dbe4f062",
+    "Driver/AudioClock.h": "edbbbd75216e6a43a771de75e50f0fc81f6ebbc8d1b78b16b295927746d11a53",
+    "Driver/AudioRing.c": "98c4801e2c9572fec2febd5253ad2b99af0067df762aee597f7c0fe30d5e2950",
+    "Driver/AudioRing.h": "5ace1b7ad2fe7decafe97fe7fd1c410adc2794282cd1712d14316153af9e41d1",
+    "Driver/AudioSchedule.c": "1687a338e3f3b085242f148863ba840ee07cea128a149da065530d609be90191",
+    "Driver/AudioSchedule.h": "2b6b10c6ee33d56146d9750a6634039ea48da99465ab7599387b4e53ef24d3ca",
+    "Driver/AudioCodec.c": "e8d29055ca4e460871f8d51792b0c9a83f1fcb82fbf7e202fd1a35cee7af8fe6",
+    "Driver/AudioCodec.h": "5df8c222c40dc24821d2c8da916a43f20071edebcb61d4ec4ac81c918c8faa1b",
+    "Driver/NativeAudioISO.c": "72a7216d94d237586393be5612f3dc0d8fc6eb9f3b2d2feb28a96ee9d082831e",
+    "Driver/NativeAudioISO.h": "b88c2f59bedf84320ba3dda69bb05a9ad1e1fb1d939f5984cab0a54319d9beb1",
+    "Driver/NativeHostUSB.m": "57b2e6f84ddcd5b7cace2dd9e0f268fe53cfa0a4eaa1bda1f6be1d58cd808f8d",
+    "Driver/NativeHostUSB.h": "deea2d568a808caa4dd778674133f796dde4d2bfef3e24224ce38acaae7b012c",
+    "Driver/InputGain.c": "c7048095874b22d44b0b4210e3344a1b3de45f778ec0c2da351a58359515df4e",
+    "Driver/InputGain.h": "51ccb07adf5d7d8b54caa765a9fbab39edb8846e97793f87b279e99958687d23",
+    "Driver/DeviceProtocol.c": "be408152aae1a71b6cc1b57d003671b77acadf3bf66ab0b0d3b3a69938287a98",
+    "Driver/DeviceProtocol.h": "0b65843a6cad6893e349ea0d75884b9917a0135a363121a2efef1e857aa812de",
+    "Driver/MIDI/MIDIStream.c": "d3342fd92b48057c4b322806707fd91358fad40110610da07b04420a2d147d8c",
+    "Driver/MIDI/MIDIStream.h": "4a586eb7166910e95750f6d3e03641d60fbb50fd44585da78f70035166e35b90"
+  },
+  "quality": {
+    "created_utc": "2026-10-28T16:46:51.259785+00:00",
+    "strict_command": "/bin/sh Tools/build-native.sh test",
+    "strict_exit": 0,
+    "sanitize_command": "/bin/sh Tools/build-native.sh sanitize",
+    "sanitize_exit": 0,
+    "all_hardware_calls": 0,
+    "CLI_calibration_strings_are_mocked": true,
+    "trace_off_hooks_and_property_absent_preprocessed": true,
+    "CPU_snapshot_hook_absent_runtime": true,
+    "preserved18": {
+      "Driver/AudioClock.c": "b8ee00b61446c9231b1401b3d7a79cf196eb162343b0941d00757867dbe4f062",
+      "Driver/AudioClock.h": "edbbbd75216e6a43a771de75e50f0fc81f6ebbc8d1b78b16b295927746d11a53",
+      "Driver/AudioRing.c": "98c4801e2c9572fec2febd5253ad2b99af0067df762aee597f7c0fe30d5e2950",
+      "Driver/AudioRing.h": "5ace1b7ad2fe7decafe97fe7fd1c410adc2794282cd1712d14316153af9e41d1",
+      "Driver/AudioSchedule.c": "1687a338e3f3b085242f148863ba840ee07cea128a149da065530d609be90191",
+      "Driver/AudioSchedule.h": "2b6b10c6ee33d56146d9750a6634039ea48da99465ab7599387b4e53ef24d3ca",
+      "Driver/AudioCodec.c": "e8d29055ca4e460871f8d51792b0c9a83f1fcb82fbf7e202fd1a35cee7af8fe6",
+      "Driver/AudioCodec.h": "5df8c222c40dc24821d2c8da916a43f20071edebcb61d4ec4ac81c918c8faa1b",
+      "Driver/NativeAudioISO.c": "72a7216d94d237586393be5612f3dc0d8fc6eb9f3b2d2feb28a96ee9d082831e",
+      "Driver/NativeAudioISO.h": "b88c2f59bedf84320ba3dda69bb05a9ad1e1fb1d939f5984cab0a54319d9beb1",
+      "Driver/NativeHostUSB.m": "57b2e6f84ddcd5b7cace2dd9e0f268fe53cfa0a4eaa1bda1f6be1d58cd808f8d",
+      "Driver/NativeHostUSB.h": "deea2d568a808caa4dd778674133f796dde4d2bfef3e24224ce38acaae7b012c",
+      "Driver/InputGain.c": "c7048095874b22d44b0b4210e3344a1b3de45f778ec0c2da351a58359515df4e",
+      "Driver/InputGain.h": "51ccb07adf5d7d8b54caa765a9fbab39edb8846e97793f87b279e99958687d23",
+      "Driver/DeviceProtocol.c": "be408152aae1a71b6cc1b57d003671b77acadf3bf66ab0b0d3b3a69938287a98",
+      "Driver/DeviceProtocol.h": "0b65843a6cad6893e349ea0d75884b9917a0135a363121a2efef1e857aa812de",
+      "Driver/MIDI/MIDIStream.c": "d3342fd92b48057c4b322806707fd91358fad40110610da07b04420a2d147d8c",
+      "Driver/MIDI/MIDIStream.h": "4a586eb7166910e95750f6d3e03641d60fbb50fd44585da78f70035166e35b90"
+    },
+    "source_pins": {
+      "Driver/AudioLifecycleTrace.h": "a941bc53a70b2fd279659ba5601e30e8a74da52567b5732674066de8b6228396",
+      "Driver/Audio/AudioLifecycleTraceState.h": "df72bf2631bebc8faa447b468f263f840e8a3f46f690462c9fcde5f7352bc951",
+      "Driver/Tests/AudioLifecycleTraceTests.c": "64b2a2438933262c88c6ad86b65ef8bc28c3571477e7a63bb5d3f9d130a30359",
+      "Driver/Audio/RK3AudioDriver.c": "64bb7db40ee234c1f4fcdc328b5dff19954ce3d1ad2be419bec01f27156fbfd1",
+      "Driver/Tests/AudioDriverTests.c": "1794affce9ba408b40c12dff9ae0f44179487319067abe62a7256e4338791da6",
+      "Tools/build-native.sh": "bc2d664409b3920308fcc21ae8df73fd1438260dc0d2a47821089fa5f06c6b19"
+    },
+    "logs": {
+      ".build/native/build17-audio-lifecycle/strict-full.log": "69608f7412a50483692f6e47d7ec861e943fcbb29df5a6be0f76c5f794b69b9f",
+      ".build/native/build17-audio-lifecycle/strict-full-final.log": "ca8a68957a8d447bbae8ed59087f93984cb0c2f2f269c322e193cd162e294ce6",
+      ".build/native/build17-audio-lifecycle/strict-full-pass.log": "189f90a9172a30aa90cb0a949e551f6a28d3b55911896cc6bec9400c6eb3ba48",
+      ".build/native/build17-audio-lifecycle/sanitize-full.log": "d2ec32d8f10c304308fac5544b3113f5d71ec6c28d467370bbe4a735afb6d00a",
+      ".build/native/build17-audio-lifecycle/trace-off.i": "7229e26cccd845ff5f1b2db8d4759dc641f5e4151c94bdf9f04ca4c39c7e5600",
+      ".build/native/build17-audio-lifecycle/trace-on.i": "46c770d6e792fd8c4ee6e1ca995b9d3c17526b6fc5fd02d9e4c87b147be28928",
+      ".build/native/build17-audio-lifecycle/state-tests/offline-result.json": "71be3a455c1ec9aa7a74c0d114f4aa2949f13d31767f52fa1b64e47e5b37b9ca"
+    },
+    "resolved_gate_failures": [
+      "nonnull SDK annotations: invalid-pointer fixtures use real internal guard functions as prior tests do",
+      "traceON custom-property metadata expected7 instead of6; allsix original selector/type/qualifier checks retained"
+    ]
+  },
+  "design_reviews": {
+    "trace_schema_RT": "PASS independent fixedstorage,PIDpublication/reuse/journal/snapshotbounds/normalOFF",
+    "packaging": "PASS mixedversionsaccepted byexistinginstaller; retainbothbundletransaction/restarts; audioonlycompile/signMIDIexactcopy",
+    "source_spec_RT": "PASS independent final6sourcepins/fullstrict+ASanUBSanlogs/mockCLIcompatibility/18corepins/factorychecker; signedcandidateaudit follows"
+  },
+  "package": {
+    "state": "NOT_BUILT_NOT_INSTALLED",
+    "planned_audio": "0.2.12/build17 trace only",
+    "preserved_MIDI": "exact0.2.11/build16 source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+    "private_recipe": ".build/native/build17-audio-lifecycle/build-package.py",
+    "recipe_sha256": "110a2a6a6d3a8bdb1cd2c35c3cb9f6245c611559a0705921e1f6341f6ba2b260",
+    "factory_trace_checker": ".build/native/build17-audio-lifecycle/trace-factory-check.c",
+    "hardware_qualification": false
+  },
+  "next_live_measurement": {
+    "state": "NOT_RUN; requiresinstalledcandidateverification andexactcollectorplan/CPUreviewbeforeoneinvocation",
+    "bounds": "one silent input/output stop/restartcycle with logicalrolecounters+nativebefore/afterphasesnapshots;20sactive/60sparent+TERM2KILL2/reap; noautomaticretry",
+    "gates": "stopAPI/cohort/newnativeerror/unknowncriticalidentity/overflow/reuse/partialcriticalsnapshot/cleanupfault=>INCONCLUSIVE/FAULT; no NIparityPASS",
+    "preserve": "strictunusedbufferNULLfailure andoriginalNIlastoutputownership/clear/no-stalereplay remain separatelyopen; noforcedglobal0/mixpolicy/timing/recoverychange"
+  },
+  "installed_state_changed": false,
+  "NI_timing_recovery_policy_changed": false,
+  "NativeInfo_ABI_changed": false,
+  "MIDI_code_or_calibration_mappings_changed": false,
+  "new_NI_binary_reads": 0,
+  "new_live_tests": 0,
+  "security_changes": false,
+  "limitations": [
+    "Temporary observation adds bounded execution cost; no timing-neutral or stabilitypass claim.",
+    "Build/version marker identifies diagnosticcontract, not loadedMachOUUID.",
+    "Unknown criticalPID(state0) is distinct from publishing(state1); pending_pids counts publishingonly.",
+    "Overlappingentry/exit records cannot be uniquely paired into durations fromreservationorderalone.",
+    "No trace-based functional correction is authorized by this source artifact; interpret actualcalls before proposingbinding."
+  ],
+  "file_pins": {
+    ".build/native/build17-audio-lifecycle/admission.txt": "68df522287aedc76ae298181af2b8d322fa99f185d1ca9a22377fcbc8fbfe20c",
+    ".build/native/build17-audio-lifecycle/source-bounds.json": "b3b222cfb091025c700eafb003ef787fd70fceb5fe5dfca3b089479c532bffa0",
+    ".build/native/build17-audio-lifecycle/frozen-implementation.txt": "222743847c9ea332a2fdbdcec1277cb2618d8bdd88156fc1a6a29010d6827b06",
+    ".build/native/build17-audio-lifecycle/quality.json": "7982e490f2f674c166a8c0e9cccf9dcfc6641fb106bdb7641e74c7dd028614c6",
+    ".build/native/build17-audio-lifecycle/state-tests/offline-result.json": "71be3a455c1ec9aa7a74c0d114f4aa2949f13d31767f52fa1b64e47e5b37b9ca",
+    ".build/native/build17-audio-lifecycle/build-package.py": "110a2a6a6d3a8bdb1cd2c35c3cb9f6245c611559a0705921e1f6341f6ba2b260",
+    ".build/native/build17-audio-lifecycle/trace-factory-check.c": "12282e77a074a60caf27dd22b5a7c6cb837234ef40cb4376a4611216dfa35c30",
+    ".build/native/build17-audio-lifecycle/audio-factory-check": "a3b6da1ac113c7dc52a29a2a1eb9398dc7d2946b3a75ca426ca156b6835c9435",
+    ".build/native/build17-audio-lifecycle/midi-factory-check": "de6330fe26f7b7139ff9944a97ca4d6ffdec3d68e03a1dee9efb52d8a4f1c1b0",
+    ".build/native/build17-audio-lifecycle/trace-factory-check": "0d42dd79d96b99329ea6f8fa02e33ef5a23bdd0bf82529e2654122412a8b59dd"
+  }
+}

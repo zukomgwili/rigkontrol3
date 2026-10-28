@@ -16,6 +16,20 @@
 #include "../AudioTiming.h"
 #include "../PedalSettings.h"
 
+#ifndef RK3_AUDIO_LIFECYCLE_TRACE
+#define RK3_AUDIO_LIFECYCLE_TRACE 0
+#endif
+#if RK3_AUDIO_LIFECYCLE_TRACE != 0 && RK3_AUDIO_LIFECYCLE_TRACE != 1
+#error RK3_AUDIO_LIFECYCLE_TRACE must be zero or one
+#endif
+#if RK3_AUDIO_LIFECYCLE_TRACE
+#include "AudioLifecycleTraceState.h"
+static RK3AudioTraceState audio_lifecycle_trace;
+#define RK3_AUDIO_TRACE_BASE(name) name##_without_trace
+#else
+#define RK3_AUDIO_TRACE_BASE(name) name
+#endif
+
 enum { DEVICE=2, INPUT=3, OUTPUT=4, RATE=RK3_AUDIO_DEFAULT_SAMPLE_RATE, PERIOD=16384, CLIENT_LIMIT=64 };
 static AudioServerPlugInDriverInterface table;
 static AudioServerPlugInDriverInterface *interface=&table;
@@ -250,6 +264,21 @@ static OSStatus destroy(AudioServerPlugInDriverRef v,AudioObjectID o) { (void)v;
 static OSStatus client(AudioServerPlugInDriverRef v,AudioObjectID o,const AudioServerPlugInClientInfo *c) {
     (void)c;return valid(v)&&o==DEVICE?0:kAudioHardwareBadObjectError;
 }
+#if RK3_AUDIO_LIFECYCLE_TRACE
+static OSStatus trace_client(AudioServerPlugInDriverRef v,AudioObjectID o,const AudioServerPlugInClientInfo *c,uint32_t kind) {
+    OSStatus result=client(v,o,c);
+    bool present=result==0&&c!=NULL;
+    rk3_audio_trace_record(&audio_lifecycle_trace,kind,present?c->mClientID:0,present,
+        present?c->mProcessID:0,present,o,0,result,mach_absolute_time());
+    return result;
+}
+static OSStatus trace_add_client(AudioServerPlugInDriverRef v,AudioObjectID o,const AudioServerPlugInClientInfo *c) {
+    return trace_client(v,o,c,RK3_AUDIO_TRACE_EVENT_ADD);
+}
+static OSStatus trace_remove_client(AudioServerPlugInDriverRef v,AudioObjectID o,const AudioServerPlugInClientInfo *c) {
+    return trace_client(v,o,c,RK3_AUDIO_TRACE_EVENT_REMOVE);
+}
+#endif
 static OSStatus configuration(AudioServerPlugInDriverRef v,AudioObjectID o,UInt64 action,void *data) {
     (void)data;
     if(!valid(v)||o!=DEVICE)return kAudioHardwareBadObjectError;
@@ -304,6 +333,9 @@ static bool has(AudioObjectID o, const AudioObjectPropertyAddress *a) {
     }
     if(o==DEVICE) {
         switch(a->mSelector) {
+#if RK3_AUDIO_LIFECYCLE_TRACE
+            case RK3_AUDIO_TRACE_PROPERTY:return a->mScope==kAudioObjectPropertyScopeGlobal&&a->mElement==kAudioObjectPropertyElementMain;
+#endif
             case kAudioDevicePropertyDeviceUID: case kAudioDevicePropertyModelUID:
             case kAudioDevicePropertyTransportType: case kAudioDevicePropertyRelatedDevices:
             case kAudioDevicePropertyClockDomain: case kAudioDevicePropertyDeviceIsAlive:
@@ -364,7 +396,10 @@ static UInt32 size_for(AudioObjectID o,const AudioObjectPropertyAddress *a) {
         case kAudioDevicePropertyStreamConfiguration:return sizeof(AudioBufferList);
         case kAudioStreamPropertyVirtualFormat:case kAudioStreamPropertyPhysicalFormat:return sizeof(AudioStreamBasicDescription);
         case kAudioStreamPropertyAvailableVirtualFormats:case kAudioStreamPropertyAvailablePhysicalFormats:return RK3_AUDIO_RATE_COUNT*sizeof(AudioStreamRangedDescription);
-        case kAudioObjectPropertyCustomPropertyInfoList:return 6*sizeof(AudioServerPlugInCustomPropertyInfo);
+        case kAudioObjectPropertyCustomPropertyInfoList:return (6+RK3_AUDIO_LIFECYCLE_TRACE)*sizeof(AudioServerPlugInCustomPropertyInfo);
+#if RK3_AUDIO_LIFECYCLE_TRACE
+        case RK3_AUDIO_TRACE_PROPERTY:return sizeof(CFPropertyListRef);
+#endif
         case RK3_PROPERTY_INFO:case RK3_PROPERTY_REPORTS:case RK3_PROPERTY_COMMAND:case RK3_PROPERTY_INPUT_GAIN:case RK3_PROPERTY_SPEC:case RK3_PROPERTY_USB_IDENTITY:return sizeof(CFPropertyListRef);
         default:return sizeof(UInt32);
     }
@@ -434,8 +469,20 @@ static OSStatus get(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
                 {RK3_PROPERTY_COMMAND,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
                 {RK3_PROPERTY_INPUT_GAIN,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
                 {RK3_PROPERTY_SPEC,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
-                {RK3_PROPERTY_USB_IDENTITY,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList}};
+                {RK3_PROPERTY_USB_IDENTITY,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList},
+#if RK3_AUDIO_LIFECYCLE_TRACE
+                {RK3_AUDIO_TRACE_PROPERTY,kAudioServerPlugInCustomPropertyDataTypeCFPropertyList,kAudioServerPlugInCustomPropertyDataTypeNone},
+#endif
+            };
             memcpy(out,custom,sizeof(custom));return 0;}
+#if RK3_AUDIO_LIFECYCLE_TRACE
+        case RK3_AUDIO_TRACE_PROPERTY:{
+            if(qs||q)return kAudioHardwareBadPropertySizeError;
+            RK3AudioTraceSnapshot value;
+            rk3_audio_trace_snapshot(&audio_lifecycle_trace,&value);
+            return return_cfdata(&value,sizeof(value),out);
+        }
+#endif
         case RK3_PROPERTY_USB_IDENTITY:{
             RK3NativeUSBIdentityQuery query;OSStatus error=read_cfdata(qs,q,&query,sizeof(query));if(error)return error;
             if(query.version!=RK3_CONTROL_VERSION||query.reserved||!query.generation)return kAudioHardwareIllegalOperationError;
@@ -520,6 +567,10 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         UInt32 active=0;memcpy(&active,data,sizeof(active));if(active>1)return kAudioHardwareIllegalOperationError;
         atomic_store(o==INPUT?&input_active:&output_active,active!=0);
         if(o==OUTPUT&&usb)rk3_usb_set_output_active(usb,active!=0);
+#if RK3_AUDIO_LIFECYCLE_TRACE
+        rk3_audio_trace_record(&audio_lifecycle_trace,RK3_AUDIO_TRACE_EVENT_ACTIVITY,0,false,
+            pid,true,o,active,0,mach_absolute_time());
+#endif
         AudioObjectPropertyAddress changed={kAudioStreamPropertyIsActive,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
         if(host)(void)host->PropertiesChanged(host,o,1,&changed);return 0;
     }
@@ -532,7 +583,7 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         return kAudioHardwareUnsupportedOperationError;
     return request_sample_rate((uint32_t)rate);
 }
-static OSStatus start(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
+static OSStatus RK3_AUDIO_TRACE_BASE(start)(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
     if(!valid(v)||o!=DEVICE)return kAudioHardwareBadObjectError;
     pthread_mutex_lock(&control);
     size_t slot=CLIENT_LIMIT;
@@ -542,7 +593,7 @@ static OSStatus start(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
     if(!error){clients[slot]=c;client_active[slot]=true;atomic_fetch_add(&running,1);}
     pthread_mutex_unlock(&control);if(!error)notify(kAudioDevicePropertyDeviceIsRunning);return error;
 }
-static OSStatus stop(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
+static OSStatus RK3_AUDIO_TRACE_BASE(stop)(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
     if(!valid(v)||o!=DEVICE)return kAudioHardwareBadObjectError;
     pthread_mutex_lock(&control);bool found=false;
     for(size_t i=0;i<CLIENT_LIMIT;++i)if(client_active[i]&&clients[i]==c){client_active[i]=false;found=true;break;}
@@ -550,6 +601,24 @@ static OSStatus stop(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
     if(found&&atomic_fetch_sub(&running,1)==1)error=rk3_usb_audio_stop(usb,5000);
     pthread_mutex_unlock(&control);if(found)notify(kAudioDevicePropertyDeviceIsRunning);return error;
 }
+#if RK3_AUDIO_LIFECYCLE_TRACE
+static OSStatus start(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
+    rk3_audio_trace_record(&audio_lifecycle_trace,RK3_AUDIO_TRACE_EVENT_START_ENTER,c,true,0,false,o,0,0,mach_absolute_time());
+    OSStatus result=start_without_trace(v,o,c);
+    rk3_audio_trace_record(&audio_lifecycle_trace,RK3_AUDIO_TRACE_EVENT_START_EXIT,c,true,0,false,o,0,result,mach_absolute_time());
+    return result;
+}
+static OSStatus stop(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c) {
+    rk3_audio_trace_record(&audio_lifecycle_trace,RK3_AUDIO_TRACE_EVENT_STOP_ENTER,c,true,0,false,o,0,0,mach_absolute_time());
+    OSStatus result=stop_without_trace(v,o,c);
+    rk3_audio_trace_record(&audio_lifecycle_trace,RK3_AUDIO_TRACE_EVENT_STOP_EXIT,c,true,0,false,o,0,result,mach_absolute_time());
+    return result;
+}
+static uint32_t trace_category(UInt32 operation) {
+    return operation==kAudioServerPlugInIOOperationReadInput?RK3_AUDIO_TRACE_READ:
+        operation==kAudioServerPlugInIOOperationWriteMix?RK3_AUDIO_TRACE_WRITE:RK3_AUDIO_TRACE_OTHER;
+}
+#endif
 static OSStatus timestamp(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c,Float64 *sample,UInt64 *time,UInt64 *seed) {
     (void)c;if(!valid(v)||o!=DEVICE||!sample||!time||!seed)return kAudioHardwareBadObjectError;
     rk3_usb_clock_snapshot clock;
@@ -588,12 +657,20 @@ static OSStatus timestamp(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c,
 }
 static OSStatus will(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c,UInt32 operation,Boolean *perform,Boolean *in_place) {
     (void)c;if(!valid(v)||o!=DEVICE||!perform||!in_place)return kAudioHardwareBadObjectError;
-    *perform=operation==kAudioServerPlugInIOOperationReadInput||operation==kAudioServerPlugInIOOperationWriteMix;*in_place=true;return 0;
+    *perform=operation==kAudioServerPlugInIOOperationReadInput||operation==kAudioServerPlugInIOOperationWriteMix;*in_place=true;
+#if RK3_AUDIO_LIFECYCLE_TRACE
+    rk3_audio_trace_will(&audio_lifecycle_trace,c,trace_category(operation),*perform);
+#endif
+    return 0;
 }
 static OSStatus edge(AudioServerPlugInDriverRef v,AudioObjectID o,UInt32 c,UInt32 operation,UInt32 frames,const AudioServerPlugInIOCycleInfo *cycle) {
     (void)c;(void)operation;(void)frames;(void)cycle;return valid(v)&&o==DEVICE?0:kAudioHardwareBadObjectError;
 }
 static OSStatus io(AudioServerPlugInDriverRef v,AudioObjectID o,AudioObjectID stream,UInt32 c,UInt32 operation,UInt32 frames,const AudioServerPlugInIOCycleInfo *cycle,void *main_buffer,void *secondary) {
+#if RK3_AUDIO_LIFECYCLE_TRACE
+    /* Invocation counters only: no buffer, PCM or timestamp inspection. */
+    rk3_audio_trace_io(&audio_lifecycle_trace,c,stream,trace_category(operation));
+#endif
     (void)c;(void)secondary;
     if(!valid(v)||o!=DEVICE||(stream!=INPUT&&stream!=OUTPUT))return kAudioHardwareBadObjectError;
     if(!usb||!main_buffer||frames>PERIOD||!cycle)return kAudioHardwareIllegalOperationError;
@@ -614,7 +691,12 @@ static OSStatus io(AudioServerPlugInDriverRef v,AudioObjectID o,AudioObjectID st
     }
     return kAudioHardwareUnsupportedOperationError;
 }
-static AudioServerPlugInDriverInterface table={NULL,query,retain,release,initialize,create,destroy,client,client,
+static AudioServerPlugInDriverInterface table={NULL,query,retain,release,initialize,create,destroy,
+#if RK3_AUDIO_LIFECYCLE_TRACE
+    trace_add_client,trace_remove_client,
+#else
+    client,client,
+#endif
     configuration,abort_configuration,has_property,is_settable,get_size,get,set,start,stop,timestamp,will,edge,io,edge};
 __attribute__((visibility("default"))) void *RK3AudioFactory(CFAllocatorRef allocator,CFUUIDRef type) {
     (void)allocator;if(!type||!CFEqual(type,kAudioServerPlugInTypeUUID))return NULL;

@@ -39,6 +39,13 @@ if [ "$mode" != build ]; then
         "$root/Driver/InputGain.c" \
         -framework CoreAudio -framework CoreFoundation -o "$out/AudioDriverTests"
     "$out/AudioDriverTests"
+    xcrun clang $flags -I"$root/Driver" "$root/Driver/Tests/AudioLifecycleTraceTests.c" \
+        -o "$out/AudioLifecycleTraceTests"
+    "$out/AudioLifecycleTraceTests"
+    xcrun clang $flags -DRK3_AUDIO_LIFECYCLE_TRACE=1 -I"$root/Driver" -fblocks \
+        "$root/Driver/Tests/AudioDriverTests.c" "$root/Driver/InputGain.c" \
+        -framework CoreAudio -framework CoreFoundation -o "$out/AudioDriverTraceTests"
+    "$out/AudioDriverTraceTests"
     for unit in NativeAudioISO NativeUSB; do
         if [ -f "$root/Driver/Tests/${unit}Tests.c" ]; then
             case "$unit" in

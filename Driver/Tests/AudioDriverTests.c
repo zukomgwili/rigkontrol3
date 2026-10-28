@@ -202,8 +202,12 @@ static void properties(void){
     RK3NativeInfo current={0};
     assert(rk3_native_copy_info(DEVICE,&current)==0&&current.version==1&&current.generation==7);
     a.mSelector=kAudioObjectPropertyCustomPropertyInfoList;
-    AudioServerPlugInCustomPropertyInfo metadata[6];
+    AudioServerPlugInCustomPropertyInfo metadata[6+RK3_AUDIO_LIFECYCLE_TRACE];
     assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(metadata),&written,metadata)==0);
+    assert(written==sizeof(metadata));
+#if RK3_AUDIO_LIFECYCLE_TRACE
+    assert(metadata[6].mSelector==RK3_AUDIO_TRACE_PROPERTY&&metadata[6].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone);
+#endif
     for(unsigned i=0;i<5;++i)assert(metadata[i].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
     assert(metadata[0].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone);
     assert(metadata[1].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
@@ -397,7 +401,7 @@ static void usb_identity_property_validation_test(void) {
     a.mScope=kAudioObjectPropertyScopeOutput;assert(!table.HasProperty(driver,DEVICE,0,&a));
     a.mScope=kAudioObjectPropertyScopeGlobal;a.mElement=1;assert(!table.HasProperty(driver,DEVICE,0,&a));a.mElement=0;
     AudioObjectPropertyAddress metadata_address={kAudioObjectPropertyCustomPropertyInfoList,kAudioObjectPropertyScopeGlobal,0};
-    AudioServerPlugInCustomPropertyInfo metadata[6];
+    AudioServerPlugInCustomPropertyInfo metadata[6+RK3_AUDIO_LIFECYCLE_TRACE];
     assert(table.GetPropertyDataSize(driver,DEVICE,0,&metadata_address,0,NULL,&size)==0&&size==sizeof(metadata));
     assert(table.GetPropertyData(driver,DEVICE,0,&metadata_address,0,NULL,sizeof(metadata),&written,metadata)==0&&written==sizeof(metadata));
     static const UInt32 selectors[]={0x6e696e66,0x6e727074,0x6e636d64,0x6e676169,0x6e737063,0x6e757362};
@@ -478,7 +482,7 @@ static void spec_metadata_and_query_test(void) {
     a.mScope=kAudioObjectPropertyScopeOutput;assert(!table.HasProperty(driver,DEVICE,0,&a));
     a.mScope=kAudioObjectPropertyScopeGlobal;a.mElement=1;assert(!table.HasProperty(driver,DEVICE,0,&a));a.mElement=0;
     AudioObjectPropertyAddress metadata_address={kAudioObjectPropertyCustomPropertyInfoList,kAudioObjectPropertyScopeGlobal,0};
-    AudioServerPlugInCustomPropertyInfo metadata[6];
+    AudioServerPlugInCustomPropertyInfo metadata[6+RK3_AUDIO_LIFECYCLE_TRACE];
     assert(table.GetPropertyDataSize(driver,DEVICE,0,&metadata_address,0,NULL,&size)==0&&size==sizeof(metadata));
     assert(table.GetPropertyData(driver,DEVICE,0,&metadata_address,0,NULL,sizeof(metadata),&written,metadata)==0&&written==sizeof(metadata));
     assert(metadata[4].mSelector==UINT32_C(0x6e737063)&&metadata[4].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList&&metadata[4].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
@@ -950,8 +954,80 @@ static void rate_handshake(void) {
     assert(PERIOD==16384);assert(rk3_usb_set_audio_panic_handler(&mock_session,NULL,NULL));
     flush_configuration_queue();dispatch_release(device_control_queue);device_control_queue=NULL;host=NULL;
 }
+static void lifecycle_trace_property_test(void) {
+    AudioObjectPropertyAddress a={0x6e617472,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
+    UInt32 size=0,written=0;CFDataRef data=NULL;
+#if !RK3_AUDIO_LIFECYCLE_TRACE
+    assert(!table.HasProperty(driver,DEVICE,0,&a));
+    assert(table.GetPropertyDataSize(driver,DEVICE,0,&a,0,NULL,&size)!=0);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(data),&written,&data)!=0&&data==NULL);
+#else
+    assert(table.HasProperty(driver,DEVICE,0,&a));
+    assert(!table.HasProperty(driver,INPUT,0,&a)&&!table.HasProperty(driver,OUTPUT,0,&a));
+    AudioObjectPropertyAddress bad=a;bad.mScope=kAudioObjectPropertyScopeInput;
+    assert(!table.HasProperty(driver,DEVICE,0,&bad));bad=a;bad.mElement=1;
+    assert(!table.HasProperty(driver,DEVICE,0,&bad));
+    Boolean writable=true;assert(table.IsPropertySettable(driver,DEVICE,0,&a,&writable)==0&&!writable);
+    assert(table.GetPropertyDataSize(driver,DEVICE,0,&a,0,NULL,&size)==0&&size==sizeof(data));
+    assert(table.SetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(data),&data)!=0);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,1,NULL,sizeof(data),&written,&data)!=0);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,&size,sizeof(data),&written,&data)!=0);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(data)-1,&written,&data)!=0);
+    assert(get(driver,DEVICE,0,&a,0,NULL,sizeof(data),&written,NULL)!=0);
+    inspect_spec_allocation=fail_spec_allocation=true;
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(data),&written,&data)==kAudioHardwareUnspecifiedError&&data==NULL);
+    inspect_spec_allocation=fail_spec_allocation=false;
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(data),&written,&data)==0);
+    assert(data&&CFGetTypeID(data)==CFDataGetTypeID()&&CFDataGetLength(data)==(CFIndex)sizeof(RK3AudioTraceSnapshot));
+    CFRelease(data);data=NULL;
+    /* Reset only this quiescent CPU fixture, never through the driver ABI. */
+    rk3_audio_trace_init(&audio_lifecycle_trace);
+    AudioObjectPropertyAddress active={kAudioStreamPropertyIsActive,kAudioObjectPropertyScopeGlobal,0};UInt32 value=0;
+    assert(table.SetPropertyData(driver,OUTPUT,9876,&active,0,NULL,sizeof(value),&value)==0);
+    RK3AudioTraceSnapshot snapshot;rk3_audio_trace_snapshot(&audio_lifecycle_trace,&snapshot);
+    assert(snapshot.used_clients==0&&snapshot.events_end==1);
+    assert(snapshot.events[0].identity_flags==2&&snapshot.events[0].pid==9876);
+    value=1;assert(table.SetPropertyData(driver,OUTPUT,9876,&active,0,NULL,sizeof(value),&value)==0);
+    rk3_audio_trace_init(&audio_lifecycle_trace);
+    AudioServerPlugInClientInfo one={.mClientID=0,.mProcessID=4321},two={.mClientID=64,.mProcessID=4321};
+    assert(table.AddDeviceClient(driver,DEVICE,&one)==0&&table.AddDeviceClient(driver,DEVICE,&two)==0);
+    unsigned old_starts=starts,old_stops=stops;
+    fail_start=true;assert(table.StartIO(driver,DEVICE,0)==-1);fail_start=false;
+    assert(table.StartIO(driver,DEVICE,0)==0&&table.StartIO(driver,DEVICE,64)==0&&starts==old_starts+2);
+    Boolean perform=false,in_place=false;
+    assert(table.WillDoIOOperation(driver,DEVICE,0,kAudioServerPlugInIOOperationReadInput,&perform,&in_place)==0&&perform&&in_place);
+    assert(table.WillDoIOOperation(driver,DEVICE,64,kAudioServerPlugInIOOperationWriteMix,&perform,&in_place)==0&&perform);
+    assert(table.WillDoIOOperation(driver,DEVICE,0,kAudioServerPlugInIOOperationCycle,&perform,&in_place)==0&&!perform);
+    float pcm[2]={0};AudioServerPlugInIOCycleInfo cycle={0};
+    cycle.mInputTime.mFlags=cycle.mOutputTime.mFlags=kAudioTimeStampSampleTimeValid;
+    assert(io(driver,DEVICE,INPUT,0,kAudioServerPlugInIOOperationReadInput,1,NULL,pcm,NULL)==kAudioHardwareIllegalOperationError);
+    assert(table.DoIOOperation(driver,DEVICE,INPUT,0,kAudioServerPlugInIOOperationReadInput,1,&cycle,pcm,NULL)==0);
+    assert(table.DoIOOperation(driver,DEVICE,OUTPUT,64,kAudioServerPlugInIOOperationWriteMix,1,&cycle,pcm,NULL)==0);
+    value=0;assert(table.SetPropertyData(driver,OUTPUT,9876,&active,0,NULL,sizeof(value),&value)==0);
+    rk3_audio_trace_snapshot(&audio_lifecycle_trace,&snapshot);uint64_t events=snapshot.events_end;
+    value=2;assert(table.SetPropertyData(driver,OUTPUT,9876,&active,0,NULL,sizeof(value),&value)!=0);
+    rk3_audio_trace_snapshot(&audio_lifecycle_trace,&snapshot);assert(snapshot.events_end==events);
+    value=1;assert(table.SetPropertyData(driver,OUTPUT,9876,&active,0,NULL,sizeof(value),&value)==0);
+    assert(table.StopIO(driver,DEVICE,64)==0&&stops==old_stops);
+    assert(table.StopIO(driver,DEVICE,0)==0&&stops==old_stops+1);
+    assert(table.RemoveDeviceClient(driver,DEVICE,&two)==0&&table.RemoveDeviceClient(driver,DEVICE,&one)==0);
+    assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(data),&written,&data)==0);
+    memcpy(&snapshot,CFDataGetBytePtr(data),sizeof(snapshot));CFRelease(data);
+    assert(snapshot.version==1&&snapshot.build==17&&snapshot.client_limit==64&&snapshot.event_limit==256);
+    assert(!snapshot.faults&&!snapshot.pending_events&&!snapshot.pending_pids&&snapshot.used_clients==2&&snapshot.events_end==16);
+    const RK3AudioTraceClient *first=NULL,*second=NULL;
+    for(unsigned i=0;i<64;++i){if(snapshot.clients[i].key==1)first=&snapshot.clients[i];if(snapshot.clients[i].key==65)second=&snapshot.clients[i];}
+    assert(first&&second&&first->pid==4321&&first->pid_state==2&&second->pid==4321);
+    assert(first->adds==1&&first->removes==1&&first->io_read==2&&first->will_read==1&&first->will_other==1&&first->will_true_mask==1);
+    assert(first->last_read_stream==INPUT&&second->last_write_stream==OUTPUT&&second->io_write==1&&second->will_write==1&&second->will_true_mask==2);
+    assert(snapshot.events[0].kind==RK3_AUDIO_TRACE_EVENT_ADD&&snapshot.events[0].client_id==0&&snapshot.events[0].identity_flags==3);
+    assert(snapshot.events[2].kind==RK3_AUDIO_TRACE_EVENT_START_ENTER&&snapshot.events[3].kind==RK3_AUDIO_TRACE_EVENT_START_EXIT&&snapshot.events[3].status==-1);
+    puts("Audio lifecycle trace HAL: diagnostic-only CFData, PID/client distinction, original return paths and counters passed");
+#endif
+}
 int main(void){
     assert(RK3AudioFactory(NULL,kAudioServerPlugInTypeUUID)==driver);
     rk3_input_gain_init(&mock_gain);usb=&mock_session;usb_identity_property_test();usb_identity_raw_transport_test();usb_identity_client_test();usb_identity_client_header_test();usb_identity_client_field_test();usb_identity_partial_and_status_test();usb_identity_client_envelope_test();usb_identity_property_validation_test();spec_property_transport_test();spec_domain_reply_test();spec_client_transport_test();spec_client_invalid_reply_test();spec_metadata_and_query_test();spec_native_status_test();spec_client_response_matrix_test();spec_initialization_lifetime_test();usb_identity_initialization_lifetime_test();properties();pedal_configuration_transport_test();input_gain_transport_test();audio();stream_activity();panic_handshake();rate_metadata_test();rate_handshake();assert(opens==2&&closes==2);
+    lifecycle_trace_property_test();
     puts("Audio driver: host ABI, CFData, NI timing, addressed PCM, lifecycle, clock and panic handshake passed");return 0;
 }
