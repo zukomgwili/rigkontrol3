@@ -1,0 +1,497 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-28",
+  "bead": "rigkontrol3-40h.3",
+  "plan_and_read_bounds_recorded_before_code_or_reads": true,
+  "result": {
+    "NI_compiled_field_identity": "RESOLVED_SOURCE_CORRELATED_X86_KERNEL_CPP_ABI",
+    "modern_automatic_output_attachment_binding": "UNAVAILABLE_IN_INSPECTED_SELECTED_PUBLISHED_INTERFACE",
+    "original_automatic_count_zero_clear_parity": "UNSATISFIED_RETAINED",
+    "functional_patch_justified": false,
+    "whole_M3_complete": false
+  },
+  "NI_field_proof": {
+    "member": "IOAudioStream::numClients",
+    "offset_hex": "0xa8",
+    "width_bytes": 4,
+    "base_IOService_size_hex": "0x88",
+    "stream_size_hex": "0x150",
+    "final_expansion_pointer_offset_hex": "0x148",
+    "historical_IOAudioFamily_tag": "195.4.2",
+    "historical_commit": "8cf084d3ccac29eeace2e5f3ec268c1cb9afa1d9",
+    "historical_import_date": "2014-03-11",
+    "historical_header_fields_match_203_3": true,
+    "independent_NI_operands": [
+      "0x7f78 DWORD[constructed stream+0xa8] zero test",
+      "0x4d77 allocation size immediate0x150"
+    ],
+    "actual_inherited_fields_used": true,
+    "opaque_base_padding_used": false,
+    "proof_source": ".build/ni/output-field-proof/layout-proof.cpp",
+    "proof_source_lines": 91,
+    "proof_source_sha256": "9098ba724306c557dd8e841d5ea78fb99b9ddc77fd70e3c5a931bfa163b9eac6",
+    "compiler": "Apple clang21.0.0 clang-2100.3.34.2",
+    "explicit_target": "x86_64-apple-darwin13",
+    "proof_cases": [
+      {
+        "case": "positive",
+        "command": [
+          "xcrun",
+          "clang++",
+          "-target",
+          "x86_64-apple-darwin13",
+          "-std=c++11",
+          "-fapple-kext",
+          "-fno-rtti",
+          "-fno-exceptions",
+          "-Werror",
+          "-Wno-invalid-offsetof",
+          "-fsyntax-only",
+          "-Xclang",
+          "-fdump-record-layouts",
+          ".build/ni/output-field-proof/layout-proof.cpp"
+        ],
+        "exit": 0,
+        "expected_success": true,
+        "pass": true,
+        "stdout_sha256": "5b93679884fb98e9300cadace9cf77f05062e4386d20076727e7c40b28ea619e",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "case": "negative-counter",
+        "command": [
+          "xcrun",
+          "clang++",
+          "-target",
+          "x86_64-apple-darwin13",
+          "-std=c++11",
+          "-fapple-kext",
+          "-fno-rtti",
+          "-fno-exceptions",
+          "-Werror",
+          "-Wno-invalid-offsetof",
+          "-fsyntax-only",
+          "-Xclang",
+          "-fdump-record-layouts",
+          "-DNEGATIVE_COUNTER_WIDTH=1",
+          ".build/ni/output-field-proof/layout-proof.cpp"
+        ],
+        "exit": 1,
+        "expected_success": false,
+        "pass": true,
+        "stdout_sha256": "c57d643493f118554b15ee73bc78324dbf14126496439b793204e734d7509ce1",
+        "stderr_sha256": "573c54b2af5b3f62420b7b616b0816e6808ab498746cc0616202941f83ace9d6"
+      },
+      {
+        "case": "negative-base",
+        "command": [
+          "xcrun",
+          "clang++",
+          "-target",
+          "x86_64-apple-darwin13",
+          "-std=c++11",
+          "-fapple-kext",
+          "-fno-rtti",
+          "-fno-exceptions",
+          "-Werror",
+          "-Wno-invalid-offsetof",
+          "-fsyntax-only",
+          "-Xclang",
+          "-fdump-record-layouts",
+          "-DNEGATIVE_BASE_FIELD=1",
+          ".build/ni/output-field-proof/layout-proof.cpp"
+        ],
+        "exit": 1,
+        "expected_success": false,
+        "pass": true,
+        "stdout_sha256": "a99d649641c58d6ddc1e509f64eaed68f1370ddd103a628938eb66a10d3a8489",
+        "stderr_sha256": "9a0ea2e131253f084cd28beea57adbbe0baf137e9f30e1490b4c41f21f967f28"
+      }
+    ],
+    "root_independent_repeat": {
+      "target": "x86_64-apple-darwin13",
+      "source_sha256": "9098ba724306c557dd8e841d5ea78fb99b9ddc77fd70e3c5a931bfa163b9eac6",
+      "source_review": "PASS_complete_fields_match_admitted_declarations_no_opaque_base_padding",
+      "compile_only": true,
+      "no_link_or_execution": true,
+      "results": [
+        {
+          "case": "positive",
+          "command": [
+            "xcrun",
+            "clang++",
+            "-target",
+            "x86_64-apple-darwin13",
+            "-std=c++11",
+            "-fapple-kext",
+            "-fno-rtti",
+            "-fno-exceptions",
+            "-Werror",
+            "-Wno-invalid-offsetof",
+            "-fsyntax-only",
+            "-Xclang",
+            "-fdump-record-layouts",
+            ".build/ni/output-field-proof/layout-proof.cpp"
+          ],
+          "exit_code": 0,
+          "stdout_sha256": "5b93679884fb98e9300cadace9cf77f05062e4386d20076727e7c40b28ea619e",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "expected_diagnostic": null,
+          "pass": true
+        },
+        {
+          "case": "counter",
+          "command": [
+            "xcrun",
+            "clang++",
+            "-target",
+            "x86_64-apple-darwin13",
+            "-std=c++11",
+            "-fapple-kext",
+            "-fno-rtti",
+            "-fno-exceptions",
+            "-Werror",
+            "-Wno-invalid-offsetof",
+            "-fsyntax-only",
+            "-Xclang",
+            "-fdump-record-layouts",
+            "-DNEGATIVE_COUNTER_WIDTH",
+            ".build/ni/output-field-proof/layout-proof.cpp"
+          ],
+          "exit_code": 1,
+          "stdout_sha256": "c57d643493f118554b15ee73bc78324dbf14126496439b793204e734d7509ce1",
+          "stderr_sha256": "573c54b2af5b3f62420b7b616b0816e6808ab498746cc0616202941f83ace9d6",
+          "expected_diagnostic": "NI DWORD field width",
+          "pass": true
+        },
+        {
+          "case": "base",
+          "command": [
+            "xcrun",
+            "clang++",
+            "-target",
+            "x86_64-apple-darwin13",
+            "-std=c++11",
+            "-fapple-kext",
+            "-fno-rtti",
+            "-fno-exceptions",
+            "-Werror",
+            "-Wno-invalid-offsetof",
+            "-fsyntax-only",
+            "-Xclang",
+            "-fdump-record-layouts",
+            "-DNEGATIVE_BASE_FIELD",
+            ".build/ni/output-field-proof/layout-proof.cpp"
+          ],
+          "exit_code": 1,
+          "stdout_sha256": "a99d649641c58d6ddc1e509f64eaed68f1370ddd103a628938eb66a10d3a8489",
+          "stderr_sha256": "9a0ea2e131253f084cd28beea57adbbe0baf137e9f30e1490b4c41f21f967f28",
+          "expected_diagnostic": "named NI count field offset",
+          "pass": true
+        }
+      ]
+    },
+    "linked_or_executed": false,
+    "claim_limits": [
+      "Not byte-identical NI SDK reconstruction.",
+      "Not execution of original NI compiler.",
+      "Not discovery of exact historical loaded framework image.",
+      "Not an ARM byte-offset implementation or modern event equivalence."
+    ]
+  },
+  "modern_contract_decision": {
+    "available_positive_events": {
+      "Add_RemoveDeviceClient": "device-client use lifetime",
+      "Start_StopIO": "device-client audio I/O lifetime",
+      "IsActive_setter": "explicit global stream enable/disable configuration",
+      "WillDoIOOperation": "startup capability selection",
+      "DoIOOperation": "operation/data-path participation for named stream at invocation",
+      "Begin_End_Thread_Cycle": "thread/cycle/operation phase boundaries"
+    },
+    "missing_contract": "persistent per-output client-buffer attach/detach/count event",
+    "no_valid_substitute": [
+      "PID",
+      "aggregate Stop",
+      "callback silence",
+      "elapsed time",
+      "WillDo query count",
+      "processing invocation count",
+      "public IOProc masks without native attachment mapping"
+    ],
+    "existing_WriteMix_evidence": "saved build17 continuing native WriteMix after publicoutputStop with inputalive is continuing host transfer, not proof of legacy zero attachments",
+    "no_repeat_trace_or_processing_observer_admitted": true,
+    "public_unused_buffer_NULL_gate": "VALID_SEPARATE_UNRESOLVED",
+    "original_clear_replay_gate": "UNSATISFIED_NOT_WAIVED",
+    "next_needed_for_automatic_parity": "a documented additional host attachment source or an explicit compatibility scope decision; no faithful patch from inspected callbacks"
+  },
+  "AudioDriverKit_crosscheck": {
+    "real_callback": "IOUserAudioStream::HandleChangeStreamIsActive(bool)",
+    "meaning": "active-state configuration, no documented last-client-detach/count guarantee",
+    "device_start_stop": "propagates to all device streams",
+    "stream_add_remove": "stream topology/reference counts, not client buffers",
+    "result": "NO_AFFIRMATIVE_REASON_TO_MIGRATE_FOR_THIS_MISSING_EVENT",
+    "scope_limit": "bounded published3class declaration inventory, not universal modernAPI impossibility",
+    "queries": 2,
+    "body_lines": 277
+  },
+  "bounds": {
+    "field_headers": {
+      ".build/ni/usb-identity-contract/absolute-prefix/OSMetaClass-xnu2422.115.4.h": [
+        [
+          60,
+          90
+        ],
+        [
+          140,
+          170
+        ],
+        [
+          390,
+          430
+        ],
+        [
+          1550,
+          1630
+        ]
+      ],
+      ".build/ni/usb-identity-contract/absolute-prefix/OSObject-xnu2422.115.4.h": [
+        [
+          160,
+          200
+        ],
+        [
+          295,
+          320
+        ]
+      ],
+      ".build/ni/usb-identity-contract/absolute-prefix/IORegistryEntry-xnu2422.115.4.h": [
+        [
+          60,
+          105
+        ]
+      ],
+      ".build/ni/usb-identity-contract/absolute-prefix/IOService-xnu2422.115.4.h": [
+        [
+          280,
+          325
+        ],
+        [
+          1210,
+          1230
+        ]
+      ],
+      ".build/ni/apple-ioaudio/IOAudioFamily-203.3/IOAudioStream.h": [
+        [
+          60,
+          160
+        ]
+      ],
+      ".build/ni/output-field-proof/historical-195.4.2-IOAudioStream.h": [
+        [
+          60,
+          145
+        ]
+      ],
+      ".build/ni/output-field-proof/historical-195.4.2-IOAudioTypes.h": [
+        [
+          110,
+          135
+        ],
+        [
+          244,
+          254
+        ]
+      ],
+      ".build/ni/output-field-proof/model-203.3-IOAudioTypes.h": [
+        [
+          110,
+          135
+        ],
+        [
+          250,
+          260
+        ]
+      ],
+      ".build/ni/output-field-proof/IOTypes-xnu2422.115.4.h": [
+        [
+          55,
+          72
+        ]
+      ],
+      ".build/ni/output-field-proof/historical-195.4.2-IOAudioEngine.h": [
+        [
+          51,
+          63
+        ]
+      ],
+      ".build/ni/output-field-proof/OSTypes-xnu2422.115.4.h": [
+        [
+          35,
+          75
+        ]
+      ]
+    },
+    "field_header_lines": 697,
+    "CoreAudio_SDK": {
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioServerPlugIn.h": [
+        [
+          174,
+          202
+        ],
+        [
+          295,
+          355
+        ],
+        [
+          698,
+          738
+        ],
+        [
+          948,
+          984
+        ],
+        [
+          1017,
+          1159
+        ]
+      ],
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioHardware.h": [
+        [
+          849,
+          867
+        ],
+        [
+          960,
+          981
+        ]
+      ],
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioHardwareBase.h": [
+        [
+          1075,
+          1099
+        ]
+      ]
+    },
+    "CoreAudio_SDK_lines": 377,
+    "AudioDriverKit_SDK": {
+      "/Applications/Xcode.app/Contents/Developer/Platforms/DriverKit.platform/Developer/SDKs/DriverKit.sdk/System/DriverKit/System/Library/Frameworks/AudioDriverKit.framework/Headers/IOUserAudioStream.iig": [
+        [
+          145,
+          224
+        ],
+        [
+          335,
+          365
+        ]
+      ],
+      "/Applications/Xcode.app/Contents/Developer/Platforms/DriverKit.platform/Developer/SDKs/DriverKit.sdk/System/DriverKit/System/Library/Frameworks/AudioDriverKit.framework/Headers/IOUserAudioDevice.iig": [
+        [
+          175,
+          213
+        ],
+        [
+          516,
+          589
+        ]
+      ],
+      "/Applications/Xcode.app/Contents/Developer/Platforms/DriverKit.platform/Developer/SDKs/DriverKit.sdk/System/DriverKit/System/Library/Frameworks/AudioDriverKit.framework/Headers/IOUserAudioDriver.iig": [
+        [
+          185,
+          237
+        ]
+      ]
+    },
+    "AudioDriverKit_SDK_lines": 277,
+    "current_HAL": {
+      "Driver/Audio/RK3AudioDriver.c": [
+        [
+          1,
+          110
+        ],
+        [
+          264,
+          282
+        ],
+        [
+          330,
+          407
+        ],
+        [
+          450,
+          704
+        ]
+      ]
+    },
+    "current_HAL_lines": 462
+  },
+  "scope": {
+    "new_beads": 0,
+    "production_driver_or_test_code_changed": false,
+    "private_compile_proof_coded": true,
+    "live_queries_or_hardware_calls": 0,
+    "driver_build_package_install_changes": false,
+    "NI_ring_timing_recovery_changes": false,
+    "mappings_calibration_LED_policy_changes": false,
+    "SIP_security_changes": false,
+    "installed_driver_state_requeried": false
+  },
+  "file_sha256": {
+    ".build/ni/apple-ioaudio/IOAudioFamily-203.3/IOAudioStream.h": "a0f508d0e507f78cfc7bd689858b938ac39b1ef47cb24cc9076ff00215530833",
+    ".build/ni/decompiled/reproduced/audio280-text/00004b20_de_caiaq_driver_NIUSBAudioEngine__initCoreAudio.asm": "25aa020549ec31eaf79d2e53f2933d5b9f3a288a01b1f77296c016ba56690be2",
+    ".build/ni/decompiled/reproduced/audio280-text/00004d60_de_caiaq_driver_NIUSBAudioEngine__createNewAudioStream.asm": "08e4ac07408020690ac777e10a85d4c97831204c6b76262f8e7d29c88364e5a1",
+    ".build/ni/decompiled/reproduced/audio280-text/00007ec0_de_caiaq_driver_NIUSBAudioEngine__writeHandler.asm": "0bcf4519ce33b3e755401918011d0e0a4a165d65add757dbf973dd0929223f07",
+    ".build/ni/output-field-proof/IOAudioFamily-192.4.7-commit.json": "c6776368f133aeb1f7dd39306df08cdc5145cdb23bfeb9076cabed7f8ef603eb",
+    ".build/ni/output-field-proof/IOAudioFamily-194.4.11-commit.json": "240b611fd9a5936288a50466689db0bd8710bce5623662e2474fa5a61630a3bb",
+    ".build/ni/output-field-proof/IOAudioFamily-195.4.2-commit.json": "dfcabdcb64050b60fdedee2cb2256799334207359e3ace027ebb883212fd1745",
+    ".build/ni/output-field-proof/IOAudioFamily-197.4.2-commit.json": "26c8d6d0982e70835af025d0c3d62b55291d8987765f4a32f3f52de90c5762ef",
+    ".build/ni/output-field-proof/IOTypes-xnu2422.115.4.h": "1eb75576b53680ddd5745792701b98cb7630c7044c96d6a37298bd9a26282130",
+    ".build/ni/output-field-proof/OSTypes-xnu2422.115.4.h": "66987bd7e24ce96c8554fda147989f47dc546e292d3daf416986f4846d5a187d",
+    ".build/ni/output-field-proof/field-dependency-fetch.json": "420986dc13bedd4198f0efa573f55c46f4525aeca251d9eb0120b4a4bcfa21d0",
+    ".build/ni/output-field-proof/field-source-fetch.json": "6f69989267c2b22e62fd4bab5a412943660cafb3afb3f0385c62d30f28ffdde4",
+    ".build/ni/output-field-proof/historical-195.4.2-IOAudioEngine.h": "906e4ffedd1764a0fd4a758a9f4ca95b53f2fea5a78d3c8069a2c1b4e2479a02",
+    ".build/ni/output-field-proof/historical-195.4.2-IOAudioStream.h": "cc134d977cd73ce13d768ea1140971728eb93e7b8a635a0aa7eff9eb8df1f278",
+    ".build/ni/output-field-proof/historical-195.4.2-IOAudioTypes.h": "83a406f9bac1c164a34173526b4bae977fe0d1b224e65fe21701e0226adc95f5",
+    ".build/ni/output-field-proof/layout-proof-result.json": "01d3e337a4bc50487304762b8173ed394bbed010a47a688cfe38c33bd572d677",
+    ".build/ni/output-field-proof/layout-proof.cpp": "9098ba724306c557dd8e841d5ea78fb99b9ddc77fd70e3c5a931bfa163b9eac6",
+    ".build/ni/output-field-proof/model-203.3-IOAudioTypes.h": "fafb46863a7d56d466cad9b49613a9e3e77dde1183575c3278e2eb6d6bdf57e1",
+    ".build/ni/output-field-proof/negative-base-command.json": "2b12524439ddc0c44087295a1ea652b491b73dba62509ecabbe97a7b9459377b",
+    ".build/ni/output-field-proof/negative-base.stderr": "9a0ea2e131253f084cd28beea57adbbe0baf137e9f30e1490b4c41f21f967f28",
+    ".build/ni/output-field-proof/negative-base.stdout": "a99d649641c58d6ddc1e509f64eaed68f1370ddd103a628938eb66a10d3a8489",
+    ".build/ni/output-field-proof/negative-counter-command.json": "0e765fc17aa5ddfada6b84bc87c3aef3cc6156fda67ed834de21658b71e9cd7f",
+    ".build/ni/output-field-proof/negative-counter.stderr": "573c54b2af5b3f62420b7b616b0816e6808ab498746cc0616202941f83ace9d6",
+    ".build/ni/output-field-proof/negative-counter.stdout": "c57d643493f118554b15ee73bc78324dbf14126496439b793204e734d7509ce1",
+    ".build/ni/output-field-proof/official-ioaudio-tags.json": "0548dbc846f103b96763e17ce695ace9e418ed4bc4072efac38f35acfa1a74c4",
+    ".build/ni/output-field-proof/positive-command.json": "0b1f0ee253d4982e58c6bede8fb9791519eb75789c492b95f1668eaac32b67c6",
+    ".build/ni/output-field-proof/positive.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/ni/output-field-proof/positive.stdout": "5b93679884fb98e9300cadace9cf77f05062e4386d20076727e7c40b28ea619e",
+    ".build/ni/output-field-proof/root-review-base.stderr": "9a0ea2e131253f084cd28beea57adbbe0baf137e9f30e1490b4c41f21f967f28",
+    ".build/ni/output-field-proof/root-review-base.stdout": "a99d649641c58d6ddc1e509f64eaed68f1370ddd103a628938eb66a10d3a8489",
+    ".build/ni/output-field-proof/root-review-counter.stderr": "573c54b2af5b3f62420b7b616b0816e6808ab498746cc0616202941f83ace9d6",
+    ".build/ni/output-field-proof/root-review-counter.stdout": "c57d643493f118554b15ee73bc78324dbf14126496439b793204e734d7509ce1",
+    ".build/ni/output-field-proof/root-review-positive.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/ni/output-field-proof/root-review-positive.stdout": "5b93679884fb98e9300cadace9cf77f05062e4386d20076727e7c40b28ea619e",
+    ".build/ni/output-field-proof/root-review-result.json": "82a953936782bda34fde3b9e70c17bfa3b5fa8a75b937ddb6f3791e0ac344cb8",
+    ".build/ni/reference/2.8.0/NIUSBAudioDriver.x86_64": "41574699c507896cb3a51b4756143e8c445eb76994871eb13517a642f7adaf08",
+    ".build/ni/usb-identity-contract/absolute-prefix/IORegistryEntry-xnu2422.115.4.h": "d32539a84e0f567e0353f776505a94c1dfbf83ae2da213e9f32eabb9b537fbbd",
+    ".build/ni/usb-identity-contract/absolute-prefix/IOService-xnu2422.115.4.h": "7967944e79aa14a8a8794df5d2e6eeafcdae2cdad9675c92a81b0616d869ab05",
+    ".build/ni/usb-identity-contract/absolute-prefix/OSMetaClass-xnu2422.115.4.h": "7ad6c790787d76df2763440f887d76a747664ecf638e866fa9007a8da6b1e5e9",
+    ".build/ni/usb-identity-contract/absolute-prefix/OSObject-xnu2422.115.4.h": "63272940ef4264655f734a771599906983836f6bcf5640d73c222f3df9777d93",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/DriverKit.platform/Developer/SDKs/DriverKit.sdk/System/DriverKit/System/Library/Frameworks/AudioDriverKit.framework/Headers/IOUserAudioDevice.iig": "4f65e1da833271a7abf94f7d52544cc4500ab7804ee7a3d3575658ff5788f37f",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/DriverKit.platform/Developer/SDKs/DriverKit.sdk/System/DriverKit/System/Library/Frameworks/AudioDriverKit.framework/Headers/IOUserAudioDriver.iig": "542eb1d9108884cdb7bc406331a0834735c9c07322900438855f7c17d47eabe6",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/DriverKit.platform/Developer/SDKs/DriverKit.sdk/System/DriverKit/System/Library/Frameworks/AudioDriverKit.framework/Headers/IOUserAudioStream.iig": "c595d900c3cf72a903b062025fd5714026b8bdc08f240cfeb4a1c8dd1681b2c6",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioHardware.h": "a699437248e079d9ebe47078ef3861492d8253fef1a6007e476031031d3535ca",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioHardwareBase.h": "cbac54e8edb7ee99bf10c18a2db044e01c47645985b2f2824623f3f8371a7c4e",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioServerPlugIn.h": "de0ecbec543ac46b051ea731968ded0706401991ebec6d7976063e19651947e8",
+    "Driver/Audio/RK3AudioDriver.c": "64bb7db40ee234c1f4fcdc328b5dff19954ce3d1ad2be419bec01f27156fbfd1",
+    "ReverseEngineering/Evidence/Build17HostClientLifecycleValidation.json": "8db66c371ee092632d535674e28c9c3dec581138d526c79ac4c73803e0cff625",
+    "ReverseEngineering/Evidence/NIOutputClearTriggerAudit.json": "34625c0c8a91b475115cc1b2a78ca58d46e2b9f8403dc09ea970698ffb526198",
+    "ReverseEngineering/NIOutputBindingResolution.md": "abf4518d8ffd6a2763ea9563c0dcb219e40250db58ae62e6a4e14c0cf1897b7c"
+  },
+  "validation": {
+    "all_input_and_artifact_pins_match": true,
+    "positive_and_both_negative_compile_cases": "PASS_agent_and_root_independent_repeat",
+    "source_body_bound_counts": "PASS_697_377_277_and462HAL",
+    "production_diff": "PASS_unchanged_from_4efec06",
+    "final_document_review": "PASS_two_independent_reviews_field_model_modern_contract_pins_bounds_and_no_waiver"
+  }
+}

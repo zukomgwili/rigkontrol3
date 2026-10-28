@@ -1,5 +1,7 @@
 # NI output-clear trigger and Apple stream-client lifecycle
 
+**Follow-up:** the [source-correlated x86 layout proof and modern binding decision](NIOutputBindingResolution.md) resolves the compiled `+0xa8` field as UInt32 `numClients`. The original bounded audit below retains its earlier proof limits; automatic modern attachment-count parity remains unsatisfied.
+
 The inspected Apple source supports a **mixed lifecycle**: an `IOAudioStream` counts attached client buffers. Buffer registration, user-client Start/Stop, and buffer removal can change that attachment count. It is neither a permanent registration count nor a count of public CoreAudio IOProc registrations. This establishes the framework model; it does not yet identify NI's direct stream-object field read or prove the exact framework binary used with NI 2.8.0.
 
 ## Source and version boundary

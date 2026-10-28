@@ -612,10 +612,14 @@ the previous build 16 restored.
 The [offline output-clear trigger audit](NIOutputClearTrigger.md) verifies NI's
 direct `[output-stream object + 0xa8] == 0` gate and the clear-before-latch-reset
 order. Apple 203.3 counts attached stream buffers, with registration and kernel
-user-client Start/Stop both affecting attachment. That source model does not
-bind NI's exact field offset or make public output Stop equivalent to the
-original gate. This audit changes no driver behavior; the clear/replay and
-public unused-buffer NULL requirements remain open in M3.
+user-client Start/Stop both affecting attachment. The subsequent
+[x86 field and modern-interface resolution](NIOutputBindingResolution.md)
+identifies NI's field as UInt32 `numClients`, matching offset `0xa8` and complete
+stream size `0x150`. The published AudioServerPlugIn contract supplies no
+persistent per-output client-buffer attachment event; public output Stop does
+not become the original count-zero gate. No synthetic counter or driver change
+is justified. The clear/replay and public unused-buffer NULL requirements remain
+open in M3.
 Likewise, actual sleep/wake must verify that host StopIO/StartIO restores the
 original wire clear, clock-anchor reset and timer behavior. No speculative
 EP1 wake retry was added.

@@ -225,9 +225,10 @@ an acceptable substitute for a recoverable audio panic.
 ## 9. Inactive output: signal available, last-client equivalence unproved
 
 **B16/P8:** NI `writeHandler@0x7ec0` invokes its clear after output was
-written and DWORD `[output-stream object + 0xa8]` is zero. The direct gate and
-clear-before-latch-reset ordering are instruction-proved; naming that field
-`numClients` still needs the target ABI binding. Public StreamIsActive describes
+written and DWORD `[output-stream object + 0xa8]` is zero. The
+[source-correlated x86 layout proof](NIOutputBindingResolution.md) now identifies
+that field as UInt32 `numClients`, matching NI's offset and `0x150` allocation.
+The clear-before-latch-reset ordering is instruction-proved. Public StreamIsActive describes
 an enabled stream doing IO; StartIO/StopIO identifies device clients, not a
 proven per-direction last-client count. Current output-active atomic drives the
 original clear helper.
@@ -268,9 +269,12 @@ The [offline original-trigger check](NIOutputClearTrigger.md) proves that
 Apple 203.3's stream counter counts attached client buffers: kernel user-client
 Start/Stop attaches/detaches them while retaining registrations, and
 registration/freeing can also change the count. This is a mixed lifecycle,
-not a public IOProc count. Neither the exact NI `+0xa8` field binding nor its
-modern per-output correspondence was established. No functional change follows
-from this audit; the clear/replay and public NULL gates remain open in M3.
+not a public IOProc count. The follow-up resolves the compiled field identity;
+the inspected published AudioServerPlugIn contract supplies no persistent
+per-output attachment/detach event to bind its automatic zero-count trigger.
+Device lifetime, explicit stream disable and processing boundaries retain their
+distinct scopes. No synthetic counter patch is justified. The clear/replay and
+public NULL gates remain open in M3; exact historical runtime revision is unclaimed.
 
 ## 10. Sleep/wake: original state operations portable, host event mapping open
 
