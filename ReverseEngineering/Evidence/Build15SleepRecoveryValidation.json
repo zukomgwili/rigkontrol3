@@ -1,0 +1,701 @@
+{
+  "schema": 1,
+  "issue": "rigkontrol3-40h.2",
+  "qualification_owner": "rigkontrol3-40h.3",
+  "date": "2026-10-28",
+  "status": "PASS_SINGLE_INSTALLED_SLEEP_WAKE_MIDI_RECOVERY",
+  "installed": "MIDI0.2.10/build15 + exactAudio0.2.8/build13",
+  "SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261028T103540Z-9d0ecc42",
+  "candidate": ".build/native/candidates/build15-midi-f71f7aad5466/drivers",
+  "manifest_sha256": "1802616c18bfabb437cfac2fa677536979da6dbb4d74a6f0abe98ff2352f42b7",
+  "correction_evidence": {
+    "path": "ReverseEngineering/Evidence/Build15ListenerLifecycleFix.json",
+    "sha256": "48fe5723b1033596415f0bc4f815ea64404a5685ad31cae6056658a3ba82e21b"
+  },
+  "scope": {
+    "actual_user_sleep_cycles": 1,
+    "observer_retry": false,
+    "continuous_paired_client": 1,
+    "bounded_raw_cohorts": 2,
+    "driver_or_app_or_server_or_USB_or_input_refresh_during_comparison": false,
+    "helper_setup_before_timer": true,
+    "temporary_DIAG14": "Removedfromfixedbinary; not usedforfixedvalidation",
+    "SIP": "enabled before and after",
+    "new_planning_beads": 0
+  },
+  "installed_verification": {
+    "utc": "2026-10-28T10:36:02.522480+00:00",
+    "SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261028T103540Z-9d0ecc42",
+    "all12_match": true,
+    "files": [
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist",
+        "sha256": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+        "expected": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver",
+        "sha256": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+        "expected": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist",
+        "sha256": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+        "expected": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver",
+        "sha256": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+        "expected": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml",
+        "sha256": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+        "expected": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources",
+        "sha256": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+        "expected": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist",
+        "sha256": "274b8fea6bd6c85d0d324f71b79b4f38d46a3636890bdb2a12e29b3376a4306d",
+        "expected": "274b8fea6bd6c85d0d324f71b79b4f38d46a3636890bdb2a12e29b3376a4306d",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver",
+        "sha256": "a025895d90014c96472a51823ddb1bfef84b400e597c54339f389db8593caec0",
+        "expected": "a025895d90014c96472a51823ddb1bfef84b400e597c54339f389db8593caec0",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist",
+        "sha256": "e2a606ed123e952bf8e6e2c7633a315073a2872acde73a5f3f3f7cb38fbe4a12",
+        "expected": "e2a606ed123e952bf8e6e2c7633a315073a2872acde73a5f3f3f7cb38fbe4a12",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver",
+        "sha256": "75d731c9809cd3375c13d8727b614ea91975cebff9a6f206e8dcf318e377a086",
+        "expected": "75d731c9809cd3375c13d8727b614ea91975cebff9a6f206e8dcf318e377a086",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml",
+        "sha256": "66d0b757579fe39c7c5ff3e21745e7280e8a8252670d2e22a7321cb418cfa616",
+        "expected": "66d0b757579fe39c7c5ff3e21745e7280e8a8252670d2e22a7321cb418cfa616",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources",
+        "sha256": "eeb1d8a903136ba52a037095c305912278a49f1de4c28d406c7bba9463e518c9",
+        "expected": "eeb1d8a903136ba52a037095c305912278a49f1de4c28d406c7bba9463e518c9",
+        "match": true
+      }
+    ],
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "candidate_manifest": "1802616c18bfabb437cfac2fa677536979da6dbb4d74a6f0abe98ff2352f42b7",
+    "midi": {
+      "short": "0.2.10",
+      "build": "15",
+      "signature_exit": 0
+    },
+    "audio": {
+      "short": "0.2.8",
+      "build": "13",
+      "signature_exit": 0
+    },
+    "processes": [
+      {
+        "pid": 81535,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ]
+  },
+  "loaded_image": {
+    "utc": "2026-10-28T10:36:33.379169+00:00",
+    "processes": [
+      {
+        "pid": 81535,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      },
+      {
+        "pid": 81612,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 81613,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      }
+    ],
+    "UI": "SavedCryWah test rack opened viaCUA; no remap/settings change",
+    "lsof_exit": 0,
+    "midi_image_records": [
+      [
+        "ftxt",
+        "tREG",
+        "D0x100000e",
+        "i239880658",
+        "n/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+      ]
+    ],
+    "installed_inode": 239880658,
+    "mapped_installed_inode": true
+  },
+  "human": {
+    "ready": "Ready \u2014 wah and LED off, pedal at heel",
+    "pre": "Done \u2014 Cry Wah and LED 1 are on",
+    "wake": "Awake after Sleep \u2014 both stayed on",
+    "post": "Finished \u2014 power, knob and LED respond correctly"
+  },
+  "phases": {
+    "initial": {
+      "counts": {},
+      "total_CC": 0,
+      "footer_number": 1,
+      "utc": "2026-10-28T10:43:40.169159+00:00",
+      "fresh_footer": true,
+      "processes": [
+        {
+          "pid": 81535,
+          "uid": 202,
+          "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+        },
+        {
+          "pid": 81612,
+          "uid": 501,
+          "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+        },
+        {
+          "pid": 81613,
+          "uid": 501,
+          "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+        }
+      ],
+      "paired_pid": 82764,
+      "elapsed": {
+        "wall_seconds": 0.19801998138427734,
+        "monotonic_seconds": 0.1980205419822596
+      }
+    },
+    "pre": {
+      "counts": {
+        "80": {
+          "count": 1,
+          "min": 127,
+          "max": 127,
+          "last": 127
+        }
+      },
+      "total_CC": 1,
+      "footer_number": 2,
+      "utc": "2026-10-28T10:44:16.313557+00:00",
+      "fresh_footer": true,
+      "processes": [
+        {
+          "pid": 81535,
+          "uid": 202,
+          "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+        },
+        {
+          "pid": 81612,
+          "uid": 501,
+          "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+        },
+        {
+          "pid": 81613,
+          "uid": 501,
+          "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+        }
+      ],
+      "paired_pid": 82764,
+      "elapsed": {
+        "wall_seconds": 36.33975911140442,
+        "monotonic_seconds": 36.339740833005635
+      }
+    },
+    "quiet": {
+      "counts": {
+        "80": {
+          "count": 1,
+          "min": 127,
+          "max": 127,
+          "last": 127
+        }
+      },
+      "total_CC": 1,
+      "footer_number": 3,
+      "utc": "2026-10-28T10:48:28.830022+00:00",
+      "fresh_footer": true,
+      "processes": [
+        {
+          "pid": 81535,
+          "uid": 202,
+          "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+        },
+        {
+          "pid": 81612,
+          "uid": 501,
+          "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+        },
+        {
+          "pid": 81613,
+          "uid": 501,
+          "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+        }
+      ],
+      "paired_pid": 82764,
+      "elapsed": {
+        "wall_seconds": 288.86409306526184,
+        "monotonic_seconds": 173.07895470800577
+      }
+    },
+    "post": {
+      "counts": {
+        "4": {
+          "count": 62,
+          "min": 0,
+          "max": 127,
+          "last": 0
+        },
+        "80": {
+          "count": 2,
+          "min": 0,
+          "max": 127,
+          "last": 0
+        }
+      },
+      "total_CC": 64,
+      "footer_number": 4,
+      "utc": "2026-10-28T10:49:30.524861+00:00",
+      "fresh_footer": true,
+      "processes": [
+        {
+          "pid": 81535,
+          "uid": 202,
+          "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+        },
+        {
+          "pid": 81612,
+          "uid": 501,
+          "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+        },
+        {
+          "pid": 81613,
+          "uid": 501,
+          "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+        }
+      ],
+      "paired_pid": 82764,
+      "elapsed": {
+        "wall_seconds": 350.5624439716339,
+        "monotonic_seconds": 234.77734187498572
+      }
+    }
+  },
+  "raw_pre": {
+    "valid": true,
+    "errors": [],
+    "generation": 1,
+    "initial_bit4": false,
+    "final_bit4": false,
+    "bit4_rises": 1,
+    "bit4_releases": 1,
+    "sequence_range": [
+      2288,
+      2438
+    ],
+    "fresh_reports": 151,
+    "axis2_range": [
+      82,
+      82
+    ],
+    "last_info": {
+      "event": "watch_info",
+      "object": 224,
+      "status": 0,
+      "shape": true,
+      "schema_identity_valid": true,
+      "version": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "rate": 44100,
+      "digital_snapshot": 2147483648,
+      "raw_hex": "010000000300000001000000000000000000000044ac00000200000002000000010000000100000002000000000000806f72672e7269676b6f6e74726f6c332e6e692d61726d2e7573622e3137636331393430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000526967204b6f6e74726f6c2033204e61746976652041524d00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "last_query": {
+      "event": "watch_query",
+      "after_sequence": 2438,
+      "status": 0,
+      "returned_size": 8,
+      "shape": true,
+      "bounded_cursor_schema": true,
+      "count": 0,
+      "next_sequence": 2438,
+      "latest_sequence": 2438,
+      "dropped": 0
+    },
+    "watch_end": [
+      {
+        "event": "watch_end",
+        "reason": "signal_stop",
+        "exit": 0,
+        "cursor": 2438,
+        "fresh_reports": 151,
+        "gap_or_dropped": false,
+        "exact_count_inference_valid": true,
+        "record_budget_used_conservative": 407,
+        "delivery_verdict": "NOT_TESTED"
+      }
+    ],
+    "witness": true
+  },
+  "raw_post": {
+    "valid": true,
+    "errors": [],
+    "generation": 1,
+    "initial_bit4": false,
+    "final_bit4": false,
+    "bit4_rises": 1,
+    "bit4_releases": 1,
+    "sequence_range": [
+      2954,
+      3421
+    ],
+    "fresh_reports": 468,
+    "axis2_range": [
+      70,
+      719
+    ],
+    "last_info": {
+      "event": "watch_info",
+      "object": 222,
+      "status": 0,
+      "shape": true,
+      "schema_identity_valid": true,
+      "version": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "rate": 44100,
+      "digital_snapshot": 2147483648,
+      "raw_hex": "010000000300000001000000000000000000000044ac00000200000002000000010000000100000002000000000000806f72672e7269676b6f6e74726f6c332e6e692d61726d2e7573622e3137636331393430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000526967204b6f6e74726f6c2033204e61746976652041524d00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "last_query": {
+      "event": "watch_query",
+      "after_sequence": 3420,
+      "status": 0,
+      "returned_size": 8,
+      "shape": true,
+      "bounded_cursor_schema": true,
+      "count": 1,
+      "next_sequence": 3421,
+      "latest_sequence": 3421,
+      "dropped": 0
+    },
+    "watch_end": [
+      {
+        "event": "watch_end",
+        "reason": "signal_stop",
+        "exit": 0,
+        "cursor": 3421,
+        "fresh_reports": 468,
+        "gap_or_dropped": false,
+        "exact_count_inference_valid": true,
+        "record_budget_used_conservative": 945,
+        "delivery_verdict": "NOT_TESTED"
+      }
+    ],
+    "witness": true
+  },
+  "paired_result": {
+    "controlA": true,
+    "controlB": true,
+    "controls_valid": true,
+    "private_callbacks": 2,
+    "private_packets": 2,
+    "native_callbacks": 64,
+    "native_packets": 64,
+    "native_CC": 64,
+    "unknown_callbacks": 0,
+    "cleanup": true,
+    "exit": 0,
+    "native_writes": 0
+  },
+  "power": {
+    "read_exit": 0,
+    "transitions": [
+      {
+        "utc": "2026-10-28T10:45:46+00:00",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Software Sleep pid=447':TCPKeepAlive=active Using AC (Charge:66%) 3 secs    "
+      },
+      {
+        "utc": "2026-10-28T10:45:49+00:00",
+        "kind": "DarkWake",
+        "message": "DarkWake from Deep Idle [CDNP] : due to smc.sysState.Wake(0x70070000) wifibt SMC.OutboxNotEmpty/ Using AC (Charge:66%) 10 secs   "
+      },
+      {
+        "utc": "2026-10-28T10:45:59+00:00",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using AC (Charge:66%) 117 secs  "
+      },
+      {
+        "utc": "2026-10-28T10:47:56+00:00",
+        "kind": "Wake",
+        "message": "Wake from Deep Idle [CDNVA] : due to MTP.DOCK.CHANNELS.AP0.IRQ RTP.keyboard/UserActivity Assertion Using AC (Charge:66%)           "
+      }
+    ],
+    "gr6_ack_warnings": [
+      "2026-10-28 10:45:49 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)] ",
+      "2026-10-28 10:47:56 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)] "
+    ]
+  },
+  "result": {
+    "verdict": "PASS",
+    "reason": "postwake_midi_delivered",
+    "state": "DONE",
+    "utc": "2026-10-28T10:49:32.823898+00:00",
+    "cleanup": [
+      {
+        "pid": 83203,
+        "exit": 0,
+        "reaped": true
+      },
+      {
+        "pid": 82765,
+        "exit": 0,
+        "reaped": true
+      },
+      {
+        "pid": 82764,
+        "exit": 0,
+        "reaped": true
+      }
+    ],
+    "controls_valid": true,
+    "paired_exit": 0,
+    "raw_exit": 0,
+    "os_sleep_confirmed": true,
+    "processes_stable": true,
+    "process_changes": [],
+    "generation_pre": 1,
+    "generation_post": 1,
+    "generation_changed_between_cohorts": false,
+    "post_CC80_delta": 1,
+    "post_CC4_delta": 62,
+    "wake_to_quiet_seconds": 32.830022,
+    "wake_to_post_seconds": 94.524861,
+    "limits": [
+      "Separate generation-qualified raw cohorts; no raw observation during Sleep",
+      "Unchanged target PIDs do not prove application subscription continuity",
+      "Native paired-client comparison only; no audio/all-eight/USB qualification",
+      "Human UI/LED observations require separate record"
+    ],
+    "elapsed": {
+      "wall_seconds": 352.8157730102539,
+      "monotonic_seconds": 237.03067187499255
+    }
+  },
+  "cleanup": {
+    "utc": "2026-10-28T10:51:35.976999+00:00",
+    "all_owned_gone": true,
+    "checks": [
+      {
+        "pid": 83203,
+        "kind": "pid",
+        "absent": true
+      },
+      {
+        "pid": 83203,
+        "kind": "group",
+        "absent": true
+      },
+      {
+        "pid": 82765,
+        "kind": "pid",
+        "absent": true
+      },
+      {
+        "pid": 82765,
+        "kind": "group",
+        "absent": true
+      },
+      {
+        "pid": 82764,
+        "kind": "pid",
+        "absent": true
+      },
+      {
+        "pid": 82764,
+        "kind": "group",
+        "absent": true
+      }
+    ]
+  },
+  "post_installed_integrity": {
+    "utc": "2026-10-28T10:51:35.980901+00:00",
+    "all12_still_match": true,
+    "files": [
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist",
+        "sha256": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+        "expected": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver",
+        "sha256": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+        "expected": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist",
+        "sha256": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+        "expected": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver",
+        "sha256": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+        "expected": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml",
+        "sha256": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+        "expected": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources",
+        "sha256": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+        "expected": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist",
+        "sha256": "274b8fea6bd6c85d0d324f71b79b4f38d46a3636890bdb2a12e29b3376a4306d",
+        "expected": "274b8fea6bd6c85d0d324f71b79b4f38d46a3636890bdb2a12e29b3376a4306d",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver",
+        "sha256": "a025895d90014c96472a51823ddb1bfef84b400e597c54339f389db8593caec0",
+        "expected": "a025895d90014c96472a51823ddb1bfef84b400e597c54339f389db8593caec0",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist",
+        "sha256": "e2a606ed123e952bf8e6e2c7633a315073a2872acde73a5f3f3f7cb38fbe4a12",
+        "expected": "e2a606ed123e952bf8e6e2c7633a315073a2872acde73a5f3f3f7cb38fbe4a12",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver",
+        "sha256": "75d731c9809cd3375c13d8727b614ea91975cebff9a6f206e8dcf318e377a086",
+        "expected": "75d731c9809cd3375c13d8727b614ea91975cebff9a6f206e8dcf318e377a086",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml",
+        "sha256": "66d0b757579fe39c7c5ff3e21745e7280e8a8252670d2e22a7321cb418cfa616",
+        "expected": "66d0b757579fe39c7c5ff3e21745e7280e8a8252670d2e22a7321cb418cfa616",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources",
+        "sha256": "eeb1d8a903136ba52a037095c305912278a49f1de4c28d406c7bba9463e518c9",
+        "expected": "eeb1d8a903136ba52a037095c305912278a49f1de4c28d406c7bba9463e518c9",
+        "match": true
+      }
+    ],
+    "SIP": "System Integrity Protection status: enabled.\n"
+  },
+  "interpretation": {
+    "pre": "Freshrawonebit4press/releaseandoneCC80=127beforeSleep; noCC4positiveexcursion",
+    "quiet": "AfteractualWake, samecollectorCC80count1/127/noCC4: no extra command observed while untouched",
+    "post": "Onefreshrawbit4press/release+pedalsweep, oneCC80=0 and62CC4messages spanning0..127/final0; humanpowerOFF/knobfollow/LEDoff agree",
+    "causal_validation": "Thisone-cyclefunctionalPASS supports the evidence-led NI listener-intent correction; no app/input/service reset was needed during recovery",
+    "source_timestamps": "PreCC80timestamp4560016799712 andpost4564715759486 exactlymatchactualrawpresshosttimes; eventtimestamp policy unchanged",
+    "power": "SoftwareSleep10:45:46,DarkWake10:45:49,MaintenanceSleep10:45:59,userWake10:47:56:130s wall, not130scontinuousSleep",
+    "latency_limit": "Quiet32.830022safterWake/finalpost94.524861safterWake; not an exact10secondresponse test",
+    "packet_logging_limit": "Prefixcachecontains63nativepayloadrows(2CC80+61CC4); full64native/62CC4 counts andrangecome fromuncappedcallbackcounters andcompletephasefooters, notcompletepayloadtrace",
+    "warnings": "TwoGR6KernelClientAck30000mswarnings retained without causal attribution; thisrunrecoverscontrols despite warnings",
+    "NI_scope": "RestoresNI distinction between listener presence and I/O lifecycle; Audio13 bytes/programmedtiming/USB-ring-QoS/calibration/mapping/LEDformats unchanged"
+  },
+  "independent_data_review": {
+    "reviewer": "/root/midi_measurement_review",
+    "result": "PASS raw/pulses/pedal/phasecounts/privatecontrols/power/timestampcorrelation/cohort/installintegrity/limits",
+    "raw_recount": "Pre151seq2288..2438press2411/release2413;Post468seq2954..3421press3199/release3201,axis70..719ending80;no gaps/caps/schemaerrors",
+    "context_limit": "Same3PIDs provesprocesscontinuity, notprivateCoreMIDI native-subscriptionorDriverinstancelifetime telemetry; DIAGremoved"
+  },
+  "limits": [
+    "One actual Sleep/wake recovery comparison, not indefinite stability certification",
+    "No audible guitar/audio continuity check inthis MIDI recovery comparison",
+    "No new all-eight-switch, external pedal/toe, DIN hardware, released/held USB or last-output qualification",
+    "No automatic GR6 mouse/preset LED feedback claim; local toggles and existingincomingfeedbackdestination semantics retained",
+    "Full whole-rig qualification remains .3; no new originalNI-app recognition requirement"
+  ],
+  "next": "Record resolved post-Sleep gate defect; evaluate M1 engineeringacceptance separatelyfromM3 physicalwholequalification; no furthercode orSleep needed for this scoped correction",
+  "source_pins": {
+    ".build/native/live-midi-delivery/paired-consumer": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+    ".build/native/midi-listener-fix/installed/audio-signature.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/installed/midi-image.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/installed/midi-signature.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/installed/reopened.json": "78e60ebbfd2d831250b463913e4151c73de8aec2563c64acf6fa4042b4b1134e",
+    ".build/native/midi-listener-fix/installed/verification.json": "86776dcf52b90ddac49ad221184deb7c1a8633eff90db7528dc7b4e4624b60bd",
+    ".build/native/midi-listener-fix/run-sleep.py": "eb6450e84403e982c4cf55330030e53e27185549ed062c8f575b36b6ecc0ba21",
+    ".build/native/midi-listener-fix/sleep-1/events.json": "e3183c4725cb101b77185033009e9291d4476b6a949e29b63ff13107a6c917de",
+    ".build/native/midi-listener-fix/sleep-1/human.json": "ed0a7cd4d73c487d2cafab2797b8dcabb855a2db46b99cd4a8c4857f7fcf4a8e",
+    ".build/native/midi-listener-fix/sleep-1/initial.json": "6902c4674e065b102ce7eeba5e6b2cd119367312ffb0e7b5374bf1d2f2061344",
+    ".build/native/midi-listener-fix/sleep-1/midi.log": "27246ccf63a918709f6a21a9fc7df58e387017e8fa0358a5c688162bea7199ea",
+    ".build/native/midi-listener-fix/sleep-1/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/sleep-1/paired-result.json": "585d90188879c2beb236f4112c780ab9c07cf880cb4a1279d537be727c4fa11b",
+    ".build/native/midi-listener-fix/sleep-1/pmset.log": "de6f7c707d2755ac341a55c6cf032df836215ac978878319c7259e63cf50733d",
+    ".build/native/midi-listener-fix/sleep-1/pmset.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/sleep-1/post-cleanup.json": "6b904632adfd0518da9b4eaffae37caa55ff35b3f9f1d5c0af49eba91f6c9c59",
+    ".build/native/midi-listener-fix/sleep-1/post-installed-integrity.json": "74fdb26d5844e0783b42a9d07a4f6ffda1cc68776467b59ae2aaa807844cabb6",
+    ".build/native/midi-listener-fix/sleep-1/post.json": "05022764346295f3184dbfd19972d998cb80256301d7ce6a9aa51214abafda3a",
+    ".build/native/midi-listener-fix/sleep-1/power.json": "da3b7f5022a64c2402c3c42b61a6a9e8c07af70bd4b036a754c366ce2178509a",
+    ".build/native/midi-listener-fix/sleep-1/pre-raw.json": "21e3e753033e80aca01b059854d813e2455326a46371246354c356fe0f7221ba",
+    ".build/native/midi-listener-fix/sleep-1/pre.json": "6235eb285e2253b33361c60d7109204f07d4204f982a1ad29c4f4f901e678d19",
+    ".build/native/midi-listener-fix/sleep-1/quiet.json": "365d707d2e1de038f9023121ad3209183a09bf8ff80014058c6d67bfc60a482f",
+    ".build/native/midi-listener-fix/sleep-1/raw-post-summary.json": "4949a4cbf45ad1dda0106c58256ec4924695bc4ad40c789a11c1f2ea0a75c8eb",
+    ".build/native/midi-listener-fix/sleep-1/raw-post.log": "e7a95be0ca008a82797184edf404ec9b4bb8e904a42f334c855cc4bac13e4400",
+    ".build/native/midi-listener-fix/sleep-1/raw-post.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/sleep-1/raw-pre-summary.json": "21e3e753033e80aca01b059854d813e2455326a46371246354c356fe0f7221ba",
+    ".build/native/midi-listener-fix/sleep-1/raw-pre.log": "83219d8382f0515260baa9599e13790288f5acc58673033ff37b2bb83b04f4a0",
+    ".build/native/midi-listener-fix/sleep-1/raw-pre.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-listener-fix/sleep-1/result.json": "151df82eaa3f89f221a47caa7239c9a7b9cb310e9096dfb1afe078dbfa21c067",
+    ".build/native/postsleep-investigation/tools/rawwatch": "3899b149b230f352edcf198f41321b24fe85adfc639a774d787252a06d1ce21e",
+    "ReverseEngineering/Evidence/Build15ListenerLifecycleFix.json": "48fe5723b1033596415f0bc4f815ea64404a5685ad31cae6056658a3ba82e21b",
+    "Tools/rk3-sleep-compare.py": "409fd550365cba2b0cff03e5247f2b1580a45a14c55fb538bcbb2f58c967ce67"
+  },
+  "final_evidence_review": {
+    "reviewer": "/root/midi_measurement_review",
+    "result": "PASS facts/limits/all32pins",
+    "reviewed_sha256": "d0156deebf36a9e3be59304efdd28dcd3cd2b2745aeb25fd71d39353330547cb",
+    "changes_after_review": "Only review/acceptance-status records added; execution data and installed state unchanged"
+  },
+  "M1_acceptance_status": {
+    "status": "in_progress",
+    "reviewer": "/root/native_midi_boundary",
+    "reason": "Named original calibration/Tip-Switch hardware-behavior acceptance still needs its exact original disposition and native interface proof; inspected Controller/NativeControl/MIDIdriver has no Tip-Switch configuration getter/setter",
+    "implemented": "ToeCC64 input, externalCC16/17 axes, mainCC4+88\u2013648 calibration, all9digitalinputs/LEDfeedback/DINstream original-derived tests are present",
+    "distinction": "ToeCC64 input is not Tip-Switch configuration. Physical toe/external/DIN checks belongM3 and are not themselves implementation gaps. No newresearch/code was performed beyond bounded completion check."
+  }
+}
