@@ -224,8 +224,10 @@ an acceptable substitute for a recoverable audio panic.
 
 ## 9. Inactive output: signal available, last-client equivalence unproved
 
-**B16/P8:** NI `writeHandler@0x7ec0` clears literal wire bytes after output was
-written and its stream has zero active clients. Public StreamIsActive describes
+**B16/P8:** NI `writeHandler@0x7ec0` invokes its clear after output was
+written and DWORD `[output-stream object + 0xa8]` is zero. The direct gate and
+clear-before-latch-reset ordering are instruction-proved; naming that field
+`numClients` still needs the target ABI binding. Public StreamIsActive describes
 an enabled stream doing IO; StartIO/StopIO identifies device clients, not a
 proven per-direction last-client count. Current output-active atomic drives the
 original clear helper.
@@ -261,6 +263,14 @@ was first observed in the post-exit snapshot. This narrows the missing binding
 to a real output-stream ownership signal; it does not make the device client's
 combined lifetime a per-output count. Original ring-clear/replay acceptance
 remains open. The previous non-measurement build 16 is restored.
+
+The [offline original-trigger check](NIOutputClearTrigger.md) proves that
+Apple 203.3's stream counter counts attached client buffers: kernel user-client
+Start/Stop attaches/detaches them while retaining registrations, and
+registration/freeing can also change the count. This is a mixed lifecycle,
+not a public IOProc count. Neither the exact NI `+0xa8` field binding nor its
+modern per-output correspondence was established. No functional change follows
+from this audit; the clear/replay and public NULL gates remain open in M3.
 
 ## 10. Sleep/wake: original state operations portable, host event mapping open
 

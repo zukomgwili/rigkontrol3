@@ -609,6 +609,13 @@ only after final input Stop. This is the observed host/native mapping in that
 setup. It does not supply NI's output-stream client count or qualify ring clear
 and stale-replay behavior. The temporary measurement bundle was removed and
 the previous build 16 restored.
+The [offline output-clear trigger audit](NIOutputClearTrigger.md) verifies NI's
+direct `[output-stream object + 0xa8] == 0` gate and the clear-before-latch-reset
+order. Apple 203.3 counts attached stream buffers, with registration and kernel
+user-client Start/Stop both affecting attachment. That source model does not
+bind NI's exact field offset or make public output Stop equivalent to the
+original gate. This audit changes no driver behavior; the clear/replay and
+public unused-buffer NULL requirements remain open in M3.
 Likewise, actual sleep/wake must verify that host StopIO/StartIO restores the
 original wire clear, clock-anchor reset and timer behavior. No speculative
 EP1 wake retry was added.
