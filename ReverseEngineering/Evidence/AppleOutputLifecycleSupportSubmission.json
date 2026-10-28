@@ -1,11 +1,11 @@
 {
   "bead": "rigkontrol3-40h.3",
-  "status": "SUBMITTED_CASE_NUMBER_PENDING_EMAIL",
+  "status": "ACKNOWLEDGED_SOURCE_SENT_AWAITING_APPLE_TRIAGE",
   "submitted_once": true,
   "submission_observed_UTC": "2026-10-28 22:41 UTC",
   "destination": "https://developer.apple.com/contact/request/code-level-support/",
   "subject": "AudioServerPlugIn: guaranteed last output-buffer detachment event while input continues",
-  "case_number": null,
+  "case_number": "23183489",
   "receipt_visible_text": "Your request has been sent. You will receive an email shortly with a case number from Apple Developer Technical Support.",
   "submitted_fields": {
     "subject": "AudioServerPlugIn: guaranteed last output-buffer detachment event while input continues",
@@ -32,7 +32,7 @@
   "field_readback_sha256": "731d01657b76d423996869ac97bedf3da89857c3199d6dcb941bfbd236c27c78",
   "attachments_at_initial_submission": [],
   "source_attachment": {
-    "status": "PREPARED_NOT_SENT_AWAITING_ACKNOWLEDGEMENT",
+    "status": "SENT_IN_ACKNOWLEDGEMENT_REPLY",
     "archive": ".build/ni/apple-support-submission/OutputLifetimeAPIClient.zip",
     "sha256": "5034c1bf20fea172f1a20a76ab3485a4f697c9f67caf3c5bec1d5ef4dcce0cbf",
     "bytes": 10986,
@@ -50,7 +50,12 @@
     "historical_summary_byte_identical": true,
     "public_API_extraction_not_original_collector": true,
     "native_trace_requires_removed_external_instrumentation": true,
-    "no_live_validation_of_new_extraction": true
+    "no_live_validation_of_new_extraction": true,
+    "sent_time_Europe_London": "2026-10-28 22:54",
+    "sent_to": "dts-help@apple.com",
+    "UI_verified_filename": "OutputLifetimeAPIClient.zip",
+    "UI_verified_size_label": "11K",
+    "remote_attachment_download_hash_check": false
   },
   "offline_validation": {
     "build_exit": 0,
@@ -80,5 +85,43 @@
   },
   "previous_draft_evidence": "ReverseEngineering/Evidence/AppleOutputLifecycleSupportDraft.json",
   "parity_or_public_NULL_gate_resolved": false,
-  "M3_remains_in_progress": true
+  "M3_remains_in_progress": true,
+  "acknowledgement": {
+    "sender": "dts-help@apple.com",
+    "message_time_Europe_London": "2026-10-28 22:41",
+    "instructions": "Please include the full Case-ID line below in any follow-up emails for this request: Case-ID: 23183489",
+    "Apple_status": "AUTO_ACKNOWLEDGEMENT_TRIAGE_PENDING",
+    "Apple_status_text": "We\u2019ll review your request and advise whether your request will be managed via email or should be directed to the Developer Forums.",
+    "technical_answer_received": false,
+    "Gmail_verified_sender_visible": true,
+    "mailed_by": "apple.com",
+    "signed_by": "apple.com",
+    "transport_label": "Standard encryption (TLS)",
+    "read_via": "Native Safari existing Personal Gmail thread; available Gmail connector still routed to business account",
+    "private_fact_record": ".build/ni/apple-support-submission/case23183489-acknowledgement.json",
+    "private_fact_record_sha256": "9f5a82812e8041eedcd5b4a62d35fe4407ab1f33450784a90c03ec3e950961c1",
+    "platform_heading_discrepancy": {
+      "acknowledgement_heading": "iOS",
+      "submitted_and_acknowledged_runtime": "macOS 27.0.1 (26A434)",
+      "clarified_in_reply": true,
+      "cause_claimed": false
+    }
+  },
+  "attachment_reply": {
+    "to": "dts-help@apple.com",
+    "subject": "Re: DTS Auto-Acknowledgement: AudioServerPlugIn: guaranteed last output-buffer detachment event while input continues",
+    "body": "Case-ID: 23183489\n\nHello Apple Developer Technical Support,\n\nAttached is OutputLifetimeAPIClient.zip for this request. It contains a focused 178-line public CoreAudio client, Xcode project, README, source manifest and the sanitized existing TraceSummary.json.\n\nThe client extracts the public lifecycle sequence from the request. It is not the original collector that produced the historical native counters. It builds independently and defaults to --help before any CoreAudio call.\n\nValidation was build/help only; no new live capture was performed. The historical native trace required the external RK3 and temporary instrumentation, which was removed after capture and is not included.\n\nPlatform clarification: this is a macOS AudioServerPlugIn request. The acknowledgement's PLATFORM AND VERSION heading says iOS, but the submitted runtime configuration is macOS 27.0.1 (26A434), with Xcode 27.1 (27A9275) on macOS 27.0.1 (26A434) for development.\n\nThank you,\nZuko Mgwili",
+    "body_sha256": "3f465449debeeefec4ecc5d89791a23840f1fc23fd5ec4ac8906bc15b89b0dd2",
+    "case_ID_line_included": true,
+    "Gmail_Message_sent_observed": true,
+    "sent_thread_recipient_body_and_one_attachment_verified": true,
+    "sent_once": true,
+    "pre_send_invalid_UI_index_rejected_before_action": true,
+    "private_sent_AX": ".build/ni/apple-support-submission/case23183489-sent-ax.txt",
+    "private_sent_AX_sha256": "63d0806737481a5f084d96ae2beb34decf43f7afcdd9c005953de3b3d1d19877",
+    "private_sent_screenshot": ".build/ni/apple-support-submission/case23183489-sent.png",
+    "private_sent_screenshot_sha256": "bac8c2332ba34f4e3f55856c627df020128b5b917abb70417c1a189ea3336c77",
+    "independent_cover_and_unchanged_archive_review": "PASS"
+  },
+  "no_new_public_forum_post": true
 }
