@@ -1,12 +1,15 @@
-/* Hardware-free fault injection. Audio transport and MIDI delivery are replaced
- * before including the exact production implementation. Start is not invoked. */
+/* Hardware-free fault injection. External MIDI topology, worker attachment,
+ * audio transport and publication are replaced before including production.
+ * Start/Stop execute unchanged bodies; their timers remain real CPU objects. */
 #include <CoreAudio/CoreAudio.h>
+#include <CoreFoundation/CoreFoundation.h>
 #include <CoreMIDI/MIDIDriver.h>
 #include <CoreMIDI/MIDISetup.h>
 #include <CoreMIDI/MIDIServices.h>
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <pthread.h>
 
 static OSStatus mock_get_size(AudioObjectID,const AudioObjectPropertyAddress *,UInt32,const void *,UInt32 *);
 static Boolean mock_has_property(AudioObjectID,const AudioObjectPropertyAddress *);
@@ -16,6 +19,22 @@ static OSStatus mock_set(AudioObjectID,const AudioObjectPropertyAddress *,UInt32
 static OSStatus mock_received(MIDIEndpointRef,const MIDIPacketList *);
 static OSStatus mock_midi_get_data(MIDIObjectRef,CFStringRef,CFDataRef *);
 static OSStatus mock_midi_set_data(MIDIObjectRef,CFStringRef,CFDataRef);
+static CFRunLoopRef mock_io_loop(void);
+static ItemCount mock_device_count(MIDIDeviceListRef);
+static MIDIDeviceRef mock_list_device(MIDIDeviceListRef,ItemCount);
+static OSStatus mock_get_string(MIDIObjectRef,CFStringRef,CFStringRef *);
+static ItemCount mock_entity_count(MIDIDeviceRef);
+static MIDIEntityRef mock_device_entity(MIDIDeviceRef,ItemCount);
+static ItemCount mock_source_count(MIDIEntityRef);
+static ItemCount mock_destination_count(MIDIEntityRef);
+static MIDIEndpointRef mock_entity_source(MIDIEntityRef,ItemCount);
+static MIDIEndpointRef mock_entity_destination(MIDIEntityRef,ItemCount);
+static OSStatus mock_refcons(MIDIEndpointRef,void *,void *);
+static MIDIDeviceListRef mock_driver_list(MIDIDriverRef);
+static OSStatus mock_dispose_list(MIDIDeviceListRef);
+static int mock_worker_create(pthread_t *,const pthread_attr_t *,void *(*)(void *),void *);
+static int mock_worker_join(pthread_t,void **);
+static void mock_attach_timer(CFRunLoopRef,CFRunLoopTimerRef,CFRunLoopMode);
 #define RK3_MIDI_TESTING 1
 #define AudioObjectGetPropertyDataSize mock_get_size
 #define AudioObjectHasProperty mock_has_property
@@ -25,6 +44,22 @@ static OSStatus mock_midi_set_data(MIDIObjectRef,CFStringRef,CFDataRef);
 #define MIDIReceived mock_received
 #define MIDIObjectGetDataProperty mock_midi_get_data
 #define MIDIObjectSetDataProperty mock_midi_set_data
+#define MIDIGetDriverIORunLoop mock_io_loop
+#define MIDIDeviceListGetNumberOfDevices mock_device_count
+#define MIDIDeviceListGetDevice mock_list_device
+#define MIDIObjectGetStringProperty mock_get_string
+#define MIDIDeviceGetNumberOfEntities mock_entity_count
+#define MIDIDeviceGetEntity mock_device_entity
+#define MIDIEntityGetNumberOfSources mock_source_count
+#define MIDIEntityGetNumberOfDestinations mock_destination_count
+#define MIDIEntityGetSource mock_entity_source
+#define MIDIEntityGetDestination mock_entity_destination
+#define MIDIEndpointSetRefCons mock_refcons
+#define MIDIGetDriverDeviceList mock_driver_list
+#define MIDIDeviceListDispose mock_dispose_list
+#define pthread_create mock_worker_create
+#define pthread_join mock_worker_join
+#define CFRunLoopAddTimer mock_attach_timer
 #include "RK3MIDIDriver.c"
 #undef AudioObjectGetPropertyDataSize
 #undef AudioObjectHasProperty
@@ -34,17 +69,25 @@ static OSStatus mock_midi_set_data(MIDIObjectRef,CFStringRef,CFDataRef);
 #undef MIDIReceived
 #undef MIDIObjectGetDataProperty
 #undef MIDIObjectSetDataProperty
+#undef MIDIGetDriverIORunLoop
+#undef MIDIDeviceListGetNumberOfDevices
+#undef MIDIDeviceListGetDevice
+#undef MIDIObjectGetStringProperty
+#undef MIDIDeviceGetNumberOfEntities
+#undef MIDIDeviceGetEntity
+#undef MIDIEntityGetNumberOfSources
+#undef MIDIEntityGetNumberOfDestinations
+#undef MIDIEntityGetSource
+#undef MIDIEntityGetDestination
+#undef MIDIEndpointSetRefCons
+#undef MIDIGetDriverDeviceList
+#undef MIDIDeviceListDispose
+#undef pthread_create
+#undef pthread_join
+#undef CFRunLoopAddTimer
 
 static bool restart_before_producer;
 static bool toggle_listener_before_delivery;
-static bool advance_epoch_before_delivery;
-static RK3MIDIDiagnosticSnapshot last_diag_sample;
-static size_t diagnostic_samples;
-void rk3_test_diag_sample(const RK3MIDIDiagnosticSnapshot *sample) {
-    assert(sample != NULL);
-    last_diag_sample = *sample;
-    ++diagnostic_samples;
-}
 void rk3_test_before_producer(void *context) {
     Driver *driver = context;
     if (restart_before_producer) {
@@ -57,10 +100,6 @@ void rk3_test_before_producer(void *context) {
 
 void rk3_test_before_delivery(void *context) {
     Driver *driver = context;
-    if (advance_epoch_before_delivery) {
-        advance_epoch_before_delivery = false;
-        atomic_fetch_add(&driver->lifecycle_epoch,1);
-    }
     if (toggle_listener_before_delivery) {
         toggle_listener_before_delivery = false;
         assert(enable_source(driver_ref(driver),driver->source,false) == noErr);
@@ -78,7 +117,9 @@ static uint64_t expected_after;
 static uint8_t delivered[64];
 static size_t delivered_count, deliveries;
 static uint64_t delivered_time;
-static OSStatus received_result;
+static unsigned controller_cc_counts[128];
+static uint8_t controller_cc_last[128];
+static MIDIEndpointRef controller_cc_source[128];
 static Driver *working_driver;
 static size_t writes;
 static OSStatus write_result;
@@ -91,6 +132,16 @@ static SInt32 last_offline;
 enum { CF_FAULT_NONE, CF_FAULT_TYPE, CF_FAULT_LENGTH, CF_FAULT_SIZE, CF_FAULT_NULL, CF_FAULT_STATUS };
 static unsigned cf_fault;
 static AudioObjectPropertySelector cf_fault_selector;
+static unsigned info_queries,report_queries;
+
+enum { TEST_DEVICE_LIST=1000, TEST_DIN_INPUT=10, TEST_DIN_OUTPUT=11, TEST_CONTROLS=12 };
+static bool topology_din=true,topology_controller=true,topology_controller_source=true;
+static bool topology_no_driver_list;
+static MIDIEndpointRef topology_din_source=123,topology_controller_source_ref=124;
+typedef struct { MIDIEndpointRef endpoint; void *first,*second; } RefCons;
+static RefCons topology_refcons[16];
+static size_t topology_refcons_count,timer_attachments,worker_creates,worker_joins;
+static Driver *mock_worker_owner;
 
 static OSStatus return_wire(AudioObjectPropertySelector selector,UInt32 *size,void *data,const void *wire,size_t length) {
     assert(*size==sizeof(CFPropertyListRef));
@@ -133,6 +184,7 @@ static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *
     }
     assert(object == 42);
     if (property->mSelector == RK3_PROPERTY_INFO) {
+        ++info_queries;
         if(press_release_before_snapshot) {
             press_release_before_snapshot=false;
             input_batch=(RK3NativeReports){.version=1,.count=2,.next_sequence=2,.latest_sequence=2};
@@ -147,6 +199,7 @@ static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *
         return return_wire(property->mSelector,size,data,&info,sizeof(info));
     }
     assert(property->mSelector == RK3_PROPERTY_REPORTS);
+    ++report_queries;
     RK3NativeReportQuery query;read_cf_wire(qualifier_size,qualifier,&query,sizeof(query));
     assert(query.version == RK3_CONTROL_VERSION && (query.after_sequence == expected_after || query.after_sequence == 0));
     return return_wire(property->mSelector,size,data,&input_batch,sizeof(input_batch));
@@ -169,14 +222,19 @@ static OSStatus mock_set(AudioObjectID object,const AudioObjectPropertyAddress *
 }
 
 static OSStatus mock_received(MIDIEndpointRef source,const MIDIPacketList *list) {
-    assert((source == 123 || source == 124) && list->numPackets == 1);
+    assert((source == 123 || source == 124 || source==topology_din_source ||
+            source==topology_controller_source_ref) && list->numPackets == 1);
     delivered_source=source;
     assert(list->packet[0].length <= sizeof(delivered));
     delivered_count = list->packet[0].length;
     delivered_time = list->packet[0].timeStamp;
     memcpy(delivered,list->packet[0].data,delivered_count);
     ++deliveries;
-    return received_result;
+    if(delivered_count==3&&delivered[0]==0xb0&&delivered[1]<128) {
+        ++controller_cc_counts[delivered[1]];
+        controller_cc_last[delivered[1]]=delivered[2];controller_cc_source[delivered[1]]=source;
+    }
+    return noErr;
 }
 
 static OSStatus mock_midi_get_data(MIDIObjectRef object,CFStringRef key,CFDataRef *data) {
@@ -187,6 +245,75 @@ static OSStatus mock_midi_get_data(MIDIObjectRef object,CFStringRef key,CFDataRe
 static OSStatus mock_midi_set_data(MIDIObjectRef object,CFStringRef key,CFDataRef data) {
     (void)object;assert(CFEqual(key,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY)));
     if(calibration_data)CFRelease(calibration_data);calibration_data=CFRetain(data);return noErr;
+}
+
+static CFRunLoopRef mock_io_loop(void) { return CFRunLoopGetCurrent(); }
+static ItemCount mock_device_count(MIDIDeviceListRef list) {
+    assert(list==TEST_DEVICE_LIST);return (ItemCount)topology_din+(ItemCount)topology_controller;
+}
+static MIDIDeviceRef mock_list_device(MIDIDeviceListRef list,ItemCount index) {
+    assert(list==TEST_DEVICE_LIST&&index<mock_device_count(list));
+    return topology_din&&index==0?333:334;
+}
+static OSStatus mock_get_string(MIDIObjectRef object,CFStringRef key,CFStringRef *value) {
+    assert(CFEqual(key,CFSTR(RK3_CONTROLLER_IDENTITY_KEY))&&value!=NULL);
+    if(object==333)*value=CFRetain(CFSTR(RK3_NATIVE_DEVICE_UID));
+    else if(object==334)*value=CFRetain(controller_identity());
+    else { *value=NULL;return kMIDIUnknownProperty; }
+    return noErr;
+}
+static ItemCount mock_entity_count(MIDIDeviceRef device) {
+    assert(device==333||device==334);return device==333?2:1;
+}
+static MIDIEntityRef mock_device_entity(MIDIDeviceRef device,ItemCount index) {
+    assert(index<mock_entity_count(device));
+    return device==333?(index==0?TEST_DIN_INPUT:TEST_DIN_OUTPUT):TEST_CONTROLS;
+}
+static ItemCount mock_source_count(MIDIEntityRef entity) {
+    assert(entity==TEST_DIN_INPUT||entity==TEST_DIN_OUTPUT||entity==TEST_CONTROLS);
+    return entity==TEST_DIN_INPUT||(entity==TEST_CONTROLS&&topology_controller_source);
+}
+static ItemCount mock_destination_count(MIDIEntityRef entity) {
+    assert(entity==TEST_DIN_INPUT||entity==TEST_DIN_OUTPUT||entity==TEST_CONTROLS);
+    return entity==TEST_DIN_OUTPUT||entity==TEST_CONTROLS;
+}
+static MIDIEndpointRef mock_entity_source(MIDIEntityRef entity,ItemCount index) {
+    assert(index==0&&mock_source_count(entity)==1);
+    return entity==TEST_DIN_INPUT?topology_din_source:topology_controller_source_ref;
+}
+static MIDIEndpointRef mock_entity_destination(MIDIEntityRef entity,ItemCount index) {
+    assert(index==0&&mock_destination_count(entity)==1);return entity==TEST_DIN_OUTPUT?126:125;
+}
+static RefCons *endpoint_refcons(MIDIEndpointRef endpoint) {
+    for(size_t i=0;i<topology_refcons_count;++i)
+        if(topology_refcons[i].endpoint==endpoint)return &topology_refcons[i];
+    assert(topology_refcons_count<sizeof(topology_refcons)/sizeof(topology_refcons[0]));
+    RefCons *result=&topology_refcons[topology_refcons_count++];
+    *result=(RefCons){.endpoint=endpoint};return result;
+}
+static OSStatus mock_refcons(MIDIEndpointRef endpoint,void *first,void *second) {
+    RefCons *record=endpoint_refcons(endpoint);record->first=first;record->second=second;return noErr;
+}
+static MIDIDeviceListRef mock_driver_list(MIDIDriverRef driver) {
+    assert(driver!=NULL);return topology_no_driver_list?0:TEST_DEVICE_LIST;
+}
+static OSStatus mock_dispose_list(MIDIDeviceListRef list) {
+    assert(list==TEST_DEVICE_LIST);return noErr;
+}
+static int mock_worker_create(pthread_t *thread,const pthread_attr_t *attributes,
+                              void *(*entry)(void *),void *context) {
+    assert(thread&&attributes==NULL&&entry==output_worker&&context&&mock_worker_owner==NULL);
+    mock_worker_owner=context;*thread=(pthread_t)(uintptr_t)1;++worker_creates;return 0;
+}
+static int mock_worker_join(pthread_t thread,void **result) {
+    assert(thread==(pthread_t)(uintptr_t)1&&mock_worker_owner!=NULL);
+    Driver *owner=mock_worker_owner;mock_worker_owner=NULL;
+    if(result)*result=NULL;
+    ++worker_joins;(void)release_ref(owner);return 0;
+}
+static void mock_attach_timer(CFRunLoopRef loop,CFRunLoopTimerRef timer,CFRunLoopMode mode) {
+    assert(loop==CFRunLoopGetCurrent()&&timer&&CFEqual(mode,kCFRunLoopDefaultMode));
+    ++timer_attachments; /* Keep real timers unattached: no automatic I/O callbacks. */
 }
 
 static Driver *make_driver(void) {
@@ -510,173 +637,212 @@ static void test_transient_output_does_not_disconnect_sources(void) {
     info_generation=7;writes_to_stop=1;failures_remaining=0;free_driver(driver);
 }
 
-/* These observations use the same input_tick/mapper/delivery calls as the live
- * driver. Every provider read, publication and log sink remains a local fake. */
-static Driver *measurement_driver(bool enabled) {
+static Driver *lifecycle_driver(void) {
+    assert(mock_worker_owner==NULL);
     info_generation=7;provider_present=true;provider_flags=RK3_NATIVE_CONNECTED;
-    digital_snapshot=UINT32_C(0x80000000);cf_fault=CF_FAULT_NONE;cf_fault_selector=0;
-    received_result=noErr;deliveries=0;advance_epoch_before_delivery=false;
+    digital_snapshot=UINT32_C(0x80000000);press_release_before_snapshot=false;
+    cf_fault=CF_FAULT_NONE;cf_fault_selector=0;deliveries=0;
+    memset(controller_cc_counts,0,sizeof(controller_cc_counts));
+    memset(controller_cc_last,0,sizeof(controller_cc_last));
+    memset(controller_cc_source,0,sizeof(controller_cc_source));
     input_batch=(RK3NativeReports){.version=RK3_CONTROL_VERSION};expected_after=0;
-    Driver *driver=make_driver();
-    input_tick(NULL,driver); /* establish released-switch baseline */
-    assert(enable_source(driver_ref(driver),124,enabled)==noErr);
+    topology_din=topology_controller=topology_controller_source=true;
+    topology_no_driver_list=false;topology_din_source=123;topology_controller_source_ref=124;
+    topology_refcons_count=0;timer_attachments=worker_creates=worker_joins=0;
+    if(calibration_data){CFRelease(calibration_data);calibration_data=NULL;}
+    Driver *driver=RK3MIDIDriverFactory(NULL,kMIDIDriverTypeID);assert(driver);
     return driver;
 }
+static void lifecycle_start(Driver *driver) {
+    expected_after=0;
+    assert(start_driver(driver_ref(driver),TEST_DEVICE_LIST)==noErr);
+    assert(driver->started&&driver->input_timer&&driver->discovery_timer);
+    assert(CFRunLoopTimerIsValid(driver->input_timer)&&CFRunLoopTimerIsValid(driver->discovery_timer));
+    if(topology_din)assert(endpoint_refcons(topology_din_source)->second==driver);
+    if(topology_controller)assert(endpoint_refcons(topology_controller_source_ref)->second==driver);
+}
+static void lifecycle_stop(Driver *driver) {
+    assert(stop_driver(driver_ref(driver))==noErr);
+    assert(!driver->started&&!atomic_load(&driver->online));
+    assert(driver->input_timer==NULL&&driver->discovery_timer==NULL&&mock_worker_owner==NULL);
+    assert(driver->source==0&&driver->controller_source==0);
+    assert(atomic_load(&driver->references)==1); /* worker and real timer leases released */
+}
+static void lifecycle_enable(Driver *driver) {
+    assert(enable_source(driver_ref(driver),123,true)==noErr);
+    assert(enable_source(driver_ref(driver),124,true)==noErr);
+    input_tick(NULL,driver);
+}
+static void lifecycle_din(Driver *driver,uint64_t sequence) {
+    const uint8_t note[]={0x90,60,100};expected_after=driver->cursor;
+    input_batch=(RK3NativeReports){.version=1,.count=1,.next_sequence=sequence,.latest_sequence=sequence};
+    input_batch.reports[0]=midi_report(sequence,note,sizeof(note));input_tick(NULL,driver);
+}
+static void lifecycle_pedal(Driver *driver,uint64_t sequence,uint16_t raw) {
+    expected_after=driver->cursor;
+    input_batch=(RK3NativeReports){.version=1,.count=1,.next_sequence=sequence,.latest_sequence=sequence};
+    input_batch.reports[0]=(RK3NativeReport){.sequence=sequence,.host_time=9876,.length=7,
+        .bytes={3,0,0,0,0,(uint8_t)(raw>>8),(uint8_t)raw}};input_tick(NULL,driver);
+}
+static void lifecycle_done(Driver *driver) {
+    lifecycle_stop(driver);assert(worker_creates==worker_joins);free_driver(driver);
+    if(calibration_data){CFRelease(calibration_data);calibration_data=NULL;}
+    provider_present=true;topology_din=topology_controller=topology_controller_source=true;
+    topology_no_driver_list=false;topology_din_source=123;topology_controller_source_ref=124;
+}
 
-static void test_diagnostic_controller_gate_and_publication(void) {
-    for(unsigned enabled=0;enabled<2;++enabled) {
-        Driver *driver=measurement_driver(enabled!=0);
-        uint64_t candidates=atomic_load(&driver->diagnostics.control_emit_candidates);
-        uint64_t suppressed=atomic_load(&driver->diagnostics.control_current_suppressed);
-        controller_batch(driver,1,0x10); /* physical switch1 -> CC80 */
-        assert(driver->cursor==1&&driver->controller.button_values[4]==127);
-        assert(atomic_load(&driver->diagnostics.input_ticks)==2);
-        assert(atomic_load(&driver->diagnostics.batch_commits)==2);
-        assert(atomic_load(&driver->diagnostics.consumed_sequence)==1);
-        assert(atomic_load(&driver->diagnostics.control_emit_candidates)==candidates+1);
-        assert(atomic_load(&driver->diagnostics.control_current_suppressed)==suppressed+!enabled);
-        assert(atomic_load(&driver->diagnostics.received_attempts)==enabled);
-        assert(atomic_load(&driver->diagnostics.received_successes)==enabled);
-        assert(atomic_load(&driver->diagnostics.controller_received_attempts)==enabled);
-        assert(atomic_load(&driver->diagnostics.controller_received_successes)==enabled);
-        assert(atomic_load(&driver->diagnostics.received_errors)==0);
-        assert(atomic_load(&driver->diagnostics.enable_calls)==1);
-        assert(atomic_load(&driver->diagnostics.last_enable_source)==124);
-        assert(atomic_load(&driver->diagnostics.last_enable_requested)==enabled);
-        assert(atomic_load(&driver->diagnostics.last_enable_status)==noErr);
-        assert(deliveries==enabled&&atomic_load(&driver->online));
-        assert(!atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
-        if(enabled)assert(delivered_source==124&&delivered_time==9876&&
-                          memcmp(delivered,(uint8_t[]){0xb0,80,127},3)==0);
-        /* Local latch state and LED output continue on both sides of the gate. */
-        uint64_t head=atomic_load(&driver->output_write);
-        assert(head>0&&driver->output[(head-1)%OUTPUT_SLOTS].command.bytes[0]==5);
-        free_driver(driver);
+static void test_start_stop_start_keeps_listener_intent(void) {
+    Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+    controller_batch(driver,1,0x10);assert(deliveries==1&&delivered[1]==80&&delivered[2]==127);
+    lifecycle_din(driver,2);assert(deliveries==2&&delivered_source==123);
+    uint64_t listener=atomic_load(&driver->controller_listener_epoch);
+    lifecycle_stop(driver);
+    assert(endpoint_refcons(123)->second==NULL&&endpoint_refcons(124)->second==NULL);
+    lifecycle_start(driver); /* CoreMIDI does not resend EnableSource. */
+    input_tick(NULL,driver); /* discard the pre-stop DIN history / reset controller baseline */
+    assert(deliveries==2);
+    controller_batch(driver,3,0);controller_batch(driver,4,0x10);
+    fprintf(stderr,"LIFECYCLE_RESUME controller callbacks=%zu expected=3\n",deliveries);
+    assert(deliveries==3&&delivered_source==124&&delivered[1]==80&&delivered[2]==0);
+    lifecycle_din(driver,5);assert(deliveries==4&&delivered_source==123);
+    unsigned wah=controller_cc_counts[4];lifecycle_pedal(driver,6,0);lifecycle_pedal(driver,7,1023);
+    assert(controller_cc_counts[4]==wah+1&&controller_cc_source[4]==124&&controller_cc_last[4]==127);
+    assert(atomic_load(&driver->controller_listener_epoch)==listener);
+    assert(worker_creates==2&&timer_attachments==4);
+    lifecycle_stop(driver);assert(worker_joins==2);free_driver(driver);
+    if(calibration_data){CFRelease(calibration_data);calibration_data=NULL;}
+}
+
+static void test_stopped_disable_wins_and_does_not_query_hal(void) {
+    Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+    lifecycle_stop(driver);
+    unsigned infos=info_queries,reports=report_queries;
+    assert(enable_source(driver_ref(driver),123,false)==noErr);
+    assert(enable_source(driver_ref(driver),124,false)==noErr);
+    assert(enable_source(driver_ref(driver),999,true)==kMIDIUnknownEndpoint);
+    assert(info_queries==infos&&report_queries==reports);
+    lifecycle_start(driver);input_tick(NULL,driver);
+    controller_batch(driver,1,0x10);lifecycle_din(driver,2);
+    assert(deliveries==0&&driver->controller.button_values[4]==127);
+    assert(!atomic_load(&driver->source_enabled)&&!atomic_load(&driver->controller_enabled));
+    lifecycle_done(driver);
+}
+
+static void test_stopped_reenable_and_repeated_stop_keep_held_baseline(void) {
+    Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+    controller_batch(driver,1,0x10);controller_batch(driver,2,0);
+    controller_batch(driver,3,0x10);controller_batch(driver,4,0);controller_batch(driver,5,0x10);
+    assert(deliveries==3&&delivered[2]==127);
+    lifecycle_stop(driver);
+    unsigned infos=info_queries,reports=report_queries;
+    assert(enable_source(driver_ref(driver),124,false)==noErr);
+    assert(enable_source(driver_ref(driver),124,true)==noErr);
+    assert(info_queries==infos&&report_queries==reports); /* no zero snapshot is captured */
+    lifecycle_stop(driver); /* a second I/O Stop must not erase listener intent */
+    digital_snapshot=UINT32_C(0x80000010);
+    /* The retained history contains multiple old edges. A bogus zero enable
+     * snapshot/sequence would replay two toggles, despite ending held. */
+    input_batch=(RK3NativeReports){.version=1,.count=5,.next_sequence=5,.latest_sequence=5};
+    for(unsigned index=0;index<5;++index)
+        input_batch.reports[index]=(RK3NativeReport){.sequence=index+1,.host_time=9876,.length=3,
+            .bytes={4,index%2==0?0x10:0,0}};
+    lifecycle_start(driver);input_tick(NULL,driver);
+    assert(deliveries==3&&driver->controller.raw_buttons==0x10);
+    controller_batch(driver,6,0);assert(deliveries==3&&driver->controller.button_values[4]==127);
+    controller_batch(driver,7,0x10);
+    assert(deliveries==4&&delivered[1]==80&&delivered[2]==0);
+    lifecycle_din(driver,8);assert(deliveries==5&&delivered_source==123);
+    unsigned wah=controller_cc_counts[4];lifecycle_pedal(driver,9,0);lifecycle_pedal(driver,10,1023);
+    assert(controller_cc_counts[4]==wah+1&&controller_cc_source[4]==124&&controller_cc_last[4]==127);
+    lifecycle_done(driver);digital_snapshot=UINT32_C(0x80000000);
+}
+
+static void test_restart_without_listener_stays_silent(void) {
+    Driver *driver=lifecycle_driver();lifecycle_start(driver);input_tick(NULL,driver);
+    lifecycle_stop(driver);lifecycle_start(driver);input_tick(NULL,driver);
+    controller_batch(driver,1,0x10);lifecycle_din(driver,2);
+    assert(deliveries==0&&driver->controller.button_values[4]==127);
+    assert(!atomic_load(&driver->source_enabled)&&!atomic_load(&driver->controller_enabled));
+    lifecycle_done(driver);
+}
+
+static void test_absent_hardware_is_not_removed_registered_endpoint(void) {
+    Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+    lifecycle_stop(driver);provider_present=false;
+    lifecycle_start(driver);
+    assert(!atomic_load(&driver->online));
+    assert(atomic_load(&driver->source_enabled)&&atomic_load(&driver->controller_enabled));
+    unsigned infos=info_queries,reports=report_queries;
+    input_tick(NULL,driver);assert(deliveries==0&&info_queries==infos&&report_queries==reports);
+    lifecycle_stop(driver);provider_present=true;
+    lifecycle_start(driver);input_tick(NULL,driver);
+    controller_batch(driver,1,0x10);assert(deliveries==1&&delivered_source==124);
+    lifecycle_din(driver,2);assert(deliveries==2&&delivered_source==123);
+    lifecycle_done(driver);
+}
+
+static void test_missing_registered_endpoint_drops_only_its_listener(void) {
+    for(unsigned missing_din=0;missing_din<2;++missing_din) {
+        Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+        lifecycle_stop(driver);
+        topology_din=!missing_din;topology_controller=missing_din!=0;
+        provider_present=false; /* no dynamic registration while enumerating the missing setup */
+        topology_no_driver_list=true;
+        lifecycle_start(driver);
+        assert(atomic_load(&driver->source_enabled)==!missing_din);
+        assert(atomic_load(&driver->controller_enabled)==(missing_din!=0));
+        lifecycle_stop(driver);
+        assert(enable_source(driver_ref(driver),missing_din?123:124,true)==kMIDIUnknownEndpoint);
+        lifecycle_done(driver);
     }
 }
 
-static void test_diagnostic_first_query_failure(void) {
-    Driver *driver=measurement_driver(true);
-    cf_fault=CF_FAULT_STATUS;cf_fault_selector=RK3_PROPERTY_REPORTS;
+static void test_replaced_registered_sources_do_not_inherit_listeners(void) {
+    Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+    lifecycle_stop(driver);topology_din_source=223;topology_controller_source_ref=224;
+    lifecycle_start(driver);input_tick(NULL,driver);
+    assert(!atomic_load(&driver->source_enabled)&&!atomic_load(&driver->controller_enabled));
+    controller_batch(driver,1,0x10);lifecycle_din(driver,2);assert(deliveries==0);
+    lifecycle_stop(driver);
+    unsigned infos=info_queries,reports=report_queries;
+    assert(enable_source(driver_ref(driver),123,true)==kMIDIUnknownEndpoint);
+    assert(enable_source(driver_ref(driver),124,true)==kMIDIUnknownEndpoint);
+    assert(enable_source(driver_ref(driver),223,true)==noErr);
+    assert(enable_source(driver_ref(driver),224,true)==noErr);
+    assert(info_queries==infos&&report_queries==reports);
+    lifecycle_start(driver);input_tick(NULL,driver);
+    controller_batch(driver,3,0x10);assert(deliveries==1&&delivered_source==224);
+    lifecycle_din(driver,4);assert(deliveries==2&&delivered_source==223);
+    lifecycle_done(driver);
+}
+
+static void test_failed_start_is_inactive_then_same_endpoint_resumes(void) {
+    Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+    lifecycle_stop(driver);topology_controller_source=false;
+    assert(start_driver(driver_ref(driver),TEST_DEVICE_LIST)==kMIDISetupFormatErr);
+    assert(!driver->started&&!atomic_load(&driver->online));
+    assert(endpoint_refcons(124)->second==NULL);
+    unsigned infos=info_queries,reports=report_queries;
     input_tick(NULL,driver);
-    assert(!atomic_load(&driver->online)&&atomic_load(&driver->failed_generation)==7);
-    assert(atomic_load(&driver->diagnostics.report_query_failures)==1);
-    assert(atomic_load(&driver->diagnostics.last_query_status)==kAudioHardwareUnspecifiedError);
-    assert(atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
-    RK3MIDIDiagnosticFirstFailure first=driver->diagnostics.first_failure;
-    assert(first.cause==DIAG_FAILURE_REPORT_QUERY&&first.status==kAudioHardwareUnspecifiedError);
-    assert(first.device==42&&first.generation==7&&first.epoch==0);
-    /* A second accepted latch cannot overwrite the first accepted cause. */
-    record_io_failure(driver,42,7,0,DIAG_FAILURE_MIDI_RECEIVED,kMIDIMessageSendErr);
-    const RK3MIDIDiagnosticFirstFailure *saved=&driver->diagnostics.first_failure;
-    assert(saved->cause==first.cause&&saved->status==first.status&&saved->device==first.device&&
-           saved->generation==first.generation&&saved->epoch==first.epoch);
-    cf_fault=CF_FAULT_NONE;cf_fault_selector=0;
-    free_driver(driver);
-
-    driver=measurement_driver(true);
-    record_io_failure(driver,43,7,0,DIAG_FAILURE_REPORT_QUERY,kAudioHardwareUnspecifiedError);
-    record_io_failure(driver,42,7,1,DIAG_FAILURE_REPORT_QUERY,kAudioHardwareUnspecifiedError);
-    assert(atomic_load(&driver->online));
-    assert(!atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
-    free_driver(driver);
-}
-
-static void test_diagnostic_received_failure(void) {
-    Driver *driver=measurement_driver(true);
-    received_result=kMIDIMessageSendErr;
-    controller_batch(driver,1,0x10);
-    assert(deliveries==1&&!atomic_load(&driver->online)); /* old failure policy retained */
-    assert(atomic_load(&driver->diagnostics.received_attempts)==1);
-    assert(atomic_load(&driver->diagnostics.received_successes)==0);
-    assert(atomic_load(&driver->diagnostics.received_errors)==1);
-    assert(atomic_load(&driver->diagnostics.controller_received_attempts)==1);
-    assert(atomic_load(&driver->diagnostics.controller_received_successes)==0);
-    assert(atomic_load(&driver->diagnostics.last_received_status)==kMIDIMessageSendErr);
-    assert(atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
-    RK3MIDIDiagnosticFirstFailure first=driver->diagnostics.first_failure;
-    assert(first.cause==DIAG_FAILURE_MIDI_RECEIVED&&first.status==kMIDIMessageSendErr);
-    assert(first.device==42&&first.generation==7&&first.epoch==0);
-    received_result=noErr;free_driver(driver);
-}
-
-static void test_diagnostic_sequence_and_epoch_rejection(void) {
-    Driver *driver=measurement_driver(true);
-    uint64_t suppressed=atomic_load(&driver->diagnostics.control_permission_suppressed);
-    driver->controller_min_sequence=2;
-    controller_batch(driver,1,0x10);
-    assert(driver->controller.button_values[4]==127&&deliveries==0);
-    assert(atomic_load(&driver->diagnostics.control_permission_suppressed)==suppressed+1);
-    assert(atomic_load(&driver->diagnostics.received_attempts)==0);
-    controller_batch(driver,2,0);controller_batch(driver,3,0x10);
-    assert(deliveries==1&&memcmp(delivered,(uint8_t[]){0xb0,80,0},3)==0);
-    assert(atomic_load(&driver->online));free_driver(driver);
-
-    driver=measurement_driver(true);
-    advance_epoch_before_delivery=true;
-    controller_batch(driver,1,0x10);
-    assert(deliveries==0&&atomic_load(&driver->lifecycle_epoch)==1);
-    assert(atomic_load(&driver->diagnostics.delivery_guard_reject)==1);
-    assert(atomic_load(&driver->diagnostics.received_attempts)==0);
-    assert(atomic_load(&driver->online));
-    assert(!atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
-    free_driver(driver);
-}
-
-static void test_diagnostic_instance_lifecycle_and_budget(void) {
-    Driver *first=RK3MIDIDriverFactory(NULL,kMIDIDriverTypeID);
-    Driver *second=RK3MIDIDriverFactory(NULL,kMIDIDriverTypeID);
-    assert(first&&second&&first->diagnostics.instance_id!=second->diagnostics.instance_id);
-    assert(first->diagnostics.birth_tag!=0&&second->diagnostics.birth_tag!=0);
-    assert(atomic_load(&first->diagnostics.start_calls)==0);
-    assert(stop_driver(driver_ref(first))==noErr); /* empty fixture: no endpoint/server calls */
-    assert(atomic_load(&first->diagnostics.stop_calls)==1);
-    diagnostic_samples=0;
-    diag_emit_sample(first,0);
-    assert(diagnostic_samples==1&&last_diag_sample.sample_count==1);
-    assert(last_diag_sample.instance_id==first->diagnostics.instance_id);
-    assert(last_diag_sample.birth_tag==first->diagnostics.birth_tag);
-    assert(last_diag_sample.stop_calls==1&&!last_diag_sample.first_failure_ready);
-    diag_emit_sample(first,0.5);assert(diagnostic_samples==1);
-    for(unsigned sample=1;sample<DIAG_SAMPLE_LIMIT;++sample)diag_emit_sample(first,sample);
-    assert(diagnostic_samples==DIAG_SAMPLE_LIMIT);
-    diag_emit_sample(first,DIAG_SAMPLE_LIMIT);diag_emit_sample(first,DIAG_SAMPLE_LIMIT*2);
-    assert(diagnostic_samples==DIAG_SAMPLE_LIMIT&&first->diagnostics.sample_count==DIAG_SAMPLE_LIMIT);
-    free_driver(first);free_driver(second);
-}
-
-static void test_diagnostic_maximum_numeric_log_size(void) {
-    RK3MIDIDiagnosticSnapshot sample={0};
-    sample.version=sample.instance_id=sample.birth_tag=sample.sample_count=UINT64_MAX;
-#define MAX_DIAGNOSTIC_FIELD(name) sample.name=UINT64_MAX;
-    DIAG_U64_FIELDS(MAX_DIAGNOSTIC_FIELD)
-#undef MAX_DIAGNOSTIC_FIELD
-    sample.last_query_status=sample.last_received_status=sample.last_enable_status=INT32_MIN;
-    sample.last_enable_source=sample.last_enable_requested=sample.last_enable_kind=UINT32_MAX;
-    sample.generation_before=sample.generation_after=sample.epoch_before=sample.epoch_after=UINT64_MAX;
-    sample.listener_epoch=sample.controller_listener_epoch=sample.failed_generation=UINT64_MAX;
-    sample.online=sample.source_enabled=sample.controller_enabled=sample.device=sample.failed_device=UINT32_MAX;
-    sample.first_failure_ready=true;sample.first_failure_status_valid=true;
-    sample.first_failure=(RK3MIDIDiagnosticFirstFailure){UINT32_MAX,INT32_MIN,UINT32_MAX,UINT64_MAX,UINT64_MAX};
-    char first[DIAG_LINE_BYTES],second[DIAG_LINE_BYTES];
-    assert(diag_format_sample(&sample,first,second));
-    const char *prefix="RK3-MIDI-DIAG14 ";
-    assert(strncmp(first,prefix,strlen(prefix))==0&&strncmp(second,prefix,strlen(prefix))==0);
-    assert(strlen(first)<=DIAG_MAX_LOG_BYTES&&strlen(second)<=DIAG_MAX_LOG_BYTES);
-    assert(strlen(first)<DIAG_LINE_BYTES&&strlen(second)<DIAG_LINE_BYTES);
-    assert(first[strlen(first)-1]=='}'&&second[strlen(second)-1]=='}');
-    /* Explicit synthetic fixtures: the parent also parses the exact formatter
-     * output as JSON; none of these rows is a captured runtime observation. */
-    puts("Synthetic maximum-width diagnostic format fixtures:");
-    puts(first);puts(second);
+    assert(deliveries==0&&info_queries==infos&&report_queries==reports);
+    /* An incomplete Start is not a listener disconnect. Once the same
+     * registered source binds successfully, no new EnableSource is required. */
+    topology_controller_source=true;lifecycle_start(driver);input_tick(NULL,driver);
+    controller_batch(driver,1,0x10);assert(deliveries==1&&delivered_source==124);
+    lifecycle_din(driver,2);assert(deliveries==2&&delivered_source==123);
+    unsigned wah=controller_cc_counts[4];lifecycle_pedal(driver,3,0);lifecycle_pedal(driver,4,1023);
+    assert(controller_cc_counts[4]==wah+1&&controller_cc_source[4]==124&&controller_cc_last[4]==127);
+    lifecycle_done(driver);
 }
 
 int main(void) {
     assert(CFPlugInRegisterFactoryFunction(factory_id(),RK3MIDIDriverFactory));
     test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_cf_transport_rejection(); test_worker_generation_and_error(); test_transient_output_does_not_disconnect_sources();
-    test_diagnostic_controller_gate_and_publication();test_diagnostic_first_query_failure();test_diagnostic_received_failure();
-    test_diagnostic_sequence_and_epoch_rejection();test_diagnostic_instance_lifecycle_and_budget();
-    test_diagnostic_maximum_numeric_log_size();
+    test_start_stop_start_keeps_listener_intent();
+    test_stopped_disable_wins_and_does_not_query_hal();test_stopped_reenable_and_repeated_stop_keep_held_baseline();
+    test_restart_without_listener_stays_silent();test_absent_hardware_is_not_removed_registered_endpoint();
+    test_missing_registered_endpoint_drops_only_its_listener();test_replaced_registered_sources_do_not_inherit_listeners();
+    test_failed_start_is_inactive_then_same_endpoint_resumes();
     assert(CFPlugInUnregisterFactory(factory_id()));
     puts("RK3 CoreMIDI: COM, bounded queue, generation lease, history cursor and input routing passed");
     return 0;
