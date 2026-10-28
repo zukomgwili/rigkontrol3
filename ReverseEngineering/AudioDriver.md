@@ -508,7 +508,7 @@ bindings, not new audio queue policies.
 | `writeHandler` / `getCurrentSampleFrame`: completed OUT start position | Saved start position plus USB-frame time | Position and integer timestamp vectors; no completion-receipt clock fallback. |
 | `takeSimpleTimeStamp` / timestamp timer | Exact input boundary fractions; current anchor probe every128ms | Formula vectors match; NI anchor cadence is every8 estimator ticks; .14 tracks mismatch. |
 | IOAudioEngine pause/resume panic | AudioServerPlugIn configuration handshake, preserving EP1/USB generation | SDK stop/Perform/restart ordering; host stop/restart observed in logs; sustained reliability remains open (.11). |
-| Last-output-client inactive clear | Output `StreamIsActive`; original literal wire clear | Clear bytes tested; host last-client transition equivalence pending. |
+| Last-output-client inactive clear | Explicit output `StreamIsActive` updates reach the original literal wire clear | Software propagation tested; automatic last-output-client trigger remains unproved. See [output lifecycle decision](Evidence/Build16OutputLifecycleDecision.json). |
 | Kernel controller-only `ClearPipeStall(false)` | Public IOUSBHost both-end clear with interrupted-read retirement gate | Chosen API exposes both-end clearing only; no failed-command replay; error matrix tested. |
 | Sleep/wake wire clear and clock reset | Host audio lifecycle expected to stop/restart engine | Physical verification required, especially if host keeps I/O active; no invented EP1 wake retry. |
 
@@ -590,12 +590,19 @@ whole-device lifecycle.
 
 Original panic delays and IN/OUT error distinctions above are retained.
 A failed transfer remains diagnostic even if no immediate panic is specified.
-The host's output `StreamIsActive` state is mapped to NI's inactive-output
-clear. Its equivalence to NI's last-output-client transition while input
-continues must still be checked against the actual host. Likewise, actual
-sleep/wake must verify that host StopIO/StartIO restores the original wire
-clear, clock-anchor reset and timer behavior. No speculative EP1 wake retry
-was added.
+The adapter forwards explicit output `StreamIsActive` updates to NI's
+inactive-output clear path. This is stream-enable propagation; it does not
+establish NI's count of active clients on the output stream. In the single
+build 16 observation, stopping the requested output registration stopped its
+callbacks while input callbacks continued, but all 90 global activity reads
+remained 1. This observation does not identify a missing native callback or
+prove an extra output consumer. The original last-output-client trigger and
+no-stale-replay qualification remain open; the separate public IOProc
+unused-buffer NULL failure also remains open. See the
+[output lifecycle decision](Evidence/Build16OutputLifecycleDecision.json).
+Likewise, actual sleep/wake must verify that host StopIO/StartIO restores the
+original wire clear, clock-anchor reset and timer behavior. No speculative
+EP1 wake retry was added.
 
 Stop prevents new audio submission, aborts audio pipes and retains mappings,
 transaction lists, callback contexts and interface ownership until callbacks

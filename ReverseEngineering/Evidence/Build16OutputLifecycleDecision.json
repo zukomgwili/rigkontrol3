@@ -1,0 +1,309 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "created_utc": "2026-10-28T16:15:27.273127+00:00",
+  "candidate": "unchanged0.2.11/build16 source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+  "decision": "CORRECT_QUALIFICATION_MODEL_NO_PROVEN_PRODUCTION_FIX",
+  "scope": "Bounded comparison of existing recovered NI contract, saved captures, current CoreAudio SDK declarations and actual adapter; no new original binary recovery or live test",
+  "plan_before_reads": ".build/native/build16-output-lifecycle-decision/admission.txt",
+  "exact_bounds_before_content_reads": {
+    "scope": "currentSDK andnativeactualcode exactblocks BEFORE contentreads; reports previously recoveredNI only, zerooriginalbinaryreads",
+    "bounds": {
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Versions/A/Headers/AudioHardwareBase.h": [
+        [
+          1075,
+          1105
+        ]
+      ],
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Versions/A/Headers/AudioHardware.h": [
+        [
+          835,
+          874
+        ],
+        [
+          960,
+          990
+        ]
+      ],
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Versions/A/Headers/AudioServerPlugIn.h": [
+        [
+          165,
+          205
+        ],
+        [
+          278,
+          355
+        ],
+        [
+          698,
+          734
+        ],
+        [
+          948,
+          985
+        ],
+        [
+          1013,
+          1101
+        ]
+      ],
+      "Driver/Audio/RK3AudioDriver.c": [
+        [
+          1,
+          100
+        ],
+        [
+          219,
+          285
+        ],
+        [
+          300,
+          343
+        ],
+        [
+          415,
+          428
+        ],
+        [
+          510,
+          530
+        ],
+        [
+          540,
+          622
+        ]
+      ],
+      "Driver/NativeUSB.c": [
+        [
+          267,
+          279
+        ],
+        [
+          1553,
+          1566
+        ]
+      ],
+      "Driver/NativeAudioISO.c": [
+        [
+          258,
+          269
+        ],
+        [
+          315,
+          325
+        ],
+        [
+          383,
+          395
+        ],
+        [
+          565,
+          588
+        ]
+      ],
+      "Driver/AudioRing.c": [
+        [
+          1,
+          113
+        ]
+      ],
+      "Driver/Tests/AudioDriverTests.c": [
+        [
+          600,
+          710
+        ]
+      ],
+      "Driver/Tests/NativeAudioISOTests.c": [
+        [
+          760,
+          800
+        ]
+      ],
+      "ReverseEngineering/AudioDriver.md": [
+        [
+          450,
+          518
+        ],
+        [
+          580,
+          610
+        ]
+      ],
+      "ReverseEngineering/SelectedBindingContracts.md": [
+        [
+          220,
+          252
+        ]
+      ]
+    },
+    "sha256": {
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Versions/A/Headers/AudioHardwareBase.h": "cbac54e8edb7ee99bf10c18a2db044e01c47645985b2f2824623f3f8371a7c4e",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Versions/A/Headers/AudioHardware.h": "a699437248e079d9ebe47078ef3861492d8253fef1a6007e476031031d3535ca",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Versions/A/Headers/AudioServerPlugIn.h": "de0ecbec543ac46b051ea731968ded0706401991ebec6d7976063e19651947e8",
+      "Driver/Audio/RK3AudioDriver.c": "4e67a30d7d8419ba146098ad80f6d3ddb3edc81e04dd072e77c05d33f7eeb10a",
+      "Driver/NativeUSB.c": "cf9df3fadf431660e07a0986a7c8d1ff49efa44ff1e2a1200db55dfb3387704e",
+      "Driver/NativeAudioISO.c": "72a7216d94d237586393be5612f3dc0d8fc6eb9f3b2d2feb28a96ee9d082831e",
+      "Driver/AudioRing.c": "98c4801e2c9572fec2febd5253ad2b99af0067df762aee597f7c0fe30d5e2950",
+      "Driver/Tests/AudioDriverTests.c": "2f0131473b8052c67799512b482208b521deab1b5b9a1a151af36ad45d1af9fc",
+      "Driver/Tests/NativeAudioISOTests.c": "0f0d542521445e36a356f6bb807eb3d2e977f3b4ce3c0ee11d84605696d63da6",
+      "ReverseEngineering/AudioDriver.md": "c8d3703ed30f3005ad6bc81e4b7d33bc541a16fe97365454861d28edec71049f",
+      "ReverseEngineering/SelectedBindingContracts.md": "eb7e51c3f0ef49fb744037b73cf4c2f914c9f005773940499f65507eace076c6"
+    },
+    "code_SDK_lines": 1066,
+    "report_lines": 133,
+    "CONTEXT_ADR_inventory": "none found in active tracked inventory",
+    "online_verification": "one official Apple documentation search/open for these exact CoreAudio symbols only; no broader API/source investigation"
+  },
+  "decision_before_edits": ".build/native/build16-output-lifecycle-decision/correction-before-edit.txt",
+  "question": "Does the saved global stream activity result establish an ARM adapter defect or a necessary platform correction?",
+  "answer": "It does not. It establishes that the observed output registration stop did not produce a global stream inactive witness. Conflating this global value with NI per-output-stream client ownership is unsupported. The automatic original-trigger binding remains unproved; source/clear-byte tests and public IOProc routing are separate obligations.",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "prediction": "If test interpretation conflates global stream enable and output-consumer ownership, SDK and native source do not provide that equivalence; global1 can coexist with stopped logical output callbacks.",
+      "result": "SUPPORTED_AS_UNPROVED_EQUIVALENCE",
+      "limit": "Not proof that all tests are wrong: SDK unused-buffer NULL requirement remains valid and failed."
+    },
+    {
+      "id": "H2",
+      "prediction": "If a required ARM binding is missing, a documented actual per-direction ownership hook must identify the last output consumer and the native source must fail to map it.",
+      "result": "NOT_ESTABLISHED_IN_INSPECTED_CONTRACT",
+      "limit": "No direction field exists in the inspected client metadata/lifecycle signatures. This is not a proof that no solution or public API exists anywhere; native per-direction behavior remains unproved."
+    },
+    {
+      "id": "H3",
+      "prediction": "If another output consumer explains activity1, evidence must identify that consumer and its continued output ownership.",
+      "result": "UNOBSERVED",
+      "limit": "Saved public interfaces cannot enumerate native per-direction ownership. Do not attribute cause to an unidentified consumer."
+    }
+  ],
+  "mapping": [
+    {
+      "original": "NI writeHandler@0x7ec0: output previously written and zero active clients on that output stream triggers original clear.",
+      "modern": "AudioStream IsActive describes enabled/doingIO; the inspected SDK does not promise perIOProc Stop causes global0.",
+      "native": "Global output_active defaults true; only the explicit stream setter forwards false to the USB/ISO clear path.",
+      "observed": "Idle global1/deviceRunning0/native1; output-role stop followed by90global1 polls while requested input role progresses.",
+      "status": "Original ownership trigger NOT established by this global-state sequence."
+    },
+    {
+      "original": "NI inactive clear zeros wire lanes0..5, preserves lanes6/7 and packed ring; priming marks written without PCM copy.",
+      "modern": "Existing ARM ring primitive and conditional service/completion clear preserve literal bytes and written flags.",
+      "native": "AudioRing.c107..112; NativeAudioISO.c261..268/322/393/573..585.",
+      "observed": "Existing CPU test exercises explicit setter and priming-written clear, not actual host ownership transition.",
+      "status": "Software primitive/propagation evidence retained; no new runtime clear claim."
+    },
+    {
+      "original": "Kernel stream client ownership is per output stream, independently of ongoing input.",
+      "modern": "AudioServerPlugInClientInfo ID/PID/endian/bundle has no direction; StartIO/StopIO device+clientID track device lifetime; WillDoIOOperation is capability negotiation, not a documented ownership transition.",
+      "native": "client add/remove does not store metadata; StartIO/StopIO use aggregate active device clients. ReadInput/WriteMix transfer sample-addressed buffers; IO clientID is ignored.",
+      "observed": "Public IOProc IDs/role counts are not native UInt32 client IDs. No full host-ID correlation exists.",
+      "status": "No necessary correct per-direction hook proved; do not guess or replace device-client counters."
+    },
+    {
+      "original": "NI ring qualification requires output previously active, then actually inactive, clear/restart/no stale replay while input continues.",
+      "modern": "Public perIOProc stream masks have their own documented unused-buffer NULL requirement.",
+      "native": "No public IOProcStreamUsage property selector is implemented by native driver; successful host readback does not prove dispatch/forwarding.",
+      "observed": "Strict helper retained[1,0,0,1] at four sampled points, then failed unused output-buffer NULL before output Start/zerooutputcycles; new observer did not access PCM.",
+      "status": "Public routing failure retained; neither capture reaches NI ring-clear acceptance gate."
+    }
+  ],
+  "acceptance_correction": {
+    "changed": "Separate classification/interpretation in existing contract docs. No test assertion or original acceptance requirement removed.",
+    "R_public_IOProc_routing": "FAILED separately: disabled output buffer unexpectedly present in frozen strict helper, as SDKNULL contract still requires otherwise.",
+    "N_original_output_ownership": "UNPROVEN: true zero-output-stream-client event and clear/replay behavior not witnessed.",
+    "native_software_propagation": "Existing synthetic setter/clear fixtures establish only explicit propagation and clear bytes.",
+    "single_public_observation": "NOT_OBSERVED_IN_THIS_5_SECOND_WINDOW",
+    "capture_qualification": "UNPROVEN",
+    "required_future_gate": "Retain original three output stop/restarts with continuing input and no stale replay; actual output ownership witness required before calling it NI parity."
+  },
+  "production_decision": {
+    "driver_change": false,
+    "reason": "No supported replacement event or established causal implementation defect. Do not force global0, invent output-client counts, infer ownership from silence/timeout, change mixing model or alter NI schedule/recovery.",
+    "strict_helper_change": false,
+    "new_measurement_package": false,
+    "new_hardware_test": false,
+    "timing_recovery_security_changes": false,
+    "installed_state_writes": false
+  },
+  "sources": {
+    "SDK_authority": "Installed Apple Xcode current CoreAudio headers, exact pin/bounds above; online official documentation corroborates perIOProc stream-use structure only.",
+    "official_links": [
+      {
+        "url": "https://developer.apple.com/documentation/coreaudio/audiohardwareioprocstreamusage?language=objc",
+        "supports": "The structure specifies streams used by a given IOProc, distinct from device lifecycle metadata."
+      },
+      {
+        "url": "https://developer.apple.com/documentation/coreaudio/kaudiodevicepropertyioprocstreamusage",
+        "supports": "Official property identity; detailed NULL/lifecycle claims rely on pinned installed SDK headers."
+      }
+    ],
+    "NI_authority": "Previously recovered reports only; no new original instruction/decompiler/firmware reads. Precise getter/latch instruction order not recovered by this bounded decision.",
+    "existing_evidence": [
+      {
+        "path": "ReverseEngineering/Evidence/Build16IOProcBindingContractAudit.json",
+        "sha256": "18439d7cac08f30540a183e94a3b98ddb5b20a085c404b06bc41c61594dc6547"
+      },
+      {
+        "path": "ReverseEngineering/Evidence/Build16HostBoundaryObservation.json",
+        "sha256": "07db95a39f3853b6d0df79b4cdcab2a648af3102fd9ff2451f3a6afb97077d8c"
+      },
+      {
+        "path": "ReverseEngineering/Evidence/Build16OutputStopValidation.json",
+        "sha256": "ab4c1fb04041e4068a431fb0b205ee395ac29e2dc76af2e9faa11735ce81d996"
+      },
+      {
+        "path": "ReverseEngineering/Evidence/Build16OutputDiagnosticValidation.json",
+        "sha256": "c0a4174e227524f94a3a070ffd77dfc2f01a5360e0a6b06c5e478ad579235c6a"
+      },
+      {
+        "path": "ReverseEngineering/Evidence/Build16PostStartUsageValidation.json",
+        "sha256": "b5db6e578fbae65e7483fa0168ed1019f6a7bb713ae34af0492f1b3e92fac8d4"
+      }
+    ]
+  },
+  "independent_review": {
+    "recovered_contract": "PASS recoveredNIoutputzero-clientgate/literalbytes and helperlimits checked; H1supported, H2unproved, H3unobserved",
+    "final_artifact": "PASS independent source/spec/provenance review including final77d8e6e3 snapshot; fourprivate/fiveexistingevidence/nineSDK_native_test pins andtwo pre-editreport baselines verified; installed12/SIP limits correct; no acceptancewaiver"
+  },
+  "finite_handoff": "This mapping decision is complete; no repeat probe of globalIsActive. NI last-output ownership remains an explicit M3 release gap. Continue independent finite acceptance work only with its own inline plan; any proposed adapter fix must name a proved direction-ownership event before code. No new planning-only bead or automatic instrumentation installation.",
+  "scope_counts": {
+    "new_regular_beads": 0,
+    "new_live_invocations": 0,
+    "new_NI_binary_reads": 0,
+    "driver_files_changed": 0,
+    "SDK_native_lines_in_bounds": 1066,
+    "root_report_lines_in_bounds": 133
+  },
+  "file_pins": {
+    ".build/native/build16-output-lifecycle-decision/admission.txt": "f8d335170967f695a7d96b50a9ce02fcf4e361c86a96232fe1dbe3aa059f155f",
+    ".build/native/build16-output-lifecycle-decision/correction-before-edit.txt": "5468316bb1a0f76adb8ef0ec4d939e9fa13e4f223d461bd4ea5bd83275b43932",
+    ".build/native/build16-output-lifecycle-decision/read-bounds.json": "88a1f49538f90f76af4afafacc8a5c56e36fa0da7f576e1e3bc1561d2e4d4a2a",
+    ".build/native/build16-output-lifecycle-decision/integrity.json": "eb12fa64a4841662d04a4534c3da687e760b4b1d3ca18082c3a85824bd58ade6"
+  },
+  "read_provenance_base_commit": "8bfb1fffccd45a78a7eddfaaf498fb244c1bf059",
+  "read_provenance_note": "Read-bounds report hashes pin pre-edit contents at this commit. The two contract documents are intentionally updated afterward; native/SDK source files stay unchanged.",
+  "integrity_recheck": {
+    "installed12": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": true,
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": true,
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": true,
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": true
+    },
+    "SIP": "System Integrity Protection status: enabled.",
+    "new_runtime_API_calls": 0,
+    "UI_actions": 0
+  },
+  "checks": {
+    "JSON_and_all_pins": "PASS pre-edit Git report pins/currentSDK_native pins/fiveexistingevidence/privateadmission pins",
+    "whitespace": "PASS",
+    "production_test_suites": "NOT_REPEATED documentation/interpretation only; no code change",
+    "new_live_tests": 0
+  }
+}

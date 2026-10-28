@@ -230,13 +230,28 @@ an enabled stream doing IO; StartIO/StopIO identifies device clients, not a
 proven per-direction last-client count. Current output-active atomic drives the
 original clear helper.
 
-**Disposition:** clear operation/software propagation adequate; trigger
- equivalence unresolved in `.10`. **Test/stop:** with input remaining active,
-observe last output client removal and return, exact clear-once/written behavior
-and no stale looped output. Synthetic stream-property changes prove setters,
-not the real host trigger. If the host leaves that signal active when NI would
-clear, stop this row and record missing trigger semantics rather than inventing
-an idle timeout. It does not block a clock-state correction.
+**Disposition:** the clear bytes and explicit stream-enable propagation have
+tests; the original output-client trigger remains unproved in the current M3,
+`rigkontrol3-40h.3` (the historical `.10` work was absorbed). The bounded
+[output lifecycle decision](Evidence/Build16OutputLifecycleDecision.json)
+separates two acceptance obligations:
+
+- **Public routing:** the SDK requires NULL data for an unused IOProc stream.
+  The frozen strict helper still fails that assertion before output starts;
+  this is neither an NI ring-clear test nor permission to relax the assertion.
+- **NI output ownership:** previously written output plus zero clients on that
+  output stream must reach NI's literal clear, then survive output restart
+  without stale replay while input remains active. The client-only observer
+  did not establish that ownership event: output callbacks stopped, input
+  progressed, and global activity stayed 1 in all 90 samples. Its sampled
+  negative result does not prove a hidden consumer or a missing driver hook.
+
+**Test/stop:** retain the original three stop/restart and no-stale-replay gate.
+Synthetic stream-property changes establish software propagation only.
+Device StartIO/StopIO arguments and operation-capability queries do not by
+themselves supply the missing per-direction ownership witness. Stop this row
+at that limit; no idle timeout, invented client count, forced global inactivity
+or new output-mixing policy is justified. It does not block independent gates.
 
 ## 10. Sleep/wake: original state operations portable, host event mapping open
 
