@@ -1,0 +1,324 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "version": "0.2.11/build16",
+  "app": "sameGR6PID507/nativeMIDIport;no app/MIDI/service reset or remap duringUSBtest",
+  "released": {
+    "result": "PASS",
+    "generation_before": 1,
+    "generation_after": 2,
+    "provider": 352,
+    "user_after_reconnect": "Yes \u2014 audio returned and wah/LED stayed on",
+    "user_fresh_controls": "Finished \u2014 all controls and audio work",
+    "switch_phantom_exclusion": "CC80exact1/127 throughquietreconnectphase; onlyfreshpostpress adds0once. Quiet criterion concerns switches, not analogCC4.",
+    "post_controls": "all8actualMIDIvalues and fullpedal0..127 endingheel0; userlatching/audio/wahPASS",
+    "settings": "same3axisdefaults/savedFloat32calibration;printedapplied0 generation2",
+    "health": "one-shotflags3/error0/status0/native48k;notclockmeasurement",
+    "cohorts": {
+      "usb-released-1": {
+        "session": {
+          "parent": 3560,
+          "pid": 3567,
+          "pgid": 3567,
+          "started_wall": 1793190565.155658,
+          "cap_seconds": 900,
+          "argv": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/live-midi-delivery/paired-consumer",
+            "--live"
+          ],
+          "exe_sha256": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+          "ready": true,
+          "native_writes": 0,
+          "ready_wall": 1793190565.261696,
+          "terminal_reason": "human_finished_stop",
+          "exit": 0,
+          "ended_wall": 1793190863.815867,
+          "elapsed_monotonic": 298.66149791600765,
+          "reaped": true
+        },
+        "footer": {
+          "controlA": true,
+          "controlB": true,
+          "controls_valid": true,
+          "private_callbacks": 2,
+          "private_packets": 2,
+          "native_callbacks": 311,
+          "native_packets": 312,
+          "native_CC": 312,
+          "unknown_callbacks": 0,
+          "cleanup": true,
+          "exit": 0,
+          "native_writes": 0
+        },
+        "cc": {
+          "4": {
+            "count": 311,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 1,
+            "min": 127,
+            "max": 127,
+            "last": 127
+          }
+        },
+        "process_group_absent": true
+      },
+      "usb-released-post-1": {
+        "session": {
+          "parent": 4261,
+          "pid": 4262,
+          "pgid": 4262,
+          "started_wall": 1793190855.891597,
+          "cap_seconds": 900,
+          "argv": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/live-midi-delivery/paired-consumer",
+            "--live"
+          ],
+          "exe_sha256": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+          "ready": true,
+          "native_writes": 0,
+          "ready_wall": 1793190855.997558,
+          "terminal_reason": "human_finished_stop",
+          "exit": 0,
+          "ended_wall": 1793191099.2816598,
+          "elapsed_monotonic": 243.39102079201257,
+          "reaped": true
+        },
+        "footer": {
+          "controlA": true,
+          "controlB": true,
+          "controls_valid": true,
+          "private_callbacks": 2,
+          "private_packets": 2,
+          "native_callbacks": 1347,
+          "native_packets": 1348,
+          "native_CC": 1348,
+          "unknown_callbacks": 0,
+          "cleanup": true,
+          "exit": 0,
+          "native_writes": 0
+        },
+        "cc": {
+          "4": {
+            "count": 1333,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "76": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "77": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "78": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "79": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 1,
+            "min": 0,
+            "max": 0,
+            "last": 0
+          },
+          "81": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "82": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "83": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "process_group_absent": true
+      }
+    }
+  },
+  "held": {
+    "result": "PASS",
+    "generation_before": 2,
+    "generation_after": 3,
+    "provider": 352,
+    "user_after_release": "Yes \u2014 audio returned and release caused no extra toggle",
+    "press_count_clarification": {
+      "initial_expected": 1,
+      "observed_at_quiet_check": 3,
+      "user_quote": "Three presses, including extra checks",
+      "disposition": "countmatchesphysicalpresses; no unexplainedswitchtoggle; nottreatedasdriverfault"
+    },
+    "user_fresh_controls": "Finished \u2014 everything works and all LEDs are off",
+    "CC": {
+      "80": {
+        "count": 4,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "4": {
+        "count": 95,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      }
+    },
+    "footer": {
+      "controlA": true,
+      "controlB": true,
+      "controls_valid": true,
+      "private_callbacks": 2,
+      "private_packets": 2,
+      "native_callbacks": 99,
+      "native_packets": 99,
+      "native_CC": 99,
+      "unknown_callbacks": 0,
+      "cleanup": true,
+      "exit": 0,
+      "native_writes": 0
+    },
+    "session": {
+      "parent": 5058,
+      "pid": 5059,
+      "pgid": 5059,
+      "started_wall": 1793191172.844695,
+      "cap_seconds": 900,
+      "argv": [
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/live-midi-delivery/paired-consumer",
+        "--live"
+      ],
+      "exe_sha256": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+      "ready": true,
+      "native_writes": 0,
+      "ready_wall": 1793191172.949617,
+      "terminal_reason": "human_finished_stop",
+      "exit": 0,
+      "ended_wall": 1793191691.3412669,
+      "elapsed_monotonic": 518.4975445420132,
+      "reaped": true
+    },
+    "process_group_absent": true,
+    "switch_prefix_packets": [
+      {
+        "event": "packet",
+        "route": "native",
+        "length": 3,
+        "timestamp": 4726215115113,
+        "absolute_now": 4726215153043,
+        "prefix_bytes": 3,
+        "raw_hex": "b0507f"
+      },
+      {
+        "event": "packet",
+        "route": "native",
+        "length": 3,
+        "timestamp": 4726962829433,
+        "absolute_now": 4726962839933,
+        "prefix_bytes": 3,
+        "raw_hex": "b05000"
+      },
+      {
+        "event": "packet",
+        "route": "native",
+        "length": 3,
+        "timestamp": 4727013716558,
+        "absolute_now": 4727013751781,
+        "prefix_bytes": 3,
+        "raw_hex": "b0507f"
+      },
+      {
+        "event": "packet",
+        "route": "native",
+        "length": 3,
+        "timestamp": 4735176678187,
+        "absolute_now": 4735176757227,
+        "prefix_bytes": 3,
+        "raw_hex": "b05000"
+      }
+    ],
+    "quiet_snapshot": {
+      "wall": 1793191457.279546,
+      "provider": 352,
+      "generation": 3,
+      "CC_snapshot": [
+        "CC80 count=3 min=0 max=127 last=127",
+        "Total controller CC messages: 3"
+      ],
+      "settings_exit": 0,
+      "health_exit": 0,
+      "user": "audio returned; releasingheldswitchdidnotextratoggle;no nextpress yet"
+    },
+    "healthy_after_report": {
+      "pid": 6273,
+      "exit": 0,
+      "elapsed_monotonic": 10.016002249991288,
+      "samples": 96,
+      "bad": 0,
+      "generations": [
+        3
+      ],
+      "flags": [
+        3
+      ],
+      "scope": "10sinfo/cohort/errorwindow afteruserreportedrecovery;notactualsampleclockmeasurement"
+    },
+    "no_reset": "sameGR6/MIDIclient/ports; noinputrefresh/apprestart/serviceorLEDresetduringrecovery",
+    "clock_scope": "infohealthonly;placeholderclockfieldsnotmeasurement"
+  },
+  "proof_limits": [
+    "USBsilencegapexpected; automaticreturn judgedbyhuman, not continuousaudioduringdisconnect",
+    "No wallclocktimestamp of physicalunplug or reconnect available; user5s/10sinstructions, noexact10sstabilityclaim",
+    "pre-phase311expressionCCs not classifiedasphantomnor claimeduntouched expression",
+    "traceprefix64bounds payloadcache; fullCCtotalsfromuncappedcounters/footer"
+  ],
+  "code_changed": false,
+  "SIP": "enabled",
+  "file_pins": {
+    ".build/native/build16-recovery/usb-released-1/paired.log": "4b4ea361c8c3e9d6dc52f12deb77bd27b0254d3e5ce0fa7240f9f9686806df81",
+    ".build/native/build16-recovery/usb-released-1/session.json": "71691defe67823174910d748847df73c4930307dfc9e3510f9378d06cb6cca1d",
+    ".build/native/build16-recovery/usb-released-1/stop": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-recovery/usb-released-1/after-reconnect-health.log": "7add6193f7460eb4cac4418a8a5ecf3c754272051ee922680519b96a199a95e4",
+    ".build/native/build16-recovery/usb-released-1/quiet-check.json": "746c5fe02243ce912fb197822f26fdb24499e7b1c77c23b2d0b2765b33175a4c",
+    ".build/native/build16-recovery/usb-released-1/after-reconnect-settings.log": "2ed820961c3c8aaa058ce7bc9279cbd04a5f12e28c9eb3bfe6a0037bc326fa4f",
+    ".build/native/build16-recovery/usb-released-post-1/paired.log": "076ede57e0343ae4eb6633c70e29450b687081ed370caeb30e29515cbda6d51f",
+    ".build/native/build16-recovery/usb-released-post-1/session.json": "438b29ecf9e2f35e51f4c628454fa24268c039a2c0f4c9304868d117f6be8f25",
+    ".build/native/build16-recovery/usb-released-post-1/stop": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-recovery/capture.py": "547170aaf1a64cd15d6551d644cb16e96f6e66adfb610be39dbb7d3c64136362",
+    ".build/native/build16-recovery/usb-held-1/paired.log": "89aa5384f872cee7dbc635bae30fe0a59da8aa3fbbb6987394fb91d4d6850136",
+    ".build/native/build16-recovery/usb-held-1/after-release-settings.log": "86e730ae1d139555b9027c3fdc7afd133bc21f2bdbddd0bc176e88537143896e",
+    ".build/native/build16-recovery/usb-held-1/healthy-post-window.log": "faf166cd7ec53a3281d00a463d4b11cf811bfa1b70f810b581ace389282281a8",
+    ".build/native/build16-recovery/usb-held-1/session.json": "955852b32d126a3378d4963e722af4ca43d29b9e7bdc92fb9ec7e5485c1ae66b",
+    ".build/native/build16-recovery/usb-held-1/after-release-health.log": "a5ec3a86e8ec5144b6697954863748631850cc40351fdf5382d0d6967244c362",
+    ".build/native/build16-recovery/usb-held-1/stop": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-recovery/usb-held-1/quiet-check.json": "0740875d96acb7af0e87cec5198e13a7fa92585c390dc3c71d699f90df8cb738",
+    ".build/native/build16-recovery/usb-held-1/healthy-post-window.json": "2166ef249b3a534b87993758b83dd6976ca5a78e191a198e24760011adc6cbe1"
+  },
+  "result": "PASS_released_and_held_USB_with_fresh_controls",
+  "all_owned_recovery_collectors_terminal": "normalexit0/reaped/groupsabsent",
+  "remaining_at_capture": "existingM3last-output/nativeports/remainingqualificationcriteria; no extrapassedclaims",
+  "followup_as_of_session_end": "Build16 physical/all8-MIDI/wah/LED, released+held USB recovery and bounded combined DIN echo PASS. See Build16USBRecoveryValidation.json, Build16OutputStopValidation.json and Build16DINValidation.json; wholeM3 remains open: NI last-output path not reached by diagnostic, toe/external and other finite qualification items unverified."
+}

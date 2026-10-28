@@ -1,0 +1,79 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "version": "0.2.11/build16",
+  "session": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261028T120344Z-8529236b",
+  "installed_files": "PASS independent all12 exact frozen candidate hashes/signatures/arm64/versions/IDs/dSYMUUID",
+  "journal": "EACCES13 for journal/checksum; not verified; no admin bypass requested",
+  "manifest_sha256": "da76279fbe68c21b4d18189a146db8f8591baa177210849b83db6d122de833b3",
+  "settings": {
+    "requested": "three tip/continuous axes; external0/1 endpoints-1; built-in endpointsFloat32(88/1023),Float32(648/1023)",
+    "commands": [
+      {
+        "argv": [
+          ".build/native/test/rk3-pedals",
+          "--show"
+        ],
+        "exit": 0,
+        "log": ".build/native/build16-installed/pedals-show.log"
+      },
+      {
+        "argv": [
+          ".build/native/test/rk3-pedals",
+          "--show"
+        ],
+        "exit": 0,
+        "log": ".build/native/build16-installed/pedals-show-steady.log"
+      }
+    ],
+    "printed_snapshot": "EINPROGRESS36 before internal boundedwait; both CLIexits0 prove subsequent matching status/provider/generation success, not a printed0 snapshot",
+    "provider": 352,
+    "generation": 1,
+    "config_write_by_tools": false,
+    "calibration_write_by_tools": false,
+    "steady_post_reopen": {
+      "argv": [
+        ".build/native/test/rk3-pedals",
+        "--show"
+      ],
+      "exit": 0,
+      "printed_status": 0,
+      "provider": 352,
+      "generation": 1,
+      "log": ".build/native/build16-installed/pedals-show-after-reopen.log"
+    }
+  },
+  "loaded_image_evidence": {
+    "MIDI": "lsof same-userMIDIServerPID187 maps installed newMIDIfile inode239892123;64B settings protocol functional",
+    "audio": "unprivilegedlsof DriverHelper98828/coreaudiod98814 returns1/no records; actualAudioimageUUIDnotobserved. InstalledfileUUIDverified; native provideronline and GR6usingit.",
+    "MIDI_post_reopen": {
+      "pid": 508,
+      "mapping": [
+        "MIDIServe 508 zukomgwili  txt    REG               1,14    95920           239892123 /Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+      ],
+      "scope": "freshpostreopenliveprocessmapping; earlierPID187belongsbeforeGUIreopen"
+    }
+  },
+  "SIP": "enabled; read-only csrutilstatus",
+  "app_setup": {
+    "original_GR6_pid": 81612,
+    "post_install_reopen": "one controlled Cua GUI quit/reopen after artifacts/settings baseline, no mapping edits/preset save",
+    "preset": "RK3 Build12 Physical Test, Cry Wah",
+    "audio": "nativeRK3 inputL/R and outputL/R verified inGUI;48000Hz;128frames",
+    "MIDI": "nativeController input checked; no MIDIcheckbox toggle/remap",
+    "headphones": "userReady connected/low confirmed beforeplaying"
+  },
+  "physical": "UserreportedcombinedphysicalPASS; MIDIcountscoveragepartial dueobservergap; see Build16PhysicalValidation.json",
+  "files": {
+    ".build/native/build16-installed/artifact-audit.json": "b329c38711c70ad8de3e2806ab10e31d47cdd171f201d13ebec8ab004cc69dbd",
+    ".build/native/build16-installed/pedals-show.log": "47b96c50eef03acbf3c939f0b28d6e12fbf46c3a7add6dd10db331ec41018748",
+    ".build/native/build16-installed/pedals-show-steady.log": "47b96c50eef03acbf3c939f0b28d6e12fbf46c3a7add6dd10db331ec41018748",
+    ".build/native/build16-installed/loaded-processes.json": "291d30b0c212e6313ccd38f27627a9fda5c41d33bc435b588e8a2c554ec0de59",
+    ".build/native/build16-installed/processes-after-reopen.json": "4bbe3a0104a5e87aaa421e49e823a1cc3278be7b75966c6b42f09e3595c7ace1",
+    ".build/native/build16-installed/pedals-show-after-reopen.log": "ffa02dc841b58ebf895ee708f70f3f14c15ba3c1b895b4bbe6901fa0f4b6fe4e",
+    ".build/native/build16-installed/midi-mapping-after-reopen.json": "562a6a258db7a2fe58edbbc1002d7db98f409e6e0fa663ba2c14021e3eb90440",
+    ".build/native/build16-installed/end-of-session-audit.json": "d2fef1e799d0a670950234c4d00ad86c3c4ad30ab74562f2b6e0a15d66240944"
+  },
+  "remaining_at_capture": "guidedcombinedguitar/all8/wah/LED thenUSB/last-output/DIN/toe/external finiteM3; noextraSleep",
+  "followup_as_of_session_end": "Build16 physical/all8-MIDI/wah/LED, released+held USB recovery and bounded combined DIN echo PASS. See Build16USBRecoveryValidation.json, Build16OutputStopValidation.json and Build16DINValidation.json; wholeM3 remains open: NI last-output path not reached by diagnostic, toe/external and other finite qualification items unverified.",
+  "end_recheck": "12installedfiles/signatures/arm64/SIP PASS; requested/appliedsettings status0, provider352/G3, built-in88..648 unchanged; liveAudioimageUUID still unobserved; protectedjournal not verified."
+}

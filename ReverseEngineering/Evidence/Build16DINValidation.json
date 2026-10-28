@@ -1,0 +1,158 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "candidate": "0.2.11/build16 source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+  "plan": "Existing .3 comments 2026-10-28T13:19:39Z and helper admission 13:33:20Z; exact source and vectors frozen before code/live",
+  "result": "PASS_BOUNDED_PHYSICAL_DIN_LOOPBACK",
+  "user_connection": "Connected \u2014 MIDI OUT to MIDI IN",
+  "execution": {
+    "started_utc": "2026-10-28T13:48:10.164968+00:00",
+    "argv": [
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build16-ports/din-loopback",
+      "--live"
+    ],
+    "parent_cap_seconds": 30,
+    "escalations": [],
+    "user_cable_confirmation": "Connected \u2014 MIDI OUT to MIDI IN",
+    "source_sha256": "41c4bc97ec860a49efb70b8d3096f303a23a6c6fa44ddacedf4a976e65e97024",
+    "binary_sha256": "3e4f96266a0b86165985cfd17c3fa9f6e625a90e01c7b526f87330c97b6598db",
+    "pid": 15866,
+    "exit_code": 0,
+    "elapsed_seconds": 2.8042807079909835,
+    "ended_utc": "2026-10-28T13:48:12.969798+00:00",
+    "reaped": true,
+    "owned_group_absent": true,
+    "stdout_sha256": "3e1606d26a9ca341b9ac56a3c812af5989ea05376bec22102e92be85d262fae5",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "route": {
+    "identity_key": "org.rigkontrol3.ni-arm.midi.identity",
+    "identity": "org.rigkontrol3.ni-arm.usb.17cc1940",
+    "Controller_excluded": true,
+    "GR6_DIN_input": "unchecked; Controller checked, neither checkbox changed",
+    "baseline": {
+      "event": "cohort",
+      "label": "baseline",
+      "provider": 352,
+      "generation": 3,
+      "device": 38072356,
+      "input_entity": 38072357,
+      "output_entity": 38072359,
+      "source": 38072358,
+      "source_uid": -2105943152,
+      "destination": 38072360,
+      "destination_uid": -1779588079,
+      "flags": 3,
+      "last_error": 0,
+      "midi_inputs": 1,
+      "midi_outputs": 1,
+      "sample_rate": 48000
+    },
+    "cohort_snapshots": 10,
+    "all_stable": true
+  },
+  "messages": {
+    "phases": [
+      {
+        "event": "phase_result",
+        "phase": 1,
+        "expected_bytes": 11,
+        "received_bytes": 11,
+        "exact_echo_quiet_tail": true,
+        "bad_bytes": false
+      },
+      {
+        "event": "phase_result",
+        "phase": 2,
+        "expected_bytes": 9,
+        "received_bytes": 9,
+        "exact_echo_quiet_tail": true,
+        "bad_bytes": false
+      },
+      {
+        "event": "phase_result",
+        "phase": 3,
+        "expected_bytes": 11,
+        "received_bytes": 11,
+        "exact_echo_quiet_tail": true,
+        "bad_bytes": false
+      },
+      {
+        "event": "phase_result",
+        "phase": 4,
+        "expected_bytes": 602,
+        "received_bytes": 602,
+        "exact_echo_quiet_tail": true,
+        "bad_bytes": false
+      }
+    ],
+    "native_bytes": 633,
+    "native_packets": 8,
+    "packet_lengths_by_phase": {
+      "1": [
+        8,
+        3
+      ],
+      "2": [
+        8,
+        1
+      ],
+      "3": [
+        11
+      ],
+      "4": [
+        256,
+        256,
+        90
+      ]
+    },
+    "API_statuses_zero": 160,
+    "channel": [
+      "9f2341",
+      "df35",
+      "ef0142",
+      "8f2300"
+    ],
+    "common_realtime": [
+      "f112",
+      "f22345",
+      "f316",
+      "f6",
+      "f8"
+    ],
+    "short_sysex": "f07d524b331101020304f7",
+    "long_sysex": "602 bytes: f07d524b33, bytes i=5..600 are (i-5)&127, byte601=f7; send fragments256/256/90",
+    "oracle": "independent flattened expected bytes; allow legitimate receive fragmentation, reject mismatch/extra/duplicate/overflow and require200ms quiettail; each phase cap5s"
+  },
+  "footer": {
+    "event": "din_result",
+    "physical_echo_pass": true,
+    "control_a": true,
+    "control_b": true,
+    "cleanup": true,
+    "stopped": false,
+    "records": 10,
+    "scope": "explicit channel/common/realtime and fragmented SysEx DIN echo; no running-status/filter/interleave or latency claim",
+    "driver_changes": 0,
+    "audio_config_writes": 0,
+    "exit": 0
+  },
+  "offline": "strict ARM64 and ASan/UBSan each59 CPU fixtures PASS; independent source review before live and independent raw-byte review after live",
+  "limits": [
+    "One physical DIN OUT-to-IN test while GR6/48k audio was running; flags3/48k metadata is not new audio quality/stability proof.",
+    "No idle DIN cohort, live running status/NI filtering/realtime-inside-SysEx/flush, sustained load, DIN recovery or timestamp/latency claim. Apple CoreMIDI packet rules require explicit valid messages; offline NI-derived parser coverage remains separate.",
+    "MIDISend success is acceptance only; returned physical bytes are the completion witness.",
+    "Native input was never synthesized; callback controls use own private source only.",
+    "No new production driver, native timing, recovery, rate, calibration, mode, SIP or security changes."
+  ],
+  "remaining_scope": "M3 remains open for unverified finite acceptance items; one DIN pass does not close the whole lift-and-shift.",
+  "file_pins": {
+    ".build/native/build16-ports/din-loopback.c": "41c4bc97ec860a49efb70b8d3096f303a23a6c6fa44ddacedf4a976e65e97024",
+    ".build/native/build16-ports/din-loopback": "3e4f96266a0b86165985cfd17c3fa9f6e625a90e01c7b526f87330c97b6598db",
+    ".build/native/build16-ports/offline-result.json": "a41de5553c6c01a1ece75037c85c35d1d21d3929ad0c23a721f9e619ccc9fb6e",
+    ".build/native/build16-ports/strict-selftest.jsonl": "aef81f9a9e5cf4e3671958ae82708e376cad643eaf859359d663dd724fc545cf",
+    ".build/native/build16-ports/sanitizer-selftest.jsonl": "2dc02c48c7177bd669704ca2a42da0d38223704e8c745fd3aadbd62c7079ceb9",
+    ".build/native/build16-ports/live-1/result.json": "9fc7a9df635db9cbb40918f8bd081afcf19e1e9dec4aebe09c1434fb4a5346a6",
+    ".build/native/build16-ports/live-1/stdout.jsonl": "3e1606d26a9ca341b9ac56a3c812af5989ea05376bec22102e92be85d262fae5",
+    ".build/native/build16-ports/live-1/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

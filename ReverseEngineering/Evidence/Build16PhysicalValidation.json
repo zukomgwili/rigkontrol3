@@ -1,0 +1,222 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "candidate": "0.2.11/build16;6003e3f1e07e",
+  "user_report": {
+    "quote": "Finished \u2014 all checks passed",
+    "scope": [
+      "clear normal guitar level/acceptable delay/no crackles or dropouts",
+      "audiblewahheel/toeandpoweron/off",
+      "all8physicalswitch/LEDlatchwithoutreleasechange",
+      "finishedallLEDoff/pedalheel"
+    ],
+    "result": "PASS physical report"
+  },
+  "app": "GR6PID507; nativeRK3input1/stereooutput;48000/128; existingwahpreset;no preset save/remap",
+  "cohorts": {
+    "session-1": {
+      "session": {
+        "parent": 1251,
+        "started_wall": 1793189728.4530041,
+        "cap_seconds": 900,
+        "raw_internal_cap_seconds": 300,
+        "commands": {
+          "paired": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/live-midi-delivery/paired-consumer",
+            "--live"
+          ],
+          "raw": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/postsleep-investigation/tools/rawwatch"
+          ],
+          "status": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build16-installed/status-watch",
+            "352",
+            "1"
+          ]
+        },
+        "children": {
+          "paired": {
+            "pid": 1261,
+            "pgid": 1261,
+            "exe_sha256": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+            "exit": 0
+          },
+          "raw": {
+            "pid": 1263,
+            "pgid": 1263,
+            "exe_sha256": "3899b149b230f352edcf198f41321b24fe85adfc639a774d787252a06d1ce21e",
+            "exit": 3
+          },
+          "status": {
+            "pid": 1264,
+            "pgid": 1264,
+            "exe_sha256": "c1312d5f23347cfb34fe75f6a7313c242a1d74b379cb8bbbde42942949a1e911",
+            "exit": 0
+          }
+        },
+        "ready": true,
+        "ready_wall": 1793189728.6723142,
+        "terminal_reason": "child_ended:raw",
+        "elapsed_monotonic": 300.2705983330088,
+        "ended_wall": 1793190028.725448,
+        "all_reaped": true
+      },
+      "paired_result": {
+        "controlA": true,
+        "controlB": true,
+        "controls_valid": true,
+        "private_callbacks": 2,
+        "private_packets": 2,
+        "native_callbacks": 1575,
+        "native_packets": 1578,
+        "native_CC": 1578,
+        "unknown_callbacks": 0,
+        "cleanup": true,
+        "exit": 0,
+        "native_writes": 0
+      },
+      "CC_summary": [
+        "CC4 count=1577 min=0 max=127 last=19",
+        "CC80 count=1 min=127 max=127 last=127"
+      ],
+      "health_samples": 2850,
+      "health_bad": 0,
+      "groups_after": {
+        "paired": "absent",
+        "raw": "absent",
+        "status": "absent"
+      },
+      "trace_prefix_limit": 64
+    },
+    "session-2": {
+      "session": {
+        "parent": 2252,
+        "started_wall": 1793190077.3467789,
+        "cap_seconds": 900,
+        "commands": {
+          "paired": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/live-midi-delivery/paired-consumer",
+            "--live"
+          ],
+          "status": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build16-installed/status-watch",
+            "352",
+            "1"
+          ]
+        },
+        "children": {
+          "paired": {
+            "pid": 2253,
+            "pgid": 2253,
+            "exe_sha256": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+            "exit": 0
+          },
+          "status": {
+            "pid": 2254,
+            "pgid": 2254,
+            "exe_sha256": "c1312d5f23347cfb34fe75f6a7313c242a1d74b379cb8bbbde42942949a1e911",
+            "exit": 0
+          }
+        },
+        "ready": true,
+        "role": "persistent MIDI/health; bounded rawobserver cannot end this cohort",
+        "replaces": "session-1",
+        "ready_wall": 1793190077.459232,
+        "terminal_reason": "human_finished_stop",
+        "elapsed_monotonic": 57.93209204199957,
+        "ended_wall": 1793190135.278923,
+        "all_reaped": true
+      },
+      "paired_result": {
+        "controlA": true,
+        "controlB": true,
+        "controls_valid": true,
+        "private_callbacks": 2,
+        "private_packets": 2,
+        "native_callbacks": 1,
+        "native_packets": 1,
+        "native_CC": 1,
+        "unknown_callbacks": 0,
+        "cleanup": true,
+        "exit": 0,
+        "native_writes": 0
+      },
+      "CC_summary": [
+        "CC79 count=1 min=0 max=0 last=0"
+      ],
+      "health_samples": 555,
+      "health_bad": 0,
+      "groups_after": {
+        "paired": "absent",
+        "status": "absent"
+      },
+      "trace_prefix_limit": 64
+    }
+  },
+  "orchestration_limit": {
+    "cause": "rawobserverhard300scapendedfirstparent; replacementreadyafteroldended despiteintendedoverlap",
+    "impact": "firstobservesCC80ON andCC4fullrange; secondobservesonlyCC79OFF. Do NOTclaimall8MIDI/completeonoff/finalheel from these logs. No productiondriver fault inferred.",
+    "raw_end": {
+      "event": "watch_end",
+      "reason": "duration_cap",
+      "exit": 3,
+      "cursor": 5724,
+      "fresh_reports": 3198,
+      "gap_or_dropped": false,
+      "exact_count_inference_valid": false,
+      "record_budget_used_conservative": 4971,
+      "delivery_verdict": "NOT_TESTED"
+    },
+    "action": "all8MIDIcounts willbeverifiedaspartofnextalreadyplannedUSBrecovery; no repeatedguitar/listeningtest solelyforobservergap",
+    "parent_end_to_next_parent_start_gap_wall_seconds": 48.621330976486206,
+    "parent_end_to_next_ready_gap_wall_seconds": 48.733784198760986,
+    "boundary_precision": "Parent end/ready wall times, not exact CoreMIDI disconnect timestamps; neither implies continuous coverage."
+  },
+  "MIDI_observed": {
+    "first_CC4": {
+      "count": 1577,
+      "min": 0,
+      "max": 127,
+      "last": 19
+    },
+    "first_CC80": {
+      "count": 1,
+      "last": 127
+    },
+    "second_CC79": {
+      "count": 1,
+      "last": 0
+    },
+    "all8_counts": "INCOMPLETE_CAPTURE"
+  },
+  "clock_limit": "statushelperchecksinfo/error/cohortonly;clock_status/samplefieldsareplaceholdersnotclockmeasurement",
+  "source_changed": false,
+  "SIP": "enabled",
+  "feedback": {
+    "result": "PASS human odd/even patterns; OFF restored as prerequisite to successful releasedUSBtest",
+    "MIDI_accepted": 24,
+    "USB_write_count": "not inferred; mapper may coalesce LED snapshots",
+    "human_odd": "Yes \u2014 odd-numbered pattern matches",
+    "human_even": "Yes \u2014 even-numbered pattern matches",
+    "human_off": "ReleasedUSBtest startedallLEDoff; userconfirmed protocol passed",
+    "commands": {
+      ".build/native/build16-physical/feedback/even.json": "087fcf42ea54d06247e0b1de49f89ae3579b87a1997f3ed134a912fc699d59d2",
+      ".build/native/build16-physical/feedback/odd.json": "15eb98d975f0befef6121da0ca7db2ba1bc68eafbacf0fc1f67c87b55788326b",
+      ".build/native/build16-physical/feedback/off.json": "0921b7d5720247e652df4021dc1caaee1209d8c9acb6a64f0fe466d9c3538411"
+    }
+  },
+  "file_pins": {
+    ".build/native/build16-physical/session-1/paired.log": "0ced0b1a8f0a4fadbc3c4c92af29cfae0696bc9720def4519937c48a233eb02a",
+    ".build/native/build16-physical/session-1/session.json": "0cac9efed4e452bb66cfdafc5db3be8092c09f1e16d333e2af8f19930ef536c2",
+    ".build/native/build16-physical/session-1/status.log": "417b36a04d8b1fe2cae25d58fed80543ed23857882fc4bd61727529f5ef35838",
+    ".build/native/build16-physical/session-1/stop": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-physical/session-1/raw.log": "75ddb9e606b325bc94429347eb50f4a6961b5e0ca4e3e082c0f18f3e67c9c2c7",
+    ".build/native/build16-physical/session-2/paired.log": "7358a18b987d1269a705d3012b5014d5d7e17591ac41e8a75ee1107945be7dce",
+    ".build/native/build16-physical/session-2/session.json": "05318490af66d23d55e4315c0cac991801c5bae9c8af2a0370e37f738b960b0a",
+    ".build/native/build16-physical/session-2/status.log": "59ab6087ca258cbeb70fe6fbadb7e5af86ba1dc34231891c07e076fd18803b4c",
+    ".build/native/build16-physical/session-2/stop": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "additional_proof": "All8 MIDI outputs/fullpedal/postreconnect functionalPASS in subsequent usb-released-post-1; see Build16USBRecoveryValidation.json. Initialcapturegap remains recorded, not rewritten.",
+  "review": "Independent logs/pins/limits review PASS; parent-start vs readygap label corrected.",
+  "remaining_at_capture": "incomingLEDfeedbackpatterns,USBreleased/held,last-output,DIN/toe/externalfinitegates",
+  "followup_as_of_session_end": "Build16 physical/all8-MIDI/wah/LED, released+held USB recovery and bounded combined DIN echo PASS. See Build16USBRecoveryValidation.json, Build16OutputStopValidation.json and Build16DINValidation.json; wholeM3 remains open: NI last-output path not reached by diagnostic, toe/external and other finite qualification items unverified."
+}
