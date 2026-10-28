@@ -1,0 +1,84 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "status": "SUBMITTED_CASE_NUMBER_PENDING_EMAIL",
+  "submitted_once": true,
+  "submission_observed_UTC": "2026-10-28 22:41 UTC",
+  "destination": "https://developer.apple.com/contact/request/code-level-support/",
+  "subject": "AudioServerPlugIn: guaranteed last output-buffer detachment event while input continues",
+  "case_number": null,
+  "receipt_visible_text": "Your request has been sent. You will receive an email shortly with a case number from Apple Developer Technical Support.",
+  "submitted_fields": {
+    "subject": "AudioServerPlugIn: guaranteed last output-buffer detachment event while input continues",
+    "body": "I am porting a legacy duplex USB audio driver to native Apple silicon using AudioServerPlugIn. I need to preserve an existing cleanup rule: clear previously written output when the last host client buffer attached to the output stream detaches, even if input I/O continues. A notification would update ownership state; the existing eligible hardware-completion path would still perform the clear. I am seeking clarification of the published lifecycle contract before changing the driver.\n\n**Which documented event, if any, guarantees that the last output-stream client buffer has detached while input remains active?** In particular, is `kAudioStreamPropertyIsActive` associated with a host ownership transition, or solely stream configuration authored by the plug-in? Is another documented hook intended for this distinction? If none provides it, please clarify the intended output cleanup boundary when the host continues supplying a mixed-output transfer path. I am not assuming that stopping one public IOProc detaches the final output buffer.\n\nWe performed one bounded, counter-only comparison using two distinct `AudioDeviceIOProcID` registrations in one process. They used the same callback function with separate contexts. Registration A requested input enabled/output disabled; registration B requested input disabled/output enabled. The four `kAudioDevicePropertyIOProcStreamUsage` SET/readback values were respectively 1, 0, 0, 1. \u201cInput\u201d and \u201coutput\u201d below identify these requested logical roles; they do not establish exclusive physical directions.\n\nThe device's nominal sample rate read back as 44,100 Hz. The public buffer size was set to, and verified as, 128 frames. The sequence was:\n\n1. Create A and B, configure their usage, then start A and wait for progress.\n2. Start B and wait for both registrations to progress.\n3. Stop B and observe for approximately one second while A remains started.\n4. Restart B, stop B again, then stop A and destroy both registrations.\n\nDuring step 3, A's public callback progressed while B's public callback count remained at 1. The plug-in nevertheless received 362 additional `ReadInput` and 362 additional `WriteMix` operations. The plug-in's exposed output-stream `IsActive` value was 1 in all 18 samples; this was not independent ownership evidence. No plug-in `StartIO`/`StopIO` call or successful output-stream `IsActive` setter was recorded when B stopped or restarted. The plug-in `StartIO` occurred at the first A Start, and `StopIO` occurred after the final A Stop.\n\nThe plug-in observed one native device-client ID, correlated through its explicit client metadata to the collector process. This describes only the measured cohort; we do not assume that native client IDs map one-to-one to public IOProcIDs. Final counts were 370 native `ReadInput`, 370 native `WriteMix`, 370 public A callbacks and 4 public B callbacks. The collector's own API calls and checked cleanup succeeded.\n\nThe temporary instrumentation recorded lifecycle events and counters. Its public callbacks accessed no PCM, buffer contents or timestamps. Continued `WriteMix` is an observation of continued host output-transfer participation, not proof that zero output buffers were attached. We have not substituted callback silence, PID, elapsed time or aggregate device Start/Stop for an attachment count.\n\nSIP remained enabled. The temporary measurement driver was removed and the preceding driver restored after this capture. Current environment verified on 28 October 2026: Mac14,2, Apple M2, macOS 27.0.1 (26A434), Xcode 27.1 (27A9275), macOS SDK 27.0. The saved capture does not independently record the capture-time OS/Xcode versions. Sanitized collector source, lifecycle logs and the trace schema can be supplied, with the instrumentation dependency explained.\n\nFocused-project note (prepared for this request): OutputLifetimeAPIClient is a 178-line public-API extraction of the sequence above, not the original collector that produced the historical native counters. It builds independently and defaults to --help before any CoreAudio call. It contains no private journal reader or driver. TraceSummary.json preserves the existing native observations separately. No new live capture was performed. The source ZIP is ready to send in reply to the acknowledgement, as this form instructs.",
+    "steps": "Existing recorded sequence, 28 October 2026 (not a new live run for this submission):\n\n1. Use the one-device duplex AudioServerPlugIn test configuration, with one input stream and one output stream. The original collector checked that the device was idle, read a nominal rate of 44,100 Hz, and set/read back a public buffer size of 128 frames. It did not set the nominal sample rate.\n2. Create two distinct public AudioDeviceIOProcIDs A and B in the same process, using the same callback function with separate counter contexts.\n3. Set and read back kAudioDevicePropertyIOProcStreamUsage: A input=1/output=0; B input=0/output=1. These are requested roles, not proof of physical or native ownership.\n4. AudioDeviceStart(A); wait for public A progress.\n5. AudioDeviceStart(B); wait for both registrations to progress.\n6. AudioDeviceStop(B); keep A started and observe for approximately one second. Public B's counter remained 1 (delta 0), A progressed, and output IsActive was 1 in all 18 samples. Across the bracketing native snapshots, ReadInput and WriteMix both advanced from 2 to 364. No plug-in StartIO/StopIO call or successful output IsActive setter was recorded for B stopping/restarting.\n7. Restart B; wait for both registrations to progress; stop B again.\n8. Stop A, then destroy B and A. Only the final A stop corresponded to the plug-in StopIO in this cohort. Checked cleanup succeeded.\n\nProject scope: the prepared 178-line Xcode project extracts the public call sequence; it is not the original full collector. It omits the private journal reader, format/generation guards and original 128-frame setter/readback. Default Run is --help and makes no CoreAudio call. Build/help-only validation does not reproduce the live observation. Native counts in TraceSummary.json came from the original collector plus the external RK3/temporary build17 instrumentation, removed after capture; that driver is not included.",
+    "development_environment": "Xcode",
+    "development_Xcode_version": "27.1 (27A9275)",
+    "development_macOS_version": "27.0.1 (26A434)",
+    "runtime_configuration": [
+      "macOS"
+    ],
+    "runtime_macOS_version": "27.0.1 (26A434)",
+    "app_name": "OutputLifetimeAPIClient",
+    "apple_app_id": "",
+    "feedback_assistant_id": "",
+    "apple_person_requested_submission": false,
+    "focused_Xcode_project": true
+  },
+  "reviewed_original_body_words": 547,
+  "reviewed_body_preserved_exactly": true,
+  "submitted_body_sha256": "1da4a3786ef571db3d21e6ef032ccfa1f539c0a5ffe931cd6d7cb3e8ee5afef2",
+  "submitted_steps_sha256": "c8c29e3d888eacff497a51f188edc0e7f03b91a0eb6bed5e7b7a02c34d5f55d6",
+  "prepared_payload_sha256": "f00ffb6014edcd2f44bc730b176d6526eb93ee12cc2937f67bf098a54f3f69de",
+  "field_readback_sha256": "731d01657b76d423996869ac97bedf3da89857c3199d6dcb941bfbd236c27c78",
+  "attachments_at_initial_submission": [],
+  "source_attachment": {
+    "status": "PREPARED_NOT_SENT_AWAITING_ACKNOWLEDGEMENT",
+    "archive": ".build/ni/apple-support-submission/OutputLifetimeAPIClient.zip",
+    "sha256": "5034c1bf20fea172f1a20a76ab3485a4f697c9f67caf3c5bec1d5ef4dcce0cbf",
+    "bytes": 10986,
+    "files": {
+      "OutputLifetimeAPIClient.xcodeproj/project.pbxproj": "63a4b1a147bec191837e2e6f76c02e2e2e1428907080c005d0c24a43f6bf1f34",
+      "OutputLifetimeAPIClient.xcodeproj/xcshareddata/xcschemes/OutputLifetimeAPIClient.xcscheme": "c4c601ff43d4647167953b3dd722283e7e141bed40aa841979318670a20cdbb1",
+      "README.md": "6a285568c4ac4212ed2d00ae38ad29200d54efc22c7d1fa04f7fb5eafd77c2e1",
+      "SourceManifest.json": "f7bb7e5a1d76105697239f6df5e346b22e7c095d619a50b981c71e8a4efd1839",
+      "Sources/OutputLifetimeAPIClient.c": "f2efe7b33b501667caa1d20ced5fc62727dc20e0af78a86084a4546da54ba52d",
+      "TraceSummary.json": "f5f6d49d9ed31a80e5aab03e83804752585e76163c75698136f0f80b3efd8c24"
+    },
+    "total_source_lines": 178,
+    "guideline_source_lines": 250,
+    "guideline_zip_MB": 50,
+    "historical_summary_byte_identical": true,
+    "public_API_extraction_not_original_collector": true,
+    "native_trace_requires_removed_external_instrumentation": true,
+    "no_live_validation_of_new_extraction": true
+  },
+  "offline_validation": {
+    "build_exit": 0,
+    "help_exit": 0,
+    "live_invocation_executed": false,
+    "original_48_fixture_suite_not_claimed_for_extraction": true,
+    "independent_review": "PASS_project_source_scope_build_help_archive_payload_single_finding_corrected",
+    "review_correction": "Removed strict IsActive > 1 rejection from new public support sample; SDK flag permits any nonzero UInt32",
+    "validation_result_sha256": "5bba147a226897765123659065dfce786f63de18fc2c7aa83db9648c93b6ac97"
+  },
+  "private_receipt": {
+    "text": ".build/ni/apple-support-submission/submission-receipt.txt",
+    "text_sha256": "a8624e5854f7b5c675e6fe781f34aeaea8ff8c157055ba27e2f4947b4c6460c6",
+    "screenshot": ".build/ni/apple-support-submission/submission-receipt.png",
+    "screenshot_sha256": "80e96da582bda7ffd428140b0b99bc43c7ef4a5a00c21c5b6af642fa5374562f",
+    "not_uploaded_or_committed": true
+  },
+  "scope": {
+    "existing_trace_only": true,
+    "new_live_capture_or_driver_query": false,
+    "new_beads": 0,
+    "NI_ring_timing_recovery_changed": false,
+    "mappings_calibration_LED_policy_changed": false,
+    "SIP_or_security_settings_changed": false,
+    "driver_build_install_or_service_restart": false,
+    "support_source_build_only": true
+  },
+  "previous_draft_evidence": "ReverseEngineering/Evidence/AppleOutputLifecycleSupportDraft.json",
+  "parity_or_public_NULL_gate_resolved": false,
+  "M3_remains_in_progress": true
+}
