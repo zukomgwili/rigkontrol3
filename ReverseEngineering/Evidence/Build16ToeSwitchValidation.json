@@ -1,0 +1,78 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "candidate": "unchanged0.2.11/build16",
+  "result": "PASS_PHYSICAL_TOE_SWITCH",
+  "plan": "existing .3 toe source/observer readplan and frozen physicalsequence beforeprompt; immutable pairedconsumer reused",
+  "app": "GuitarRig closed/audioIOstopped throughouttoeactions, reopenedaftercapture; no new sound/mapping test",
+  "user": "Finished \u2014 two toe-switch presses and releases",
+  "sequence": "exactly2built-inexpressionpedal toe presses/fullreleases with2spause, heelreturn, nofoot1..8",
+  "source_contract": "Driver/Controller.c low9bit8 risingedge toggles channel1CC64; release emitsnone, CC4 pedalaxis preserved",
+  "MIDI": {
+    "4": {
+      "count": 68,
+      "min": 0,
+      "max": 127,
+      "last": 0
+    },
+    "64": {
+      "count": 2,
+      "min": 0,
+      "max": 127,
+      "last": 0
+    }
+  },
+  "physical_foot1to8_CC76to83_messages": 0,
+  "footer": {
+    "controlA": true,
+    "controlB": true,
+    "controls_valid": true,
+    "private_callbacks": 2,
+    "private_packets": 2,
+    "native_callbacks": 70,
+    "native_packets": 70,
+    "native_CC": 70,
+    "unknown_callbacks": 0,
+    "cleanup": true,
+    "exit": 0,
+    "native_writes": 0
+  },
+  "session": {
+    "parent": 21133,
+    "pid": 21134,
+    "pgid": 21134,
+    "started_wall": 1793196779.789885,
+    "cap_seconds": 900,
+    "argv": [
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/live-midi-delivery/paired-consumer",
+      "--live"
+    ],
+    "exe_sha256": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+    "ready": true,
+    "native_writes": 0,
+    "ready_wall": 1793196780.5128052,
+    "terminal_reason": "human_finished_stop",
+    "exit": 0,
+    "ended_wall": 1793196920.618193,
+    "elapsed_monotonic": 140.8293115409906,
+    "reaped": true
+  },
+  "owned_PIDs_absent": {
+    "parent": true,
+    "child": true
+  },
+  "limits": [
+    "First64packettrace isprefixonly; completeCCcounters are not truncated.",
+    "CC64 total2/min0/max127/final0 matches reportedtwoactions; no separate per-release timestamp marker or physical switch contact measurement.",
+    "No GuitarRigCC64assignment, toeLED/effect-state feedback, externalpedal orcombinedsound qualification claimed."
+  ],
+  "production_or_security_changes": false,
+  "file_pins": {
+    ".build/native/build16-ports/toe-1/paired.log": "bb55097abdd3ebbe475c86700acccc5bd560cc2fc252d2fa4662ed197bbb6487",
+    ".build/native/build16-ports/toe-1/session.json": "de7d01e964a2f50bd655655ea40db35e7dccf55b515d45a3be1c769f1fc36ad5",
+    ".build/native/build16-ports/toe-1/stop": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/paired-consumer": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+    ".build/native/live-midi-delivery/paired-consumer.c": "cdd2013158c9b2302f6bda8286e303a8def9bf52aaa65b5a9d0676e00aa2820b",
+    ".build/native/build16-recovery/capture.py": "547170aaf1a64cd15d6551d644cb16e96f6e66adfb610be39dbb7d3c64136362",
+    "Driver/Controller.c": "40bb5f5949d7a3e202f4c8bc2ede2987f6d4f6acd4085a19b94092c553dfe4d1"
+  }
+}
