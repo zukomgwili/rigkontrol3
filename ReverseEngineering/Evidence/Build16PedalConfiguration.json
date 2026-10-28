@@ -103,6 +103,44 @@
   "installed": "MIDI0.2.10/build15 and Audio0.2.8/build13 remain unchanged; not replaced in this work yet",
   "SIP": "enabled; unchanged",
   "physical_result": "NOT_RUN for build16; no firmware mode readback exists in recovered path; USB completion+mapper ack is not a physical-mode test",
-  "candidate": null,
-  "remaining": "build/freeze/verify signedpackage; administratorinstallation; existing M3 finitephysicalqualification; no newplanningbead"
+  "candidate": {
+    "source_commit": "6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+    "path": ".build/native/candidates/build16-pedals-6003e3f1e07e/drivers",
+    "version": "0.2.11/build16",
+    "manifest_sha256": "da76279fbe68c21b4d18189a146db8f8591baa177210849b83db6d122de833b3",
+    "file_count": 12,
+    "package_checks": {
+      "RigKontrol3Audio.driver": {
+        "version": "0.2.11",
+        "build": "16",
+        "identifier": "org.rigkontrol3.ni-arm.audio",
+        "arm64": true,
+        "strict_Apple_signature": true,
+        "executable_dsym_uuid": "AEBD29D4-1ED3-3156-9326-7E8B5F406BAF"
+      },
+      "RigKontrol3MIDI.plugin": {
+        "version": "0.2.11",
+        "build": "16",
+        "identifier": "org.rigkontrol3.ni-arm.midi",
+        "arm64": true,
+        "strict_Apple_signature": true,
+        "executable_dsym_uuid": "CDE3EF77-6195-3DED-8C5C-18927D401F2D"
+      },
+      "installed_15_13_unchanged": 12,
+      "manifest_sha256": "da76279fbe68c21b4d18189a146db8f8591baa177210849b83db6d122de833b3"
+    },
+    "factory_checks": {
+      "audio": "PASS actual package factory/type/COM, no Initialize",
+      "MIDI": "PASS actual package factory/type/COM, no Start",
+      "runner": ".build/native/pedal-settings/factory-only.c",
+      "runner_sha256": "022a551f60488f69d5a1d28ccf6bf0cffca966ad2521e93e5ac76a9fa789ff18"
+    },
+    "installer_check": "PASS exactidentities/arm64/strictApple signature/12hashentries; --check only",
+    "signing_log_sha256": "ab16ac779cdcfc6b2d0554b6d6f4d6cb482c526c75282558db42168d8dba13a1",
+    "provenance": ".build/native/candidates/build16-pedals-6003e3f1e07e/provenance.json",
+    "provenance_sha256": "0611efb1a652334c743c019de3b3772579ed18a8105528a96e589329fe79af52",
+    "review": "PASS independent package review: all20sourcepins/current+commit,18preservedpins/baseline,12manifestfiles,AppleDevelopment signatures,arm64,IDs/versions,dSYMUUID,runner-onlypathsubstitutions,rootloghashes; repeated --check/factory-only both PASS",
+    "installed": false
+  },
+  "remaining": "Administrator installation of exact frozen build16 source, then existing M3 finitephysicalqualification. M1/M3 remain open. No new planning-only issues."
 }
