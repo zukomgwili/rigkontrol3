@@ -61,23 +61,101 @@ static void test_axes(void) {
     analog(&state,&out,0,0,0);analog(&state,&out,0,0,512);
     message(&out,0,4,62); /* NI Float32 scaling plus normal nearest-even conversion. */
 }
+static void test_switch_pedals(void) {
+    RK3ControllerState state;rk3_controller_init(&state);Output out={0};
+    for(unsigned i=0;i<3;++i) assert(state.axes[i].sample_tip && !state.axes[i].as_switch);
+    assert(rk3_controller_set_pedal_mode(&state,2,false,true) == RK3_CONTROLLER_OK);
+    assert(!state.axes[2].sample_tip && state.axes[2].as_switch);
+    assert(rk3_controller_set_calibration(&state,2,0.4,0.9) == RK3_CONTROLLER_OK);
+    analog(&state,&out,0,0,900);double baseline=state.axes[2].last_value;
+    assert(out.count == 0 && state.axes[2].switch_first);
+    /* NI threshold is half the span, not low plus half the span. */
+    analog(&state,&out,0,0,512);message(&out,0,4,127);
+    assert(!state.axes[2].switch_inverted && !state.axes[2].switch_first);
+    analog(&state,&out,0,0,600);assert(out.count == 1);
+    analog(&state,&out,0,0,200);message(&out,1,4,0);
+    analog(&state,&out,0,0,100);assert(out.count == 2);
+    analog(&state,&out,0,0,300);message(&out,2,4,127);
+    assert(state.axes[2].last_value == baseline); /* Switch outputs do not update the double. */
+
+    rk3_controller_init(&state);memset(&out,0,sizeof(out));
+    assert(rk3_controller_set_pedal_mode(&state,2,true,true) == RK3_CONTROLLER_OK);
+    assert(rk3_controller_set_calibration(&state,2,0,512.0/1023) == RK3_CONTROLLER_OK);
+    analog(&state,&out,0,0,100);baseline=state.axes[2].last_value;
+    analog(&state,&out,0,0,256);message(&out,0,4,127); /* Equal threshold learns inversion. */
+    assert(state.axes[2].switch_inverted);
+    analog(&state,&out,0,0,257);message(&out,1,4,0);
+    analog(&state,&out,0,0,255);message(&out,2,4,127);
+    analog(&state,&out,0,0,255);assert(out.count == 3 && state.axes[2].last_value == baseline);
+
+    /* Both modes share 0.05 minimum span; continuous output additionally needs 0.1. */
+    for(unsigned switch_mode=0;switch_mode<2;++switch_mode) {
+        const double spans[]={0.049,0.05,0.099,0.1};
+        for(unsigned i=0;i<4;++i) {
+            rk3_controller_init(&state);memset(&out,0,sizeof(out));
+            assert(rk3_controller_set_pedal_mode(&state,2,true,switch_mode != 0) == RK3_CONTROLLER_OK);
+            assert(rk3_controller_set_calibration(&state,2,0,spans[i]) == RK3_CONTROLLER_OK);
+            analog(&state,&out,0,0,0);analog(&state,&out,0,0,1023);
+            assert(out.count == (switch_mode != 0 ? (i >= 1 ? 1u : 0u) : (i == 3 ? 1u : 0u)));
+            if(out.count != 0) message(&out,0,4,127);
+        }
+    }
+    rk3_controller_init(&state);memset(&out,0,sizeof(out));
+    assert(rk3_controller_set_pedal_mode(&state,2,true,true) == RK3_CONTROLLER_OK);
+    analog(&state,&out,0,0,0);RK3ControllerAxis saved=state.axes[2];out.fail=true;
+    const uint8_t switched[]={3,0,0,0,0,3,0xff};
+    assert(rk3_controller_report(&state,switched,sizeof(switched),emit,&out) == RK3_CONTROLLER_OUTPUT_FAILED);
+    assert(memcmp(&state.axes[2],&saved,sizeof(saved)) == 0 && out.count == 0);
+    out.fail=false;report(&state,&out,switched,sizeof(switched));message(&out,0,4,127);
+    assert(!state.axes[2].switch_first && state.axes[2].last_value == saved.last_value);
+}
 static void test_calibration(void) {
     RK3ControllerState state;rk3_controller_init(&state);Output out={0};double low,high;
-    assert(rk3_controller_set_calibration(&state,2,0.25,0.75) == RK3_CONTROLLER_OK);
-    analog(&state,&out,0,0,512);
+    assert(rk3_controller_set_calibration(&state,2,0.2,0.8) == RK3_CONTROLLER_OK);
+    analog(&state,&out,0,0,512);analog(&state,&out,0,0,700);
+    RK3ControllerAxis *axis=state.axes+2;double stored=axis->last_value;
+    assert(stored != 700.0/1023 && out.count == 1);
+    axis->switch_first=false;axis->switch_inverted=true;axis->switch_value=true;
     assert(rk3_controller_calibration_start(&state,2) == RK3_CONTROLLER_OK);
-    assert(rk3_controller_calibration_stop(&state,2) == RK3_CONTROLLER_CALIBRATION_INSUFFICIENT);
-    assert(rk3_controller_get_calibration(&state,2,&low,&high) == RK3_CONTROLLER_OK && low == 0.25 && high == 0.75);
-    assert(rk3_controller_calibration_start(&state,2) == RK3_CONTROLLER_OK);
-    analog(&state,&out,0,0,100);analog(&state,&out,0,0,900);assert(out.count == 0);
+    assert(axis->low == stored && axis->high == stored && axis->has_raw && axis->last_raw == 700);
+    assert(axis->collecting && !axis->initialized && axis->switch_first && !axis->switch_inverted && !axis->switch_value);
+    analog(&state,&out,0,0,700);assert(!axis->initialized && out.count == 1); /* Raw cache is retained. */
+    analog(&state,&out,0,0,100);
+    assert(axis->initialized && axis->low == stored && axis->high == stored && out.count == 1);
+    assert(axis->last_value == 100.0/1023); /* First changed sample establishes silent baseline only. */
+    analog(&state,&out,0,0,900);analog(&state,&out,0,0,100);
+    assert(out.count == 1 && axis->low == 100.0/1023 && axis->high == 900.0/1023);
+    RK3ControllerAxis before=*axis;before.collecting=false;
+    assert(rk3_controller_calibration_stop(&state,2) == RK3_CONTROLLER_OK);
+    assert(memcmp(axis,&before,sizeof(before)) == 0); /* Stop only clears the collection flag. */
+    analog(&state,&out,0,0,100);assert(out.count == 1);
+    analog(&state,&out,0,0,900);message(&out,1,4,127); /* No invented second baseline after stop. */
     assert(rk3_controller_calibration_stop(&state,2) == RK3_CONTROLLER_OK);
     assert(rk3_controller_get_calibration(&state,2,&low,&high) == RK3_CONTROLLER_OK);
     assert(low == 100.0/1023 && high == 900.0/1023);
-    analog(&state,&out,0,0,100);assert(out.count == 0);
-    analog(&state,&out,0,0,900);message(&out,0,4,127);
     assert(rk3_controller_calibration_start(&state,2) == RK3_CONTROLLER_OK);
-    analog(&state,&out,0,0,0);rk3_controller_reset_inputs(&state);
-    assert(state.axes[2].low == low && state.axes[2].high == high && !state.axes[2].collecting);
+    analog(&state,&out,0,0,0); /* First changed sample does not widen the seeded endpoints. */
+    assert(axis->low == 1 && axis->high == 1);
+    assert(rk3_controller_calibration_stop(&state,2) == RK3_CONTROLLER_OK);
+    assert(axis->low == 1 && axis->high == 1); /* No insufficient-range rollback in NI's stop. */
+    analog(&state,&out,0,0,1023);assert(out.count == 2);
+
+    /* Direct setters retain live calculation/collection state and allow finite legacy endpoints. */
+    assert(rk3_controller_calibration_start(&state,2) == RK3_CONTROLLER_OK);
+    RK3ControllerState expected=state;
+    expected.axes[2].low=-1;expected.axes[2].high=-1;
+    assert(rk3_controller_set_calibration(&state,2,-1,-1) == RK3_CONTROLLER_OK);
+    assert(memcmp(&state,&expected,sizeof(state)) == 0);
+    expected.axes[2].low=0.8;expected.axes[2].high=0.2;
+    assert(rk3_controller_set_calibration(&state,2,0.8,0.2) == RK3_CONTROLLER_OK);
+    assert(memcmp(&state,&expected,sizeof(state)) == 0);
+    expected.axes[2].sample_tip=false;expected.axes[2].as_switch=true;
+    assert(rk3_controller_set_pedal_mode(&state,2,false,true) == RK3_CONTROLLER_OK);
+    assert(memcmp(&state,&expected,sizeof(state)) == 0);
+    rk3_controller_reset_inputs(&state);
+    assert(axis->low == 0.8 && axis->high == 0.2 && !axis->collecting);
+    assert(!axis->initialized && !axis->has_raw && axis->switch_first && !axis->switch_inverted && !axis->switch_value);
+    assert(!axis->sample_tip && axis->as_switch);
 }
 static void test_feedback_and_leds(void) {
     RK3ControllerState state;rk3_controller_init(&state);Output out={0};
@@ -110,8 +188,11 @@ static void test_bounds_and_failures(void) {
     bytes[0]=6;assert(rk3_controller_report(&state,bytes,3,emit,&out) == RK3_CONTROLLER_NOT_CONTROLLER);
     assert(rk3_controller_set_calibration(&state,3,0,1) == RK3_CONTROLLER_INVALID_ARGUMENT);
     assert(rk3_controller_set_calibration(&state,2,NAN,1) == RK3_CONTROLLER_INVALID_ARGUMENT);
-    assert(rk3_controller_set_calibration(&state,2,0.8,0.2) == RK3_CONTROLLER_INVALID_ARGUMENT);
-    assert(rk3_controller_set_calibration(&state,2,0,0.05) == RK3_CONTROLLER_INVALID_ARGUMENT);
+    assert(rk3_controller_set_calibration(&state,2,0,INFINITY) == RK3_CONTROLLER_INVALID_ARGUMENT);
+    assert(rk3_controller_set_pedal_mode(&state,3,true,false) == RK3_CONTROLLER_INVALID_ARGUMENT);
+    assert(rk3_controller_set_pedal_mode(NULL,0,true,false) == RK3_CONTROLLER_INVALID_ARGUMENT);
+    assert(rk3_controller_calibration_start(&state,3) == RK3_CONTROLLER_INVALID_ARGUMENT);
+    assert(rk3_controller_calibration_stop(&state,3) == RK3_CONTROLLER_INVALID_ARGUMENT);
     assert(rk3_controller_feedback(&state,0xb0,76,128) == RK3_CONTROLLER_INVALID_ARGUMENT);
     assert(memcmp(&state,&saved,sizeof(state)) == 0);
     digital(&state,&out,0);out.fail=true;bytes[0]=4;bytes[1]=1;bytes[2]=0;
@@ -124,6 +205,6 @@ static void test_bounds_and_failures(void) {
     out.fail=false;report(&state,&out,half,7);message(&out,1,4,64);
 }
 int main(void) {
-    test_buttons_and_reconnect();test_axes();test_calibration();test_feedback_and_leds();test_bounds_and_failures();
-    puts("Controller: original CCs, input baselines, calibration, feedback/LEDs, bounds and failure retries passed.");return 0;
+    test_buttons_and_reconnect();test_axes();test_switch_pedals();test_calibration();test_feedback_and_leds();test_bounds_and_failures();
+    puts("Controller: original CCs, continuous/switch pedals, calibration lifecycle, input baselines, feedback/LEDs and failures passed.");return 0;
 }

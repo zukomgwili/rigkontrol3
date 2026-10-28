@@ -3,6 +3,7 @@
 #include "NativeHostUSB.h"
 #include "InputGain.h"
 #include "AudioTiming.h"
+#include "PedalSettings.h"
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOCFPlugIn.h>
 #include <IOKit/IOKitLib.h>
@@ -1503,7 +1504,8 @@ bool rk3_usb_command_for_generation(rk3_usb_session *session, const uint8_t *byt
     bool led = length == 9 && bytes[0] == RK3_COMMAND_WRITE_IO && bytes[1] == 0 &&
         bytes[2] == 0x40 && bytes[3] == 0x40 && bytes[4] == 0 &&
         bytes[6] <= 1 && bytes[7] == 0 && bytes[8] == 0;
-    if (!midi && !led) return false;
+    bool pedals = rk3_pedal_configuration_valid(bytes, length);
+    if (!midi && !led && !pedals) return false;
     pthread_mutex_lock(&session->mutex);
     bool valid_port = !midi || bytes[1] < session->status.info.midi_outputs;
     pthread_mutex_unlock(&session->mutex);

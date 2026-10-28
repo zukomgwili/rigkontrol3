@@ -13,11 +13,12 @@ typedef enum {
 } RK3ControllerResult;
 
 typedef struct {
-    double low,high,last_value,saved_low,saved_high;
+    double low,high,last_value;
     uint32_t last_raw;
     uint16_t raw_max;
     uint8_t midi_value;
     bool initialized,has_raw,automatic,collecting;
+    bool sample_tip,as_switch,switch_first,switch_inverted,switch_value;
 } RK3ControllerAxis;
 typedef struct {
     uint32_t signature;
@@ -46,14 +47,21 @@ RK3ControllerResult rk3_controller_feedback(RK3ControllerState *state,
  * 0..7/toe bit8; trailing00,00. Dirty remains set on failed synchronous write. */
 RK3ControllerResult rk3_controller_flush_leds(RK3ControllerState *state,
     bool force,RK3ControllerWrite write,void *context);
-/* Endpoints are normalized0..1, ordered with span>=0.1. get returns the current
- * endpoints (possibly unlearned -1 for external inputs); persist after stop.
- * Explicit collection suppresses that axis's MIDI. An insufficient sweep
- * restores its previous endpoints and reports CALIBRATION_INSUFFICIENT. */
+/* NI's per-pedal setters assign flags/endpoints without resetting calculation
+ * state. sample_tip selects hardware sampling; report pairs already contain
+ * that selected signal. The serialized owner applies the hardware setting.
+ * Native arguments reject invalid axes/nonfinite endpoints; finite sentinel,
+ * equal and reversed endpoints retain the original setter semantics. */
+RK3ControllerResult rk3_controller_set_pedal_mode(RK3ControllerState *state,
+    unsigned axis,bool sample_tip,bool as_switch);
 RK3ControllerResult rk3_controller_set_calibration(RK3ControllerState *state,
     unsigned axis,double low,double high);
 RK3ControllerResult rk3_controller_get_calibration(const RK3ControllerState *state,
     unsigned axis,double *low,double *high);
+/* Original explicit recalibration seeds endpoints from the stored continuous
+ * value, preserves the raw cache, and suppresses events while collecting.
+ * stop only clears collection: usable-range checks belong to a host utility.
+ * reset_inputs is the separate ARM history/lifetime baseline boundary. */
 RK3ControllerResult rk3_controller_calibration_start(RK3ControllerState *state,unsigned axis);
 RK3ControllerResult rk3_controller_calibration_stop(RK3ControllerState *state,unsigned axis);
 #endif

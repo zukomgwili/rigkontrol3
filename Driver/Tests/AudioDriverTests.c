@@ -13,6 +13,10 @@ static RK3InputGain mock_gain;
 
 static unsigned starts,stops,capture_calls,render_calls,opens,closes,output_active_changes;
 static unsigned spec_reads,identity_reads;
+static unsigned command_calls;
+static uint8_t command_bytes[64];
+static size_t command_length;
+static uint64_t command_generation;
 static int32_t mock_identity_error;
 static RK3NativeUSBIdentity mock_identity_value={
     .version=1,.generation=7,.attempted_mask=0xff,.defined_mask=0xff,
@@ -91,7 +95,9 @@ bool rk3_usb_reports(rk3_usb_session *s,const RK3NativeReportQuery *q,RK3NativeR
     (void)s;if(q->version!=1)return false;memset(r,0,sizeof(*r));r->version=1;return true;
 }
 bool rk3_usb_command_for_generation(rk3_usb_session *s,const uint8_t *b,size_t n,uint64_t generation,uint32_t timeout){
-    (void)s;(void)b;(void)n;(void)timeout;return generation==mock_generation;
+    assert(s==&mock_session&&n<=sizeof(command_bytes)&&timeout==500);
+    ++command_calls;memcpy(command_bytes,b,n);command_length=n;command_generation=generation;
+    return generation==mock_generation;
 }
 bool rk3_usb_clock(rk3_usb_session *s,rk3_usb_clock_snapshot *c){(void)s;*c=mock_clock;return true;}
 int32_t rk3_usb_audio_start(rk3_usb_session *s,uint32_t timeout){(void)s;(void)timeout;++starts;if(!fail_start)mock_running=true;return fail_start?-1:0;}
@@ -214,6 +220,38 @@ static void properties(void){
     CFDataRef valid_lease=CFDataCreate(NULL,(const UInt8 *)&lease,sizeof(lease));
     assert(table.SetPropertyData(driver,DEVICE,0,&a,sizeof(valid_lease),&valid_lease,sizeof(wrong),&wrong)==kAudioHardwareBadPropertySizeError);
     CFRelease(valid_lease);
+}
+/* Exact NI command0f packet, through the real CFData/HAL command boundary. */
+static void pedal_configuration_transport_test(void) {
+    RK3NativeCommandLease lease={1,0,mock_generation};
+    RK3NativeCommand command={1,33,{0x0f,2}};
+    for(unsigned ring=0;ring<8;++ring)for(unsigned switches=0;switches<8;++switches) {
+        command.bytes[2]=(uint8_t)ring;command.bytes[3]=(uint8_t)switches;
+        unsigned calls=command_calls;
+        assert(rk3_native_send_command(DEVICE,&lease,&command)==0&&command_calls==calls+1);
+        assert(command_length==33&&command_generation==lease.generation&&
+               !memcmp(command_bytes,command.bytes,33));
+    }
+    command.bytes[2]=command.bytes[3]=0;
+    unsigned calls=command_calls;
+    for(size_t index=0;index<33;++index) {
+        uint8_t saved=command.bytes[index];
+        command.bytes[index]=index==2||index==3?8:(uint8_t)(saved^1);
+        assert(rk3_native_send_command(DEVICE,&lease,&command)==kAudioHardwareIllegalOperationError);
+        assert(command_calls==calls);command.bytes[index]=saved;
+    }
+    for(uint32_t length=0;length<=65;++length) {
+        if(length==33)continue;
+        command.length=length;
+        assert(rk3_native_send_command(DEVICE,&lease,&command)==kAudioHardwareIllegalOperationError);
+        assert(command_calls==calls);
+    }
+    command.length=33;command.version=2;
+    assert(rk3_native_send_command(DEVICE,&lease,&command)==kAudioHardwareIllegalOperationError&&command_calls==calls);
+    command.version=1;lease.generation=0;
+    assert(rk3_native_send_command(DEVICE,&lease,&command)!=0);
+    lease.generation=mock_generation+1;
+    assert(rk3_native_send_command(DEVICE,&lease,&command)!=0&&command_generation==lease.generation);
 }
 /* Tracer through NativeClient's CFData bridge into the production HAL table. */
 static void input_gain_transport_test(void) {
@@ -914,6 +952,6 @@ static void rate_handshake(void) {
 }
 int main(void){
     assert(RK3AudioFactory(NULL,kAudioServerPlugInTypeUUID)==driver);
-    rk3_input_gain_init(&mock_gain);usb=&mock_session;usb_identity_property_test();usb_identity_raw_transport_test();usb_identity_client_test();usb_identity_client_header_test();usb_identity_client_field_test();usb_identity_partial_and_status_test();usb_identity_client_envelope_test();usb_identity_property_validation_test();spec_property_transport_test();spec_domain_reply_test();spec_client_transport_test();spec_client_invalid_reply_test();spec_metadata_and_query_test();spec_native_status_test();spec_client_response_matrix_test();spec_initialization_lifetime_test();usb_identity_initialization_lifetime_test();properties();input_gain_transport_test();audio();stream_activity();panic_handshake();rate_metadata_test();rate_handshake();assert(opens==2&&closes==2);
+    rk3_input_gain_init(&mock_gain);usb=&mock_session;usb_identity_property_test();usb_identity_raw_transport_test();usb_identity_client_test();usb_identity_client_header_test();usb_identity_client_field_test();usb_identity_partial_and_status_test();usb_identity_client_envelope_test();usb_identity_property_validation_test();spec_property_transport_test();spec_domain_reply_test();spec_client_transport_test();spec_client_invalid_reply_test();spec_metadata_and_query_test();spec_native_status_test();spec_client_response_matrix_test();spec_initialization_lifetime_test();usb_identity_initialization_lifetime_test();properties();pedal_configuration_transport_test();input_gain_transport_test();audio();stream_activity();panic_handshake();rate_metadata_test();rate_handshake();assert(opens==2&&closes==2);
     puts("Audio driver: host ABI, CFData, NI timing, addressed PCM, lifecycle, clock and panic handshake passed");return 0;
 }

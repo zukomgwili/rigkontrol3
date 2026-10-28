@@ -21,6 +21,8 @@
 #include "NativeControl.h"
 #include "NativeClient.h"
 #include "Controller.h"
+#include "PedalSettings.h"
+#include <errno.h>
 
 enum { OUTPUT_SLOTS = 256, OUTPUT_BYTES = OUTPUT_SLOTS * 8,
        MAX_SEND_PACKETS = 256, MAX_AUDIO_DEVICES = 4096 };
@@ -45,8 +47,16 @@ typedef struct {
     uint64_t generation;
     uint64_t lifecycle_epoch;
     RK3NativeCommand command;
-    uint32_t kind; /* 0: USB command; 1: controller feedback bytes */
+    uint32_t kind; /* 0: USB command; 1: controller feedback bytes; 2: pedal settings */
+    uint64_t pedal_revision;
+    RK3PedalSettings pedal_settings;
 } OutputEntry;
+typedef struct {
+    OutputEntry entry;
+    uint64_t after_sequence;
+    int32_t error;
+    bool attempted,wire_known;
+} PedalCompletion;
 
 typedef struct {
     MIDIDriverInterface *interface; /* MIDIDriverRef points at this first member. */
@@ -74,8 +84,21 @@ typedef struct {
     RK3MIDIStream feedback_parser;
     uint64_t controller_generation, controller_epoch, controller_after_sequence;
     bool controller_force_leds;
-    atomic_uint_fast64_t calibration;
-    uint64_t applied_calibration;
+    /* Desired/applied settings cross server-main and I/O only under state_lock.
+     * Mapper mutation and the attempt calendar remain on the I/O run loop. */
+    RK3PedalSettings pedal_requested;
+    RK3PedalStatus pedal_status,pedal_published;
+    bool pedal_has_published;
+    uint64_t pedal_revision;
+    uint64_t pedal_attempt_revision,pedal_attempt_generation,pedal_attempt_epoch,pedal_applied_generation;
+    uint64_t pedal_wire_generation,pedal_after_sequence;
+    AudioDeviceID pedal_wire_device,pedal_attempt_device;
+    uint32_t pedal_wire_ring,pedal_wire_switch;
+    bool pedal_attempt_success,pedal_wire_known;
+    bool pedal_inflight,pedal_completion_ready; /* state_lock; one existing-worker command */
+    PedalCompletion pedal_completion; /* worker -> I/O, state_lock */
+    RK3PedalSettings pedal_applied;
+    bool pedal_has_applied;
     OutputEntry feedback[OUTPUT_SLOTS];
     atomic_uint_fast64_t feedback_read, feedback_write;
     atomic_flag feedback_consumer;
@@ -287,6 +310,7 @@ static OSStatus bind_controller(Driver *driver,MIDIDeviceRef device) {
     pthread_mutex_lock(&driver->state_lock);
     if(driver->remembered_controller_source!=source) atomic_store(&driver->controller_enabled,false);
     driver->remembered_controller_source=source;
+    if(driver->controller_device!=device)driver->pedal_has_published=false;
     driver->controller_device = device; driver->controller_source = source; driver->controller_destination = destination;
     pthread_mutex_unlock(&driver->state_lock);
     return noErr;
@@ -324,22 +348,61 @@ static OSStatus ensure_controller(Driver *driver) {
     MIDIDeviceListDispose(list);return result;
 }
 
-static void poll_calibration(Driver *driver) {
-    if (driver->controller_device == 0) return;
-    CFDataRef data = NULL;
-    OSStatus result = MIDIObjectGetDataProperty(driver->controller_device,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY),&data);
-    if (result == kMIDIUnknownProperty) {
-        uint32_t initial[4]={1,2,(uint32_t)(atomic_load(&driver->calibration)>>32),(uint32_t)atomic_load(&driver->calibration)};
-        data=CFDataCreate(NULL,(const UInt8 *)initial,sizeof(initial));
-        if(data != NULL) (void)MIDIObjectSetDataProperty(driver->controller_device,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY),data);
-    }
-    if (data != NULL) {
-        if(CFDataGetLength(data)==16) {
-            uint32_t values[4];memcpy(values,CFDataGetBytePtr(data),sizeof(values));
-            if(values[0]==1&&values[1]==2&&values[2]<=1023&&values[3]<=1023&&values[3]>=values[2]&&values[3]-values[2]>=103)
-                atomic_store_explicit(&driver->calibration,((uint64_t)values[2]<<32)|values[3],memory_order_release);
+static void poll_pedal_settings(Driver *driver,AudioDeviceID device,uint64_t generation) {
+    if(driver->controller_device==0)return;
+    CFDataRef data=NULL;
+    OSStatus result=MIDIObjectGetDataProperty(driver->controller_device,
+        CFSTR(RK3_CONTROLLER_PEDAL_SETTINGS_KEY),&data);
+    if(result==kMIDIUnknownProperty) {
+        RK3PedalSettings initial=rk3_pedal_settings_initial();
+        /* Import the previous native built-in calibration once. The new
+         * coherent property thereafter owns all three pedals' saved settings. */
+        CFDataRef legacy=NULL;
+        if(MIDIObjectGetDataProperty(driver->controller_device,
+            CFSTR(RK3_CONTROLLER_CALIBRATION_KEY),&legacy)==noErr&&legacy) {
+            if(CFDataGetLength(legacy)==16) {
+                uint32_t old[4];memcpy(old,CFDataGetBytePtr(legacy),sizeof(old));
+                if(old[0]==1&&old[1]==2&&old[2]<=1023&&old[3]<=1023&&
+                   old[3]>=old[2]&&old[3]-old[2]>=103) {
+                    initial.low[2]=(float)old[2]/1023.0f;
+                    initial.high[2]=(float)old[3]/1023.0f;
+                }
+            }
+            CFRelease(legacy);
         }
-        CFRelease(data);
+        data=CFDataCreate(NULL,(const UInt8 *)&initial,sizeof(initial));
+        result=data?MIDIObjectSetDataProperty(driver->controller_device,
+            CFSTR(RK3_CONTROLLER_PEDAL_SETTINGS_KEY),data):(OSStatus)ENOMEM;
+    }
+    if(result==noErr&&data) {
+        RK3PedalSettings requested;
+        bool valid_data=CFDataGetLength(data)==sizeof(requested);
+        if(valid_data)memcpy(&requested,CFDataGetBytePtr(data),sizeof(requested));
+        valid_data=valid_data&&rk3_pedal_settings_valid(&requested);
+        pthread_mutex_lock(&driver->state_lock);
+        if(valid_data) {
+            if(driver->pedal_revision==0||driver->pedal_status.status==EINVAL||
+               memcmp(&requested,&driver->pedal_requested,sizeof(requested))) {
+                driver->pedal_requested=requested;++driver->pedal_revision;
+                driver->pedal_status=(RK3PedalStatus){.version=1,.status=EINPROGRESS,
+                    .generation=generation,.audio_device=device,.settings=requested};
+            }
+        } else driver->pedal_status.status=EINVAL;
+        pthread_mutex_unlock(&driver->state_lock);
+    }
+    if(data)CFRelease(data);
+    pthread_mutex_lock(&driver->state_lock);
+    RK3PedalStatus status=driver->pedal_status;
+    pthread_mutex_unlock(&driver->state_lock);
+    if(!driver->pedal_has_published||memcmp(&status,&driver->pedal_published,sizeof(status))) {
+        data=CFDataCreate(NULL,(const UInt8 *)&status,sizeof(status));
+        if(data) {
+            if(MIDIObjectSetDataProperty(driver->controller_device,
+                CFSTR(RK3_CONTROLLER_PEDAL_STATUS_KEY),data)==noErr) {
+                driver->pedal_published=status;driver->pedal_has_published=true;
+            }
+            CFRelease(data);
+        }
     }
 }
 
@@ -362,7 +425,16 @@ static void refresh_topology(Driver *driver) {
     if (usable) {
         OSStatus result = ensure_device(driver,&info);
         if (result == noErr) result = ensure_controller(driver);
-        if (result == noErr) poll_calibration(driver);
+        if (result == noErr) {
+            pthread_mutex_lock(&driver->state_lock);
+            if(atomic_load(&driver->audio_device)!=device||atomic_load(&driver->generation)!=info.generation) {
+                driver->pedal_status=(RK3PedalStatus){.version=1,.status=EINPROGRESS,
+                    .generation=info.generation,.audio_device=device,.settings=driver->pedal_requested};
+                driver->pedal_has_published=false;
+            }
+            pthread_mutex_unlock(&driver->state_lock);
+            poll_pedal_settings(driver,device,info.generation);
+        }
         if (result != noErr) {
             if (driver->last_setup_error != result) fprintf(stderr,"RK3 MIDI setup failed: %d\n",(int)result);
             driver->last_setup_error = result;
@@ -495,12 +567,130 @@ static void prepare_controller(Driver *driver,const RK3NativeInfo *info,uint64_t
                 &(ControllerDelivery){.permitted=false});
         }
     }
-    uint64_t calibration=atomic_load_explicit(&driver->calibration,memory_order_acquire);
-    if(calibration!=driver->applied_calibration) {
-        (void)rk3_controller_set_calibration(&driver->controller,2,
-            (double)(calibration>>32)/1023.0,(double)(uint32_t)calibration/1023.0);
-        driver->applied_calibration=calibration;
+
+}
+static bool pedal_cohort_current(Driver *driver,AudioDeviceID device,uint64_t generation,uint64_t epoch) {
+    return atomic_load(&driver->online)&&atomic_load(&driver->audio_device)==device&&
+        atomic_load(&driver->generation)==generation&&atomic_load(&driver->lifecycle_epoch)==epoch;
+}
+static void pedal_result(Driver *driver,uint64_t revision,AudioDeviceID device,uint64_t generation,uint64_t epoch,
+                         const RK3PedalSettings *settings,int32_t error) {
+    pthread_mutex_lock(&driver->state_lock);
+    if(driver->pedal_revision==revision&&driver->pedal_status.status!=EINVAL&&
+       pedal_cohort_current(driver,device,generation,epoch))
+        driver->pedal_status=(RK3PedalStatus){.version=1,.status=error,
+            .generation=generation,.audio_device=device,.settings=*settings};
+    pthread_mutex_unlock(&driver->state_lock);
+}
+static void commit_pedal_settings(Driver *driver,const RK3PedalSettings *requested,
+                                   uint64_t generation,uint64_t after) {
+    for(unsigned i=0;i<3;++i) {
+        (void)rk3_controller_set_pedal_mode(&driver->controller,i,
+            (requested->ring_mask&(1u<<i))==0,(requested->switch_mask&(1u<<i))!=0);
+        if(!driver->pedal_has_applied||requested->low[i]!=driver->pedal_applied.low[i]||
+           requested->high[i]!=driver->pedal_applied.high[i])
+            (void)rk3_controller_set_calibration(&driver->controller,i,requested->low[i],requested->high[i]);
     }
+    driver->pedal_applied=*requested;driver->pedal_has_applied=true;
+    driver->pedal_applied_generation=generation;
+    if(after>driver->pedal_after_sequence)driver->pedal_after_sequence=after;
+    driver->pedal_attempt_success=true;
+}
+/* I/O owns mapper mutations. The existing output worker performs the bounded
+ * USB operation and publishes a copied completion; no USB wait enters I/O. */
+static bool apply_pedal_settings(Driver *driver,AudioDeviceID device,const RK3NativeInfo *info,uint64_t epoch,uint64_t latest) {
+    pthread_mutex_lock(&driver->state_lock);
+    uint64_t revision=driver->pedal_revision;
+    RK3PedalSettings requested=driver->pedal_requested;
+    bool completed=driver->pedal_completion_ready,inflight=driver->pedal_inflight;
+    PedalCompletion completion=driver->pedal_completion;
+    driver->pedal_completion_ready=false;
+    pthread_mutex_unlock(&driver->state_lock);
+    if(driver->pedal_wire_device!=device||driver->pedal_wire_generation!=info->generation) {
+        /* The existing owner initialization establishes all-tip/continuous. */
+        driver->pedal_wire_device=device;driver->pedal_wire_generation=info->generation;driver->pedal_wire_known=true;
+        driver->pedal_wire_ring=driver->pedal_wire_switch=0;driver->pedal_after_sequence=0;
+    }
+    if(completed&&completion.entry.audio_device==device&&completion.entry.generation==info->generation) {
+        /* Even a superseded revision may have changed the real device. Keep
+         * that knowledge so a new default request cannot skip its restore. */
+        if(completion.attempted) {
+            driver->pedal_wire_known=completion.wire_known;
+            if(completion.wire_known) {
+                driver->pedal_wire_ring=completion.entry.pedal_settings.ring_mask;
+                driver->pedal_wire_switch=completion.entry.pedal_settings.switch_mask;
+                if(completion.after_sequence>driver->pedal_after_sequence)
+                    driver->pedal_after_sequence=completion.after_sequence;
+            }
+        }
+        if(completion.entry.lifecycle_epoch==epoch&&completion.entry.pedal_revision==revision) {
+            driver->pedal_attempt_success=false;
+            if(completion.error==0&&pedal_cohort_current(driver,device,info->generation,epoch)) {
+                commit_pedal_settings(driver,&requested,info->generation,completion.after_sequence);
+                pedal_result(driver,revision,device,info->generation,epoch,&requested,0);
+            } else pedal_result(driver,revision,device,info->generation,epoch,&requested,EIO);
+        }
+    }
+    if(!revision)return true;
+    if(inflight)return false;
+    if(driver->pedal_attempt_revision==revision&&driver->pedal_attempt_device==device&&
+       driver->pedal_attempt_generation==info->generation&&
+       driver->pedal_attempt_epoch==epoch)return driver->pedal_attempt_success;
+    driver->pedal_attempt_revision=revision;driver->pedal_attempt_device=device;
+    driver->pedal_attempt_generation=info->generation;
+    driver->pedal_attempt_epoch=epoch;driver->pedal_attempt_success=false;
+    bool hardware_change=!driver->pedal_wire_known||requested.ring_mask!=driver->pedal_wire_ring||
+        requested.switch_mask!=driver->pedal_wire_switch;
+    if(hardware_change) {
+        OutputEntry entry={.audio_device=device,.generation=info->generation,.lifecycle_epoch=epoch,
+            .command={.version=RK3_CONTROL_VERSION,.length=33},.kind=2,
+            .pedal_revision=revision,.pedal_settings=requested};
+        rk3_pedal_configuration(&requested,entry.command.bytes);
+        bool previous_wire_known=driver->pedal_wire_known;
+        driver->pedal_wire_known=false; /* an interrupted submission may have changed hardware */
+        pthread_mutex_lock(&driver->state_lock);driver->pedal_inflight=true;pthread_mutex_unlock(&driver->state_lock);
+        pedal_result(driver,revision,device,info->generation,epoch,&requested,EINPROGRESS);
+        if(!queue_entry(driver,&entry)) {
+            driver->pedal_wire_known=previous_wire_known; /* nothing was admitted */
+            pthread_mutex_lock(&driver->state_lock);driver->pedal_inflight=false;pthread_mutex_unlock(&driver->state_lock);
+            pedal_result(driver,revision,device,info->generation,epoch,&requested,EIO);
+        }
+        return false;
+    }
+    if(!pedal_cohort_current(driver,device,info->generation,epoch)) {
+        pedal_result(driver,revision,device,info->generation,epoch,&requested,EIO);return false;
+    }
+    commit_pedal_settings(driver,&requested,info->generation,latest);
+    pedal_result(driver,revision,device,info->generation,epoch,&requested,0);return true;
+}
+/* Existing worker only: acknowledge the actual write and a fresh history
+ * barrier from that hardware generation. Stop cancels the logical cohort but
+ * successful wire-mask knowledge survives for the resumed I/O lifetime. */
+static void perform_pedal_command(Driver *driver,const OutputEntry *entry) {
+    PedalCompletion completion={.entry=*entry,.error=ECANCELED};
+    if(pedal_cohort_current(driver,entry->audio_device,entry->generation,entry->lifecycle_epoch)) {
+        completion.attempted=true;
+        RK3NativeCommandLease lease={RK3_CONTROL_VERSION,0,entry->generation};
+        OSStatus error=rk3_native_send_command(entry->audio_device,&lease,&entry->command);
+        if(error==noErr) {
+            RK3NativeReportQuery query={RK3_CONTROL_VERSION,0,0};RK3NativeReports reports;
+            RK3NativeInfo current;
+            bool valid=rk3_native_copy_reports(entry->audio_device,&query,&reports)==noErr&&
+                reports.version==RK3_CONTROL_VERSION&&reports.count<=RK3_NATIVE_REPORT_LIMIT&&
+                reports.next_sequence<=reports.latest_sequence&&read_info(entry->audio_device,&current)&&
+                current.generation==entry->generation&&(current.flags&RK3_NATIVE_CONNECTED)&&
+                !(current.flags&RK3_NATIVE_FAILED);
+            if(valid) {
+                completion.after_sequence=reports.latest_sequence;completion.wire_known=true;
+                completion.error=0;
+            } else completion.error=EIO;
+        } else completion.error=EIO;
+        if(!pedal_cohort_current(driver,entry->audio_device,entry->generation,entry->lifecycle_epoch))
+            completion.error=ECANCELED;
+    }
+    pthread_mutex_lock(&driver->state_lock);
+    driver->pedal_completion=completion;driver->pedal_completion_ready=true;driver->pedal_inflight=false;
+    pthread_mutex_unlock(&driver->state_lock);
 }
 static void drain_feedback(Driver *driver,const Delivery *delivery) {
     if(atomic_flag_test_and_set_explicit(&driver->feedback_consumer,memory_order_acquire))return;
@@ -569,6 +759,7 @@ static void input_tick(CFRunLoopTimerRef timer, void *context) {
     Delivery controls = {driver,device,generation,epoch,atomic_load(&driver->controller_listener_epoch),driver->controller_source,false,true};
     pthread_mutex_unlock(&driver->state_lock);
     prepare_controller(driver,&info,epoch,batch.latest_sequence,true);
+    bool pedals_ready=apply_pedal_settings(driver,device,&info,epoch,batch.latest_sequence);
     drain_feedback(driver,&controls);
     if (batch.dropped != 0) {
         rk3_midi_stream_reset(&driver->parser);rk3_controller_reset_inputs(&driver->controller);
@@ -578,6 +769,7 @@ static void input_tick(CFRunLoopTimerRef timer, void *context) {
         if (!atomic_load(&driver->online)||atomic_load(&driver->generation)!=generation||atomic_load(&driver->lifecycle_epoch)!=epoch) break;
         const RK3NativeReport *report = &batch.reports[index];
         if(report->length!=0&&(report->bytes[0]==3||report->bytes[0]==4)) {
+            if(report->bytes[0]==3&&(!pedals_ready||report->sequence<=driver->pedal_after_sequence))continue;
             if(report->sequence>driver->controller_after_sequence) {
                 ControllerDelivery context={controls,report->host_time?report->host_time:mach_absolute_time(),report->sequence>controller_min};
                 (void)rk3_controller_report(&driver->controller,report->bytes,report->length,emit_controller,&context);
@@ -615,6 +807,7 @@ static void *output_worker(void *context) {
         }
         OutputEntry entry = driver->output[read % OUTPUT_SLOTS];
         atomic_store_explicit(&driver->output_read,read+1,memory_order_release);
+        if(entry.kind==2) {perform_pedal_command(driver,&entry);continue;}
         if (!atomic_load_explicit(&driver->online,memory_order_acquire) ||
             atomic_load_explicit(&driver->audio_device,memory_order_acquire) != entry.audio_device ||
             atomic_load_explicit(&driver->generation,memory_order_acquire) != entry.generation ||
@@ -762,6 +955,7 @@ static OSStatus stop_driver(MIDIDriverRef self) {
     driver->destination = 0;
     driver->controller_device=0;driver->controller_source=0;driver->controller_destination=0;
     driver->baseline_pending = false;
+    driver->pedal_inflight=false; /* joined worker or cancelled, discarded queue entry */
     pthread_mutex_unlock(&driver->state_lock);
     return noErr;
 }
@@ -878,14 +1072,16 @@ static OSStatus send_packets(MIDIDriverRef self, const MIDIPacketList *packets, 
             command.bytes[command.length++] = packet->data[byte];
             ++command.bytes[2];
             if (command.bytes[2] == 8) {
-                driver->output[write++ % OUTPUT_SLOTS] = (OutputEntry){audio_device,generation,epoch,command,port != NULL ? 1u : 0u};
+                driver->output[write++ % OUTPUT_SLOTS] = (OutputEntry){.audio_device=audio_device,.generation=generation,.lifecycle_epoch=epoch,
+                    .command=command,.kind=port != NULL ? 1u : 0u};
                 memset(command.bytes+3,0,8);
                 command.length = 3; command.bytes[2] = 0;
             }
         }
         packet = MIDIPacketNext(packet);
     }
-    if (command.bytes[2] != 0) driver->output[write++ % OUTPUT_SLOTS] = (OutputEntry){audio_device,generation,epoch,command,port != NULL ? 1u : 0u};
+    if (command.bytes[2] != 0) driver->output[write++ % OUTPUT_SLOTS] = (OutputEntry){.audio_device=audio_device,.generation=generation,.lifecycle_epoch=epoch,
+                    .command=command,.kind=port != NULL ? 1u : 0u};
     OSStatus result = noErr;
     if (!atomic_load_explicit(&driver->online,memory_order_acquire) ||
         atomic_load_explicit(&driver->audio_device,memory_order_acquire) != audio_device ||
@@ -916,7 +1112,9 @@ void *RK3MIDIDriverFactory(CFAllocatorRef allocator, CFUUIDRef type) {
     atomic_init(&driver->source_enabled,false);
     atomic_init(&driver->controller_enabled,false);atomic_init(&driver->controller_listener_epoch,0);
     driver->controller_enable_epoch=UINT64_MAX;
-    atomic_init(&driver->calibration,1023);driver->applied_calibration=UINT64_MAX;
+    driver->pedal_requested=rk3_pedal_settings_initial();
+    driver->pedal_status=(RK3PedalStatus){.version=1,.status=EINPROGRESS,
+        .settings=driver->pedal_requested};
     atomic_init(&driver->feedback_read,0);atomic_init(&driver->feedback_write,0);atomic_flag_clear(&driver->feedback_consumer);
     rk3_controller_init(&driver->controller);rk3_midi_stream_reset(&driver->feedback_parser);
     atomic_init(&driver->parser_reset,true);

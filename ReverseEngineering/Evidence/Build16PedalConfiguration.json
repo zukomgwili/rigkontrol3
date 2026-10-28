@@ -1,0 +1,108 @@
+{
+  "bead": "rigkontrol3-40h.2",
+  "created_utc": "2026-10-28T11:56:40.677380+00:00",
+  "version": "0.2.11/build16",
+  "baseline_commit": "0950a300e3267860d632ec5d5c484e48c8b37088",
+  "scope": "original NI Tip/Ring/Switch and calibration semantics; minimal native settings/owner binding",
+  "plans_before_code": "ReverseEngineering/Evidence/TipSwitchCalibrationContract.json",
+  "source_pins": {
+    "Driver/Controller.c": "40bb5f5949d7a3e202f4c8bc2ede2987f6d4f6acd4085a19b94092c553dfe4d1",
+    "Driver/Controller.h": "89d3dff30f1b10d1898dcfad9678f44356f5fbc0a3c994566fb982892e50b93f",
+    "Driver/Tests/ControllerTests.c": "dc371efa567981dd0c380c08e2448c03ccf466ca2e03457dd88f09b3a0d97162",
+    "Driver/PedalSettings.h": "8e6c58afb8f6abe64a5524dfd1506241699ac521c5942bafa724216e42ed0d09",
+    "Driver/MIDI/RK3MIDIDriver.c": "ac12d108642c7314c9344145a9403e2c901349adead66dd03de77ea8e8db7810",
+    "Driver/MIDI/RK3MIDIDriverTests.c": "867882dccdf73d48bdd035ad93a5e86c70e875e7a5752d3ed0f06be7f5474893",
+    "Driver/NativeControl.h": "18ae01e359747f35b176862e4e679ca2a31f588f155a0e66e516894f4421ec35",
+    "Driver/NativeUSB.c": "cf9df3fadf431660e07a0986a7c8d1ff49efa44ff1e2a1200db55dfb3387704e",
+    "Driver/Audio/RK3AudioDriver.c": "4e67a30d7d8419ba146098ad80f6d3ddb3edc81e04dd072e77c05d33f7eeb10a",
+    "Driver/Audio/Info.plist": "c22de31c189dfe40e12d6486994d364058ea28784ac1bbb56f17a7332b19d28e",
+    "Driver/MIDI/Info.plist": "132d03386308e1f798cfe1f7927ed96ac5d48b42235ab484876c0ab954c69496",
+    "Driver/Tests/NativeUSBTests.c": "6d71f5affd9ded2fe0f97e429dd4e99a0041e4f57a142e37c675fe5ec3ae3444",
+    "Driver/Tests/AudioDriverTests.c": "2f0131473b8052c67799512b482208b521deab1b5b9a1a151af36ad45d1af9fc",
+    "Tools/rk3-calibrate.c": "bed31329c6efa8d57ca9549218e089c82fd95ff47c013864514b2c2938332188",
+    "Tools/rk3-pedals.c": "89939dcc4444fc62b4a5f7df1808fdddf7302e1def2acaebceddf0e49f3b99d5",
+    "Tools/rk3-pedal-tools-tests.c": "5cd507933c423dbb51dc71dfab75a2277bf8650ba17609a2de67200c8f5287da",
+    "Tools/build-native.sh": "1a17e5709ca11b7fac1a64bd30de7d0f09e8680f3a766574ec77ce4b39d10957",
+    "README.md": "a52b4b93c56522657a77d330ed606400e6326f2c6e753ca76897f19417e1a235",
+    "ReverseEngineering/TipSwitchCalibrationContract.md": "e19ef43aeca4f7f6a9220f8041d85d6429ae3f11402fa054b37aa7d5b4ed3c99",
+    "ReverseEngineering/Evidence/TipSwitchCalibrationContract.json": "3d7cfd78c57f8146f862271694de94529e68aa97c54cfa3e8602355dc50e31b3"
+  },
+  "preserved_source_pins": {
+    "Driver/AudioClock.c": "b8ee00b61446c9231b1401b3d7a79cf196eb162343b0941d00757867dbe4f062",
+    "Driver/AudioClock.h": "edbbbd75216e6a43a771de75e50f0fc81f6ebbc8d1b78b16b295927746d11a53",
+    "Driver/AudioRing.c": "98c4801e2c9572fec2febd5253ad2b99af0067df762aee597f7c0fe30d5e2950",
+    "Driver/AudioRing.h": "5ace1b7ad2fe7decafe97fe7fd1c410adc2794282cd1712d14316153af9e41d1",
+    "Driver/AudioSchedule.c": "1687a338e3f3b085242f148863ba840ee07cea128a149da065530d609be90191",
+    "Driver/AudioSchedule.h": "2b6b10c6ee33d56146d9750a6634039ea48da99465ab7599387b4e53ef24d3ca",
+    "Driver/AudioCodec.c": "e8d29055ca4e460871f8d51792b0c9a83f1fcb82fbf7e202fd1a35cee7af8fe6",
+    "Driver/AudioCodec.h": "5df8c222c40dc24821d2c8da916a43f20071edebcb61d4ec4ac81c918c8faa1b",
+    "Driver/NativeAudioISO.c": "72a7216d94d237586393be5612f3dc0d8fc6eb9f3b2d2feb28a96ee9d082831e",
+    "Driver/NativeAudioISO.h": "b88c2f59bedf84320ba3dda69bb05a9ad1e1fb1d939f5984cab0a54319d9beb1",
+    "Driver/NativeHostUSB.m": "57b2e6f84ddcd5b7cace2dd9e0f268fe53cfa0a4eaa1bda1f6be1d58cd808f8d",
+    "Driver/NativeHostUSB.h": "deea2d568a808caa4dd778674133f796dde4d2bfef3e24224ce38acaae7b012c",
+    "Driver/InputGain.c": "c7048095874b22d44b0b4210e3344a1b3de45f778ec0c2da351a58359515df4e",
+    "Driver/InputGain.h": "51ccb07adf5d7d8b54caa765a9fbab39edb8846e97793f87b279e99958687d23",
+    "Driver/DeviceProtocol.c": "be408152aae1a71b6cc1b57d003671b77acadf3bf66ab0b0d3b3a69938287a98",
+    "Driver/DeviceProtocol.h": "0b65843a6cad6893e349ea0d75884b9917a0135a363121a2efef1e857aa812de",
+    "Driver/MIDI/MIDIStream.c": "d3342fd92b48057c4b322806707fd91358fad40110610da07b04420a2d147d8c",
+    "Driver/MIDI/MIDIStream.h": "4a586eb7166910e95750f6d3e03641d60fbb50fd44585da78f70035166e35b90"
+  },
+  "gates": [
+    {
+      "command": [
+        "/bin/sh",
+        "Tools/build-native.sh",
+        "test"
+      ],
+      "exit": 0,
+      "native_suites": 14,
+      "offline_CLI_variants": 2,
+      "log": "/private/tmp/rk3-build16-final-strict.log",
+      "sha256": "b42479e7782538450d7cfb03f4151b44a00960c6a6c72da083dcb7e85636cb6c"
+    },
+    {
+      "command": [
+        "/bin/sh",
+        "Tools/build-native.sh",
+        "sanitize"
+      ],
+      "exit": 0,
+      "native_suites": 14,
+      "offline_CLI_variants": 2,
+      "log": "/private/tmp/rk3-build16-final-sanitize.log",
+      "sha256": "2ce8910f611cb07e585df976fe8a4320201c93e440df1a56e94ba0e91b0737df"
+    }
+  ],
+  "reviews": {
+    "original_contract": "PASS independent33pins and source semantics; storedcontinuous clarification applied",
+    "NI_core": "PASS independent review of exact admitted assembly against Controller",
+    "runtime_initial": "found five bugs; fixed before installation according to Beads plan",
+    "runtime_final": "PASS independent ac12d108/867882dc/header8e6c58af provider-cohort and async-worker review",
+    "CLI": "PASS independent source review; cached-request limitation documented",
+    "root": "PASS production worker/queue/lifetime manual review; critical18files byteidentical"
+  },
+  "runtime_regressions": {
+    "functions": 6,
+    "scenario_groups": 7,
+    "covers": [
+      "asynchronous actual productionoutputworker; no USB wait on I/O",
+      "postwrite currentprovider history boundary; digital/DIN continue",
+      "superseded configuration followedby defaultrestore",
+      "CFdata readfailure prevents application",
+      "Stopduringwrite current/default variants; queuedcancellation",
+      "replacementprovider samegeneration configrestore and taggedstatus"
+    ]
+  },
+  "native_binding_justification": [
+    "Existing CoreMIDI property serialization carries a coherent3axis Float32 snapshot, replacing the unavailable NI registry/agent binding only. Old builtincalibration is imported once.",
+    "Existing outputworker/HAL lease/USB owner carries exact recovered fixed33B command; no secondowner/thread/timer.",
+    "Provider+generation+lifecycle/revision confirmation and analog-only history barriers prevent old-buffer re-interpretation across two native bundles.",
+    "Finite input/structural validation and defined span handling are native guards; not represented as legacy NI selector validation.",
+    "Safe raw-sweep utility remains a native host safeguard, distinct from exact restored portable NI recalibration lifecycle."
+  ],
+  "installed": "MIDI0.2.10/build15 and Audio0.2.8/build13 remain unchanged; not replaced in this work yet",
+  "SIP": "enabled; unchanged",
+  "physical_result": "NOT_RUN for build16; no firmware mode readback exists in recovered path; USB completion+mapper ack is not a physical-mode test",
+  "candidate": null,
+  "remaining": "build/freeze/verify signedpackage; administratorinstallation; existing M3 finitephysicalqualification; no newplanningbead"
+}

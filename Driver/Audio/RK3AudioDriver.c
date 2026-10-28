@@ -14,6 +14,7 @@
 #include <string.h>
 #include "../NativeUSB.h"
 #include "../AudioTiming.h"
+#include "../PedalSettings.h"
 
 enum { DEVICE=2, INPUT=3, OUTPUT=4, RATE=RK3_AUDIO_DEFAULT_SAMPLE_RATE, PERIOD=16384, CLIENT_LIMIT=64 };
 static AudioServerPlugInDriverInterface table;
@@ -505,7 +506,8 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         bool leds=command->length==9&&command->bytes[0]==5&&command->bytes[1]==0&&
             command->bytes[2]==0x40&&command->bytes[3]==0x40&&command->bytes[4]==0&&
             command->bytes[6]<=1&&command->bytes[7]==0&&command->bytes[8]==0;
-        if(command->version!=RK3_CONTROL_VERSION||(!midi&&!leds))return kAudioHardwareIllegalOperationError;
+        bool pedals=rk3_pedal_configuration_valid(command->bytes,command->length);
+        if(command->version!=RK3_CONTROL_VERSION||(!midi&&!leds&&!pedals))return kAudioHardwareIllegalOperationError;
         return usb&&rk3_usb_command_for_generation(usb,command->bytes,command->length,lease->generation,500)?0:kAudioHardwareUnspecifiedError;
     }
     if(a->mSelector==kAudioDevicePropertyNominalSampleRate) {

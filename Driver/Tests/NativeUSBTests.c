@@ -538,6 +538,58 @@ static void request_test(void) {
     finish(&session);
 }
 
+typedef struct {rk3_usb_session *session;bool reconnect;} PedalCommandConsumer;
+static void *consume_pedal_command(void *context) {
+    PedalCommandConsumer *consumer=context;
+    rk3_usb_session *session=consumer->session;
+    pthread_mutex_lock(&session->mutex);
+    while(!session->head)pthread_cond_wait(&session->wake,&session->mutex);
+    if(consumer->reconnect)++session->generation;
+    pthread_mutex_unlock(&session->mutex);
+    process_one_request(session,true);return NULL;
+}
+static void pedal_configuration_command_test(void) {
+    unsigned previous_writes=command_writes;size_t previous_size=last_command_size;
+    uint8_t previous_bytes[sizeof(last_command_bytes)];memcpy(previous_bytes,last_command_bytes,sizeof(previous_bytes));
+    rk3_usb_session session;initialize(&session);
+    RK3HostInterface functions={.bulk_write=fake_write};
+    session.interface=&functions;session.opened=true;session.command_out=7;session.status.state=RK3_USB_READY;
+    uint8_t command[65]={0x0f,2};
+    PedalCommandConsumer consumer={.session=&session};pthread_t thread;
+    for(unsigned ring=0;ring<8;++ring)for(unsigned switches=0;switches<8;++switches) {
+        command[2]=(uint8_t)ring;command[3]=(uint8_t)switches;
+        unsigned writes=command_writes;
+        assert(pthread_create(&thread,NULL,consume_pedal_command,&consumer)==0);
+        assert(rk3_usb_command_for_generation(&session,command,33,9,1000));
+        assert(pthread_join(thread,NULL)==0);
+        assert(command_writes==writes+1&&last_command_size==33&&!memcmp(last_command_bytes,command,33));
+    }
+    command[2]=command[3]=0;
+    unsigned writes=command_writes;
+    for(size_t index=0;index<33;++index) {
+        uint8_t saved=command[index];command[index]=index==2||index==3?8:(uint8_t)(saved^1);
+        assert(!rk3_usb_command_for_generation(&session,command,33,9,10));
+        assert(!session.head&&command_writes==writes);command[index]=saved;
+    }
+    for(size_t length=0;length<=sizeof(command);++length) {
+        if(length==33)continue;
+        assert(!rk3_usb_command_for_generation(&session,command,length,9,10));
+        assert(!session.head&&command_writes==writes);
+    }
+    assert(!rk3_usb_command_for_generation(&session,command,33,0,10)&&!session.head);
+    assert(pthread_create(&thread,NULL,consume_pedal_command,&consumer)==0);
+    assert(!rk3_usb_command_for_generation(&session,command,33,8,1000));
+    assert(pthread_join(thread,NULL)==0&&command_writes==writes);
+    /* A valid lease at admission is still rejected by the production worker
+     * if a new USB generation replaces it before the queued command runs. */
+    consumer.reconnect=true;
+    assert(pthread_create(&thread,NULL,consume_pedal_command,&consumer)==0);
+    assert(!rk3_usb_command_for_generation(&session,command,33,9,1000));
+    assert(pthread_join(thread,NULL)==0&&session.generation==10&&command_writes==writes);
+    finish(&session);command_writes=previous_writes;last_command_size=previous_size;
+    memcpy(last_command_bytes,previous_bytes,sizeof(previous_bytes));
+}
+
 static void active_deadline_test(void) {
     rk3_usb_session session;
     initialize(&session);
@@ -843,7 +895,9 @@ static void controller_startup_test(void) {
             assert(controller_lengths[3] == 1 && controller_commands[3][0] == 4);
             assert(session.digital_known && session.digital_snapshot == 0x1a5);
             RK3NativeInfo info; assert(rk3_usb_info(&session, &info) && info.digital_snapshot == UINT32_C(0x800001a5));
-            assert(!rk3_usb_command(&session, controller_commands[1], 33, 10));
+            uint8_t invalid_configuration[33];memcpy(invalid_configuration,controller_commands[1],33);
+            invalid_configuration[1]=3; /* Only the recovered type2 packet is public. */
+            assert(!rk3_usb_command(&session, invalid_configuration, 33, 10));
             assert(!rk3_usb_command(&session, automatic, sizeof(automatic), 10));
         } else assert(!session.digital_known);
         controller_test_session = NULL; finish(&session);
@@ -2508,7 +2562,7 @@ int main(void) {
     identity_held_request_close_test();identity_cohort_test();identity_snapshot_race_test();identity_pending_drain_test();identity_opaque_transport_test();
     identity_reader_first_test();identity_reader_fallback_test();identity_reader_unicode_test();identity_reader_oracles_test();identity_reader_definedness_test();
     spec_publication_test();spec_refresh_test();spec_retirement_test();spec_protocol_retirement_test();spec_drain_test();spec_close_test();spec_property_test();spec_snapshot_race_test();
-    gain_property_test();gain_generation_borrow_test();history_test(); request_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
+    gain_property_test();gain_generation_borrow_test();history_test(); request_test(); pedal_configuration_command_test(); active_deadline_test(); clock_startup_test(); clock_snapshot_forwarding_test(); retirement_test(); close_wait_test(); configuration_test(); command_pipe_reset_test(); fresh_command_connection_test(); initial_reader_rejection_test(); stop_ack_test(); controller_startup_test(); controller_startup_lifetime_test(); asynchronous_write_test(); panic_containment_test(); cooperative_stop_test(); panic_startup_and_address_test(); callback_lease_test(); activity_publication_test(); host_storage_lifetime_test(); ep1_read_status_test(); ep1_write_no_replay_test(); ep1_late_success_and_queue_test(); ep1_suspended_and_removal_test(); ep1_clear_failure_test(); stream_diagnostic_visibility_test(); connection_state_test();
     clock_timer_binding_test();clock_timer_stop_restart_test();clock_timer_guard_test();clock_timer_retirement_test();
     clock_timer_reentrant_restart_test();clock_timer_command_pump_test();clock_timer_failure_test();
     sample_rate_request_test();sample_rate_vectors_test();sample_rate_admission_test();

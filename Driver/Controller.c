@@ -7,9 +7,6 @@ static const uint8_t axis_cc[3]={16,17,4};
 static bool valid(const RK3ControllerState *state) {
     return state != NULL && state->signature == CONTROLLER_SIGNATURE;
 }
-static bool calibration_valid(double low,double high) {
-    return isfinite(low) && isfinite(high) && low >= 0 && high <= 1 && high-low >= 0.1;
-}
 static uint8_t midi_value(double normalized) {
     /* Original Assignment::setValue uses MULSS followed by CVTSD2SI. Match its
      * normal nearest-even integer result with an explicit tie rule. */
@@ -24,6 +21,7 @@ void rk3_controller_init(RK3ControllerState *state) {
         state->axes[index].low=state->axes[index].high=-1;
         state->axes[index].raw_max=index == 2 ? 1023 : 4095;
         state->axes[index].automatic=index != 2;
+        state->axes[index].sample_tip=true;state->axes[index].switch_first=true;
     }
     state->axes[2].low=0;state->axes[2].high=1;
     state->displays[1]=state->displays[2]=0x40;state->leds_dirty=true;
@@ -33,8 +31,9 @@ void rk3_controller_reset_inputs(RK3ControllerState *state) {
     state->buttons_initialized=false;state->raw_buttons=0;state->leds_dirty=true;
     for(unsigned index=0;index<3;++index) {
         RK3ControllerAxis *axis=state->axes+index;
-        if(axis->collecting) {axis->low=axis->saved_low;axis->high=axis->saved_high;axis->collecting=false;}
+        axis->collecting=false;
         axis->initialized=false;axis->has_raw=false;
+        axis->switch_first=true;axis->switch_inverted=false;axis->switch_value=false;
     }
 }
 static bool pedal_value(RK3ControllerAxis *axis,uint32_t raw,double *result) {
@@ -42,11 +41,6 @@ static bool pedal_value(RK3ControllerAxis *axis,uint32_t raw,double *result) {
     if(axis->has_raw && axis->last_raw == raw) return false;
     axis->last_raw=raw;axis->has_raw=true;
     double x=(double)raw/axis->raw_max;
-    if(axis->collecting) {
-        if(axis->low < 0 || x < axis->low) axis->low=x;
-        if(axis->high < 0 || x > axis->high) axis->high=x;
-        axis->initialized=true;return false;
-    }
     if(!axis->initialized) {
         axis->initialized=true;
         if(axis->low < 0) axis->low=x;
@@ -54,18 +48,29 @@ static bool pedal_value(RK3ControllerAxis *axis,uint32_t raw,double *result) {
         axis->last_value=axis->high != axis->low ? (x-axis->low)/(axis->high-axis->low) : x;
         return false;
     }
-    if(axis->automatic) {
+    if(axis->automatic || axis->collecting) {
         if(x < axis->low) axis->low=x;
         if(x > axis->high) axis->high=x;
+        if(axis->collecting) return false;
     }
     double span=axis->high-axis->low;
-    if(span < 0.1) return false;
+    if(!isfinite(span) || span < 0.05) return false;
+    if(axis->as_switch) {
+        double threshold=0.5*span;
+        if(axis->switch_first && x <= threshold) axis->switch_inverted=true;
+        bool value=(x > threshold) != axis->switch_inverted;
+        bool changed=axis->switch_first || value != axis->switch_value;
+        axis->switch_first=false;
+        if(!changed) return false;
+        axis->switch_value=value;*result=value ? 1 : 0;return true;
+    }
     double y=(x-axis->low-0.025*span)/(0.95*span);
     if(y < 0.005) {
         y=0;if(axis->last_value == 0) return false;
     } else if(y > 0.995) {
         y=1;if(axis->last_value == 1) return false;
     } else if(fabs(y-axis->last_value) <= 0.005) return false;
+    if(span < 0.1) return false;
     axis->last_value=y;*result=y;return true;
 }
 RK3ControllerResult rk3_controller_report(RK3ControllerState *state,
@@ -126,11 +131,17 @@ RK3ControllerResult rk3_controller_flush_leds(RK3ControllerState *state,
     if(!write(context,report,sizeof(report))) {state->leds_dirty=true;return RK3_CONTROLLER_OUTPUT_FAILED;}
     state->leds_dirty=false;return RK3_CONTROLLER_OK;
 }
+RK3ControllerResult rk3_controller_set_pedal_mode(RK3ControllerState *state,
+    unsigned index,bool sample_tip,bool as_switch) {
+    if(!valid(state) || index >= 3) return RK3_CONTROLLER_INVALID_ARGUMENT;
+    state->axes[index].sample_tip=sample_tip;state->axes[index].as_switch=as_switch;
+    return RK3_CONTROLLER_OK;
+}
 RK3ControllerResult rk3_controller_set_calibration(RK3ControllerState *state,
     unsigned index,double low,double high) {
-    if(!valid(state) || index >= 3 || !calibration_valid(low,high)) return RK3_CONTROLLER_INVALID_ARGUMENT;
+    if(!valid(state) || index >= 3 || !isfinite(low) || !isfinite(high)) return RK3_CONTROLLER_INVALID_ARGUMENT;
     RK3ControllerAxis *axis=state->axes+index;
-    axis->low=low;axis->high=high;axis->collecting=false;axis->initialized=false;axis->has_raw=false;
+    axis->low=low;axis->high=high;
     return RK3_CONTROLLER_OK;
 }
 RK3ControllerResult rk3_controller_get_calibration(const RK3ControllerState *state,
@@ -139,16 +150,13 @@ RK3ControllerResult rk3_controller_get_calibration(const RK3ControllerState *sta
     *low=state->axes[index].low;*high=state->axes[index].high;return RK3_CONTROLLER_OK;
 }
 RK3ControllerResult rk3_controller_calibration_start(RK3ControllerState *state,unsigned index) {
-    if(!valid(state) || index >= 3 || state->axes[index].collecting) return RK3_CONTROLLER_INVALID_ARGUMENT;
+    if(!valid(state) || index >= 3) return RK3_CONTROLLER_INVALID_ARGUMENT;
     RK3ControllerAxis *axis=state->axes+index;
-    axis->saved_low=axis->low;axis->saved_high=axis->high;
-    axis->low=axis->high=axis->has_raw ? (double)axis->last_raw/axis->raw_max : -1;
+    axis->low=axis->high=axis->last_value;
+    axis->switch_first=true;axis->switch_inverted=false;axis->switch_value=false;
     axis->collecting=true;axis->initialized=false;return RK3_CONTROLLER_OK;
 }
 RK3ControllerResult rk3_controller_calibration_stop(RK3ControllerState *state,unsigned index) {
-    if(!valid(state) || index >= 3 || !state->axes[index].collecting) return RK3_CONTROLLER_INVALID_ARGUMENT;
-    RK3ControllerAxis *axis=state->axes+index;bool enough=calibration_valid(axis->low,axis->high);
-    if(!enough) {axis->low=axis->saved_low;axis->high=axis->saved_high;}
-    axis->collecting=false;axis->initialized=false;axis->has_raw=false;
-    return enough ? RK3_CONTROLLER_OK : RK3_CONTROLLER_CALIBRATION_INSUFFICIENT;
+    if(!valid(state) || index >= 3) return RK3_CONTROLLER_INVALID_ARGUMENT;
+    state->axes[index].collecting=false;return RK3_CONTROLLER_OK;
 }

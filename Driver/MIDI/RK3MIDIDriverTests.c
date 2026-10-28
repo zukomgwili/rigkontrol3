@@ -111,7 +111,18 @@ static RK3NativeReports input_batch;
 static uint64_t info_generation = 7;
 static uint32_t digital_snapshot=UINT32_C(0x80000000);
 static bool press_release_before_snapshot;
-static CFDataRef calibration_data;
+static CFDataRef calibration_data,pedal_settings_data,pedal_status_data;
+static unsigned pedal_writes;
+static OSStatus pedal_write_error;
+static bool pedal_replace_generation,pedal_stop_during_write;
+static uint64_t pedal_history_during_write;
+static uint32_t pedal_sent_ring[32],pedal_sent_switch[32];
+static void clear_pedal_properties(void) {
+    if(calibration_data)CFRelease(calibration_data);
+    if(pedal_settings_data)CFRelease(pedal_settings_data);
+    if(pedal_status_data)CFRelease(pedal_status_data);
+    calibration_data=pedal_settings_data=pedal_status_data=NULL;
+}
 static MIDIEndpointRef delivered_source;
 static uint64_t expected_after;
 static uint8_t delivered[64];
@@ -126,6 +137,7 @@ static OSStatus write_result;
 static size_t writes_to_stop=1,failures_remaining;
 static uint8_t attempted_notes[16];
 static bool provider_present=true;
+static AudioDeviceID provider_device=42;
 static uint32_t provider_flags=RK3_NATIVE_CONNECTED;
 static unsigned offline_updates;
 static SInt32 last_offline;
@@ -169,7 +181,7 @@ static OSStatus mock_get_size(AudioObjectID object,const AudioObjectPropertyAddr
     *size=provider_present?sizeof(AudioDeviceID):0;return noErr;
 }
 static Boolean mock_has_property(AudioObjectID object,const AudioObjectPropertyAddress *property) {
-    return object==42&&property->mSelector==RK3_PROPERTY_INFO;
+    return object==provider_device&&property->mSelector==RK3_PROPERTY_INFO;
 }
 static OSStatus mock_set_midi_integer(MIDIObjectRef object,CFStringRef property,SInt32 value) {
     assert(CFRunLoopGetCurrent()==CFRunLoopGetMain());
@@ -180,9 +192,9 @@ static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *
                          UInt32 qualifier_size,const void *qualifier,UInt32 *size,void *data) {
     if(object==kAudioObjectSystemObject) {
         assert(property->mSelector==kAudioHardwarePropertyDevices&&qualifier_size==0&&*size>=sizeof(AudioDeviceID));
-        const AudioDeviceID device=42;memcpy(data,&device,sizeof(device));*size=sizeof(device);return noErr;
+        const AudioDeviceID device=provider_device;memcpy(data,&device,sizeof(device));*size=sizeof(device);return noErr;
     }
-    assert(object == 42);
+    assert(object == 42||object == 43);
     if (property->mSelector == RK3_PROPERTY_INFO) {
         ++info_queries;
         if(press_release_before_snapshot) {
@@ -207,11 +219,29 @@ static OSStatus mock_get(AudioObjectID object,const AudioObjectPropertyAddress *
 
 static OSStatus mock_set(AudioObjectID object,const AudioObjectPropertyAddress *property,
                          UInt32 qualifier_size,const void *qualifier,UInt32 size,const void *data) {
-    assert(object == 42 && property->mSelector == RK3_PROPERTY_COMMAND);
+    assert((object == 42||object == 43) && property->mSelector == RK3_PROPERTY_COMMAND);
     RK3NativeCommandLease lease;RK3NativeCommand command;
     read_cf_wire(qualifier_size,qualifier,&lease,sizeof(lease));
     read_cf_wire(size,data,&command,sizeof(command));
-    assert(lease.version == RK3_CONTROL_VERSION && lease.generation == 7);
+    assert(lease.version==RK3_CONTROL_VERSION&&lease.generation==info_generation);
+    if(command.length==33) {
+        assert(rk3_pedal_configuration_valid(command.bytes,command.length));
+        assert(pedal_writes<32);pedal_sent_ring[pedal_writes]=command.bytes[2];
+        pedal_sent_switch[pedal_writes]=command.bytes[3];++pedal_writes;
+        atomic_store(&working_driver->worker_stop,true);
+        if(pedal_history_during_write) {
+            input_batch=(RK3NativeReports){.version=1,.count=1,
+                .next_sequence=pedal_history_during_write,.latest_sequence=pedal_history_during_write};
+            input_batch.reports[0]=(RK3NativeReport){.sequence=pedal_history_during_write,.length=7,
+                .bytes={3,0,0,0,0,3,0xff}};
+        }
+        if(pedal_replace_generation) {
+            ++info_generation;atomic_store(&working_driver->generation,info_generation);
+        }
+        if(pedal_stop_during_write)assert(stop_driver(driver_ref(working_driver))==noErr);
+        return pedal_write_error;
+    }
+    if(command.length==9) {assert(command.bytes[0]==5);return noErr;}
     assert(command.version == RK3_CONTROL_VERSION && command.length == 6);
     assert(command.bytes[0] == 7 && command.bytes[1] == 0 && command.bytes[2] == 3);
     if(writes<sizeof(attempted_notes))attempted_notes[writes]=command.bytes[4];
@@ -237,14 +267,19 @@ static OSStatus mock_received(MIDIEndpointRef source,const MIDIPacketList *list)
     return noErr;
 }
 
+static CFDataRef *data_property(CFStringRef key) {
+    if(CFEqual(key,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY)))return &calibration_data;
+    if(CFEqual(key,CFSTR(RK3_CONTROLLER_PEDAL_SETTINGS_KEY)))return &pedal_settings_data;
+    assert(CFEqual(key,CFSTR(RK3_CONTROLLER_PEDAL_STATUS_KEY)));return &pedal_status_data;
+}
 static OSStatus mock_midi_get_data(MIDIObjectRef object,CFStringRef key,CFDataRef *data) {
-    (void)object;assert(CFEqual(key,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY)));
-    if(calibration_data==NULL)return kMIDIUnknownProperty;
-    *data=CFRetain(calibration_data);return noErr;
+    (void)object;CFDataRef value=*data_property(key);
+    if(!value)return kMIDIUnknownProperty;
+    *data=CFRetain(value);return noErr;
 }
 static OSStatus mock_midi_set_data(MIDIObjectRef object,CFStringRef key,CFDataRef data) {
-    (void)object;assert(CFEqual(key,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY)));
-    if(calibration_data)CFRelease(calibration_data);calibration_data=CFRetain(data);return noErr;
+    (void)object;CFDataRef *slot=data_property(key);
+    if(*slot)CFRelease(*slot);*slot=CFRetain(data);return noErr;
 }
 
 static CFRunLoopRef mock_io_loop(void) { return CFRunLoopGetCurrent(); }
@@ -505,18 +540,153 @@ static void test_controller_and_feedback(void) {
     assert(deliveries==2&&driver->controller.button_values[0]==0);
     head=atomic_load(&driver->output_write);
     assert(driver->output[(head-1)%OUTPUT_SLOTS].command.bytes[5]==0);
-    driver->controller_device=456;poll_calibration(driver);
-    assert(calibration_data&&CFDataGetLength(calibration_data)==16);
+    clear_pedal_properties();
     uint32_t calibration[]={1,2,103,921};
-    CFRelease(calibration_data);calibration_data=CFDataCreate(NULL,(const UInt8 *)calibration,16);
-    poll_calibration(driver);input_tick(NULL,driver);
+    calibration_data=CFDataCreate(NULL,(const UInt8 *)calibration,sizeof(calibration));
+    driver->controller_device=456;poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));input_tick(NULL,driver);
+    assert(pedal_settings_data&&CFDataGetLength(pedal_settings_data)==sizeof(RK3PedalSettings));
     double low,high;assert(rk3_controller_get_calibration(&driver->controller,2,&low,&high)==RK3_CONTROLLER_OK);
     assert(low>0.100&&low<0.102&&high>0.900&&high<0.901);
-    uint64_t saved=atomic_load(&driver->calibration);calibration[2]=900;calibration[3]=901;
+    uint64_t saved=driver->pedal_revision;calibration[2]=900;calibration[3]=901;
     CFRelease(calibration_data);calibration_data=CFDataCreate(NULL,(const UInt8 *)calibration,16);
-    poll_calibration(driver);assert(atomic_load(&driver->calibration)==saved);
-    CFRelease(calibration_data);calibration_data=NULL;driver->controller_device=0;
+    poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));assert(driver->pedal_revision==saved); /* migration is one-time */
+    clear_pedal_properties();driver->controller_device=0;
     free_driver(driver);
+}
+
+static void request_pedals(Driver *driver,const RK3PedalSettings *settings) {
+    CFDataRef data=CFDataCreate(NULL,(const UInt8 *)settings,sizeof(*settings));assert(data);
+    assert(mock_midi_set_data(driver->controller_device,CFSTR(RK3_CONTROLLER_PEDAL_SETTINGS_KEY),data)==noErr);
+    CFRelease(data);poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));
+}
+static void run_pedal_worker(Driver *driver) {
+    assert(driver->pedal_inflight);
+    working_driver=driver;atomic_store(&driver->worker_stop,false);add_ref(driver);
+    assert(output_worker(driver)==NULL); /* Production worker consumes the real queue entry. */
+    assert(driver->pedal_completion_ready&&!driver->pedal_inflight);
+    working_driver=NULL;
+}
+static void reset_pedal_test(void) {
+    clear_pedal_properties();pedal_writes=0;pedal_write_error=noErr;
+    pedal_replace_generation=pedal_stop_during_write=false;pedal_history_during_write=0;
+    info_generation=7;provider_device=42;cf_fault=CF_FAULT_NONE;cf_fault_selector=0;
+    input_batch=(RK3NativeReports){.version=1};expected_after=0;
+    memset(pedal_sent_ring,0,sizeof(pedal_sent_ring));memset(pedal_sent_switch,0,sizeof(pedal_sent_switch));
+}
+static void test_pedal_settings_binding(void) {
+    reset_pedal_test();Driver *driver=make_driver();driver->controller_device=456;
+    RK3NativeInfo info={.generation=7,.flags=RK3_NATIVE_CONNECTED};
+    poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));
+    assert(driver->pedal_revision==1&&driver->pedal_status.status==EINPROGRESS);
+    assert(apply_pedal_settings(driver,42,&info,0,42));assert(pedal_writes==0);
+    assert(driver->pedal_after_sequence==42&&driver->controller_after_sequence==0&&driver->controller.axes[0].low==-1);
+    RK3PedalSettings wanted=driver->pedal_requested;wanted.ring_mask=1;wanted.switch_mask=2;
+    wanted.low[0]=.2f;wanted.high[0]=.8f;request_pedals(driver,&wanted);
+    assert(!apply_pedal_settings(driver,42,&info,0,43)&&pedal_writes==0);
+    assert(driver->pedal_inflight&&driver->controller.axes[0].sample_tip&&!driver->controller.axes[1].as_switch);
+    uint64_t queued=atomic_load(&driver->output_write);
+    assert(!apply_pedal_settings(driver,42,&info,0,44)&&atomic_load(&driver->output_write)==queued); /* one in flight */
+    pedal_history_during_write=45;unsigned reports=report_queries,infos=info_queries;
+    run_pedal_worker(driver);assert(pedal_writes==1&&report_queries==reports+1&&info_queries==infos+1);
+    assert(driver->controller.axes[0].sample_tip); /* Worker never mutates mapper. */
+    assert(apply_pedal_settings(driver,42,&info,0,43));
+    assert(!driver->controller.axes[0].sample_tip&&driver->controller.axes[1].as_switch);
+    assert(driver->controller.axes[0].low==(double).2f&&driver->pedal_after_sequence==45);
+    assert(driver->controller_after_sequence==0&&apply_pedal_settings(driver,42,&info,0,46)&&pedal_writes==1);
+    poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));RK3PedalStatus published;
+    memcpy(&published,CFDataGetBytePtr(pedal_status_data),sizeof(published));
+    assert(published.status==0&&published.generation==7&&!memcmp(&published.settings,&wanted,sizeof(wanted)));
+    wanted.low[1]=.4f;wanted.high[1]=.45f;request_pedals(driver,&wanted);
+    assert(apply_pedal_settings(driver,42,&info,0,46)&&pedal_writes==1); /* endpoints only */
+    wanted.ring_mask=7;pedal_write_error=kAudioHardwareUnspecifiedError;request_pedals(driver,&wanted);
+    assert(!apply_pedal_settings(driver,42,&info,0,47));run_pedal_worker(driver);
+    assert(!apply_pedal_settings(driver,42,&info,0,47)&&pedal_writes==2);
+    assert(driver->pedal_status.status==EIO&&!driver->pedal_wire_known&&driver->controller.axes[1].sample_tip);
+    assert(!apply_pedal_settings(driver,42,&info,0,48)&&pedal_writes==2&&!driver->pedal_inflight); /* no failure retry */
+    wanted.high[1]=.46f;pedal_write_error=noErr;request_pedals(driver,&wanted);
+    assert(!apply_pedal_settings(driver,42,&info,0,48));run_pedal_worker(driver);
+    assert(apply_pedal_settings(driver,42,&info,0,48)&&pedal_writes==3&&!driver->controller.axes[1].sample_tip);
+    info.generation=8;info_generation=8;atomic_store(&driver->generation,8);
+    assert(!apply_pedal_settings(driver,42,&info,0,49));run_pedal_worker(driver);
+    assert(apply_pedal_settings(driver,42,&info,0,49)&&pedal_writes==4); /* restore hardware masks */
+    wanted.ring_mask=0;wanted.switch_mask=0;request_pedals(driver,&wanted);
+    assert(!apply_pedal_settings(driver,42,&info,0,50));run_pedal_worker(driver);
+    assert(apply_pedal_settings(driver,42,&info,0,50)&&pedal_writes==5);
+    RK3PedalSettings valid=wanted;wanted.reserved=1;uint64_t revision=driver->pedal_revision;
+    request_pedals(driver,&wanted);assert(driver->pedal_revision==revision&&driver->pedal_status.status==EINVAL);
+    assert(apply_pedal_settings(driver,42,&info,0,51)); /* malformed property cannot mute working inputs */
+    wanted=valid;wanted.low[0]=NAN;request_pedals(driver,&wanted);assert(driver->pedal_revision==revision);
+    wanted=valid;wanted.switch_mask=8;request_pedals(driver,&wanted);assert(driver->pedal_revision==revision);
+    request_pedals(driver,&valid);assert(apply_pedal_settings(driver,42,&info,0,51));
+    wanted=valid;wanted.ring_mask=1;request_pedals(driver,&wanted);
+    assert(!apply_pedal_settings(driver,42,&info,0,52));pedal_replace_generation=true;
+    bool old_mode=driver->controller.axes[0].sample_tip;run_pedal_worker(driver);
+    assert(!apply_pedal_settings(driver,42,&info,0,52)&&driver->controller.axes[0].sample_tip==old_mode);
+    pedal_replace_generation=false;info_generation=7;clear_pedal_properties();free_driver(driver);
+}
+static void test_pedal_pending_keeps_digital_and_din_and_postwrite_barrier(void) {
+    reset_pedal_test();Driver *driver=make_driver();atomic_store(&driver->controller_enabled,true);
+    memset(controller_cc_counts,0,sizeof(controller_cc_counts));deliveries=0;
+    input_tick(NULL,driver);driver->controller_device=456;poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));input_tick(NULL,driver);
+    RK3PedalSettings wanted=driver->pedal_requested;wanted.ring_mask=1;request_pedals(driver,&wanted);
+    expected_after=driver->cursor;
+    input_batch=(RK3NativeReports){.version=1,.count=3,.next_sequence=3,.latest_sequence=3};
+    input_batch.reports[0]=(RK3NativeReport){.sequence=1,.length=3,.bytes={4,1,0}};
+    input_batch.reports[1]=(RK3NativeReport){.sequence=2,.length=3,.bytes={4,0,0}};
+    const uint8_t note[]={0x90,60,127};input_batch.reports[2]=midi_report(3,note,sizeof(note));
+    input_tick(NULL,driver);
+    assert(pedal_writes==0&&driver->pedal_inflight&&deliveries==2&&controller_cc_counts[76]==1);
+    assert(driver->controller.raw_buttons==0&&!driver->controller.axes[2].initialized);
+    expected_after=driver->cursor;
+    input_batch=(RK3NativeReports){.version=1,.count=1,.next_sequence=4,.latest_sequence=4};
+    input_batch.reports[0]=(RK3NativeReport){.sequence=4,.length=7,.bytes={3,0,0,0,0,0,0}};
+    input_tick(NULL,driver);assert(!driver->controller.axes[2].initialized);
+    pedal_history_during_write=5;run_pedal_worker(driver);
+    assert(pedal_writes==1&&!driver->controller.axes[2].initialized);
+    expected_after=driver->cursor;input_batch.count=2;input_batch.next_sequence=input_batch.latest_sequence=6;
+    input_batch.reports[1]=(RK3NativeReport){.sequence=6,.length=3,.bytes={4,1,0}};
+    input_tick(NULL,driver);
+    assert(driver->pedal_after_sequence==5&&driver->controller_after_sequence==0);
+    assert(!driver->controller.axes[2].initialized&&controller_cc_counts[76]==2&&deliveries==3);
+    for(uint64_t sequence=7;sequence<=8;++sequence) {
+        expected_after=driver->cursor;
+        input_batch=(RK3NativeReports){.version=1,.count=1,.next_sequence=sequence,.latest_sequence=sequence};
+        input_batch.reports[0]=(RK3NativeReport){.sequence=sequence,.length=7,
+            .bytes={3,0,0,0,0,sequence==7?0:3,sequence==7?0:0xff}};
+        input_tick(NULL,driver);
+    }
+    assert(controller_cc_counts[4]==1&&controller_cc_last[4]==127);
+    clear_pedal_properties();free_driver(driver);
+}
+static void test_pedal_superseded_write_restores_defaults(void) {
+    reset_pedal_test();Driver *driver=make_driver();driver->controller_device=456;
+    RK3NativeInfo info={.generation=7,.flags=RK3_NATIVE_CONNECTED};poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));
+    assert(apply_pedal_settings(driver,42,&info,0,0));RK3PedalSettings defaults=driver->pedal_requested;
+    RK3PedalSettings old=defaults;old.ring_mask=3;old.switch_mask=2;request_pedals(driver,&old);
+    assert(!apply_pedal_settings(driver,42,&info,0,0));
+    request_pedals(driver,&defaults);assert(!apply_pedal_settings(driver,42,&info,0,0));
+    run_pedal_worker(driver);assert(pedal_writes==1&&pedal_sent_ring[0]==3);
+    assert(!apply_pedal_settings(driver,42,&info,0,0)&&driver->pedal_inflight);
+    assert(!driver->pedal_wire_known&&driver->pedal_wire_ring==3&&driver->pedal_status.status==EINPROGRESS);
+    run_pedal_worker(driver);assert(pedal_writes==2&&pedal_sent_ring[1]==0&&pedal_sent_switch[1]==0);
+    assert(apply_pedal_settings(driver,42,&info,0,0)&&driver->pedal_status.status==0);
+    poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));assert(driver->pedal_has_published&&pedal_status_data);
+    CFRelease(pedal_status_data);pedal_status_data=NULL;topology_refcons_count=0;
+    assert(bind_controller(driver,334)==noErr&&!driver->pedal_has_published);
+    poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));assert(driver->pedal_has_published&&pedal_status_data); /* new object gets same status */
+    clear_pedal_properties();free_driver(driver);
+}
+static void test_pedal_postwrite_read_failure_is_not_acknowledged(void) {
+    reset_pedal_test();Driver *driver=make_driver();driver->controller_device=456;
+    RK3NativeInfo info={.generation=7,.flags=RK3_NATIVE_CONNECTED};poll_pedal_settings(driver,atomic_load(&driver->audio_device),atomic_load(&driver->generation));
+    RK3PedalSettings wanted=driver->pedal_requested;wanted.ring_mask=1;request_pedals(driver,&wanted);
+    assert(!apply_pedal_settings(driver,42,&info,0,0));
+    cf_fault=CF_FAULT_STATUS;cf_fault_selector=RK3_PROPERTY_REPORTS;run_pedal_worker(driver);
+    cf_fault=CF_FAULT_NONE;cf_fault_selector=0;
+    assert(!apply_pedal_settings(driver,42,&info,0,0)&&driver->pedal_status.status==EIO&&!driver->pedal_wire_known);
+    assert(driver->controller.axes[0].sample_tip&&!driver->pedal_inflight&&pedal_writes==1);
+    assert(!apply_pedal_settings(driver,42,&info,0,1)&&pedal_writes==1);
+    clear_pedal_properties();free_driver(driver);
 }
 
 static void test_enable_before_first_controller_poll(void) {
@@ -580,9 +750,9 @@ static void test_worker_generation_and_error(void) {
     for (unsigned fail = 0; fail < 2; ++fail) {
         Driver *driver = make_driver();
         RK3NativeCommand command = {.version=RK3_CONTROL_VERSION,.length=6,.bytes={7,0,3,0x90,60,100}};
-        driver->output[0] = (OutputEntry){42,6,0,command,0}; /* stale, must never reach HAL */
-        driver->output[1] = (OutputEntry){42,7,0,command,1};
-        driver->output[2] = (OutputEntry){42,7,0,command,0};
+        driver->output[0] = (OutputEntry){.audio_device=42,.generation=6,.command=command,.kind=0}; /* stale, must never reach HAL */
+        driver->output[1] = (OutputEntry){.audio_device=42,.generation=7,.command=command,.kind=1};
+        driver->output[2] = (OutputEntry){.audio_device=42,.generation=7,.command=command,.kind=0};
         atomic_store(&driver->output_write,3);
         atomic_store(&driver->worker_stop,false);
         working_driver = driver; writes = 0;
@@ -606,9 +776,9 @@ static void test_transient_output_does_not_disconnect_sources(void) {
     input_batch=(RK3NativeReports){.version=1};expected_after=0;deliveries=0;
     input_tick(NULL,driver); /* baseline, with both native sources enabled */
     RK3NativeCommand command={.version=RK3_CONTROL_VERSION,.length=6,.bytes={7,0,3,0x90,60,100}};
-    driver->output[0]=(OutputEntry){42,6,0,command,0}; /* stale: never reaches USB */
-    driver->output[1]=(OutputEntry){42,7,0,command,0};
-    command.bytes[4]=61;driver->output[2]=(OutputEntry){42,7,0,command,0};
+    driver->output[0]=(OutputEntry){.audio_device=42,.generation=6,.command=command,.kind=0}; /* stale: never reaches USB */
+    driver->output[1]=(OutputEntry){.audio_device=42,.generation=7,.command=command,.kind=0};
+    command.bytes[4]=61;driver->output[2]=(OutputEntry){.audio_device=42,.generation=7,.command=command,.kind=0};
     atomic_store(&driver->output_read,0);atomic_store(&driver->output_write,3);atomic_store(&driver->worker_stop,false);
     working_driver=driver;writes=0;writes_to_stop=2;failures_remaining=1;write_result=noErr;
     memset(attempted_notes,0,sizeof(attempted_notes));
@@ -633,7 +803,7 @@ static void test_transient_output_does_not_disconnect_sources(void) {
     assert(!atomic_load(&driver->online)&&offline_updates==2&&last_offline==1);
     provider_present=true;info_generation=8;refresh_topology(driver);
     assert(atomic_load(&driver->online)&&atomic_load(&driver->generation)==8&&offline_updates==4&&last_offline==0);
-    if(calibration_data){CFRelease(calibration_data);calibration_data=NULL;}
+    clear_pedal_properties();
     info_generation=7;writes_to_stop=1;failures_remaining=0;free_driver(driver);
 }
 
@@ -649,7 +819,7 @@ static Driver *lifecycle_driver(void) {
     topology_din=topology_controller=topology_controller_source=true;
     topology_no_driver_list=false;topology_din_source=123;topology_controller_source_ref=124;
     topology_refcons_count=0;timer_attachments=worker_creates=worker_joins=0;
-    if(calibration_data){CFRelease(calibration_data);calibration_data=NULL;}
+    clear_pedal_properties();
     Driver *driver=RK3MIDIDriverFactory(NULL,kMIDIDriverTypeID);assert(driver);
     return driver;
 }
@@ -686,9 +856,63 @@ static void lifecycle_pedal(Driver *driver,uint64_t sequence,uint16_t raw) {
 }
 static void lifecycle_done(Driver *driver) {
     lifecycle_stop(driver);assert(worker_creates==worker_joins);free_driver(driver);
-    if(calibration_data){CFRelease(calibration_data);calibration_data=NULL;}
-    provider_present=true;topology_din=topology_controller=topology_controller_source=true;
+    clear_pedal_properties();
+    provider_present=true;provider_device=42;topology_din=topology_controller=topology_controller_source=true;
     topology_no_driver_list=false;topology_din_source=123;topology_controller_source_ref=124;
+}
+
+static void test_pedal_stop_during_write_and_queued_cancellation(void) {
+    for(unsigned restore_default=0;restore_default<2;++restore_default) {
+        reset_pedal_test();Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+        RK3PedalSettings defaults=driver->pedal_requested,wanted=defaults;wanted.ring_mask=1;
+        request_pedals(driver,&wanted);expected_after=driver->cursor;input_batch.count=0;input_tick(NULL,driver);
+        assert(driver->pedal_inflight&&!driver->pedal_wire_known&&pedal_writes==0);
+        uint64_t old_epoch=atomic_load(&driver->lifecycle_epoch);
+        pedal_stop_during_write=true;run_pedal_worker(driver);pedal_stop_during_write=false;
+        assert(!driver->started&&driver->pedal_completion.error==ECANCELED&&pedal_writes==1);
+        assert(driver->pedal_completion.wire_known); /* actual write is remembered despite Stop */
+        if(restore_default)request_pedals(driver,&defaults); /* cached request while driver is stopped */
+        lifecycle_start(driver);expected_after=driver->cursor;input_batch.count=0;input_tick(NULL,driver);
+        uint64_t resumed_epoch=atomic_load(&driver->lifecycle_epoch);
+        assert(resumed_epoch!=old_epoch&&driver->pedal_attempt_epoch==resumed_epoch);
+        assert(atomic_load(&driver->controller_enabled)); /* Stop/Start listener fix is retained. */
+        if(restore_default) {
+            assert(driver->pedal_inflight&&pedal_writes==1);
+            run_pedal_worker(driver);expected_after=driver->cursor;input_batch.count=0;input_tick(NULL,driver);
+            assert(pedal_writes==2&&pedal_sent_ring[1]==0); /* never infer old defaults after old write */
+        } else assert(pedal_writes==1&&!driver->pedal_inflight); /* same physical masks need no second write */
+        assert(driver->pedal_status.status==0&&driver->controller.axes[0].sample_tip==(restore_default!=0));
+        unsigned wah=controller_cc_counts[4];lifecycle_pedal(driver,1,0);lifecycle_pedal(driver,2,1023);
+        assert(controller_cc_counts[4]==wah+1&&controller_cc_last[4]==127);
+        wanted=driver->pedal_requested;wanted.ring_mask=2;request_pedals(driver,&wanted);
+        expected_after=driver->cursor;input_batch.count=0;input_tick(NULL,driver);assert(driver->pedal_inflight);
+        unsigned before=pedal_writes;
+        lifecycle_stop(driver); /* queued request has not reached USB; Stop discards it. */
+        assert(!driver->pedal_inflight&&atomic_load(&driver->output_read)==atomic_load(&driver->output_write));
+        lifecycle_start(driver);expected_after=driver->cursor;input_batch.count=0;input_tick(NULL,driver);assert(driver->pedal_inflight);
+        run_pedal_worker(driver);expected_after=driver->cursor;input_batch.count=0;input_tick(NULL,driver);
+        assert(pedal_writes==before+1&&driver->pedal_status.status==0&&driver->pedal_attempt_success);
+        lifecycle_done(driver);
+    }
+}
+
+static void test_pedal_replacement_provider_reuses_generation(void) {
+    reset_pedal_test();Driver *driver=lifecycle_driver();lifecycle_start(driver);lifecycle_enable(driver);
+    RK3PedalSettings wanted=driver->pedal_requested;wanted.ring_mask=1;request_pedals(driver,&wanted);
+    input_tick(NULL,driver);assert(driver->pedal_inflight);run_pedal_worker(driver);input_tick(NULL,driver);
+    assert(pedal_writes==1&&driver->pedal_wire_device==42&&driver->pedal_status.audio_device==42);
+    poll_pedal_settings(driver,42,7);RK3PedalStatus published;
+    memcpy(&published,CFDataGetBytePtr(pedal_status_data),sizeof(published));
+    assert(published.status==0&&published.audio_device==42&&published.generation==7);
+    provider_device=43;refresh_topology(driver); /* new HAL object restarts its generation counter at7 */
+    memcpy(&published,CFDataGetBytePtr(pedal_status_data),sizeof(published));
+    assert(published.status==EINPROGRESS&&published.audio_device==43&&published.generation==7);
+    assert(atomic_load(&driver->audio_device)==43);
+    input_tick(NULL,driver);assert(driver->pedal_inflight&&driver->pedal_wire_device==43);
+    run_pedal_worker(driver);input_tick(NULL,driver);
+    assert(pedal_writes==2&&pedal_sent_ring[1]==1&&driver->pedal_status.status==0);
+    assert(driver->pedal_status.audio_device==43&&driver->pedal_status.reserved==0);
+    lifecycle_done(driver);
 }
 
 static void test_start_stop_start_keeps_listener_intent(void) {
@@ -710,7 +934,7 @@ static void test_start_stop_start_keeps_listener_intent(void) {
     assert(atomic_load(&driver->controller_listener_epoch)==listener);
     assert(worker_creates==2&&timer_attachments==4);
     lifecycle_stop(driver);assert(worker_joins==2);free_driver(driver);
-    if(calibration_data){CFRelease(calibration_data);calibration_data=NULL;}
+    clear_pedal_properties();
 }
 
 static void test_stopped_disable_wins_and_does_not_query_hal(void) {
@@ -839,12 +1063,16 @@ static void test_failed_start_is_inactive_then_same_endpoint_resumes(void) {
 
 int main(void) {
     assert(CFPlugInRegisterFactoryFunction(factory_id(),RK3MIDIDriverFactory));
-    test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_cf_transport_rejection(); test_worker_generation_and_error(); test_transient_output_does_not_disconnect_sources();
+    test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_pedal_settings_binding();
+    test_pedal_pending_keeps_digital_and_din_and_postwrite_barrier();test_pedal_superseded_write_restores_defaults();
+    test_pedal_postwrite_read_failure_is_not_acknowledged();test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_cf_transport_rejection(); test_worker_generation_and_error(); test_transient_output_does_not_disconnect_sources();
+    test_pedal_stop_during_write_and_queued_cancellation();test_pedal_replacement_provider_reuses_generation();
     test_start_stop_start_keeps_listener_intent();
     test_stopped_disable_wins_and_does_not_query_hal();test_stopped_reenable_and_repeated_stop_keep_held_baseline();
     test_restart_without_listener_stays_silent();test_absent_hardware_is_not_removed_registered_endpoint();
     test_missing_registered_endpoint_drops_only_its_listener();test_replaced_registered_sources_do_not_inherit_listeners();
     test_failed_start_is_inactive_then_same_endpoint_resumes();
+    clear_pedal_properties();
     assert(CFPlugInUnregisterFactory(factory_id()));
     puts("RK3 CoreMIDI: COM, bounded queue, generation lease, history cursor and input routing passed");
     return 0;

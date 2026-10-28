@@ -158,18 +158,40 @@ The two bundles are `RigKontrol3Audio.driver` and `RigKontrol3MIDI.plugin`.
 The installer checks their identities, ARM64 code, signatures and content,
 preserves previous versions, and prints a reversible session path. See
 [installation and rollback](ReverseEngineering/NativeDriverInstall.md).
-This personal-use build requires macOS 26.4+ and supports stereo 48 kHz. It uses no kernel extension,
+This personal-use build requires macOS 26.4+ and supports stereo audio at
+44.1, 48, 88.2, 96 and 192 kHz. It uses no kernel extension,
 menu-bar app, external controller bridge, or MainStage dependency.
 
-After installation, the one-time pedal calibration utility measures fresh
-endpoints and saves them on the Controller MIDI device:
+After installing a driver with the native pedal-settings interface, the
+calibration utility measures fresh endpoints on the Controller MIDI device:
 
 ```sh
-.build/native/test/rk3-calibrate --seconds 20
+.build/native/test/rk3-calibrate --axis 2 --seconds 20
 ```
 
-Sweep through the full travel throughout the measurement. Insufficient movement
-or reconnection prevents saving. Use the separate Controller MIDI source.
+Axis 2 is the built-in pedal and remains the default. Axes 0 and 1 are the
+external pedal inputs. Sweep through the full travel throughout measurement.
+Insufficient movement or a device/settings change detected before commit aborts
+saving. If application fails after a successful CoreMIDI save, the requested
+settings may remain cached; the utility reports failure rather than claiming
+that they were applied. This raw-sweep utility keeps its own usable-range guard; it does not
+replace NI's recovered recalibration algorithm. A successful command confirms
+matching settings were applied in the current USB connection, rather than
+merely cached by CoreMIDI.
+
+Read the three inputs' saved settings, or select NI's original tip/ring and
+continuous/switch options for an external input:
+
+```sh
+.build/native/test/rk3-pedals --show
+.build/native/test/rk3-pedals --axis 0 --ring --switch
+.build/native/test/rk3-pedals --axis 0 --tip --continuous
+```
+
+Only the named input's options change; calibration endpoints are retained.
+Both utilities report an error if the driver does not confirm USB write
+completion and the mapper update for the current audio device and connection.
+Use the separate Controller MIDI source.
 The original built-in pedal is CC4, switches1–4 CC80–83, and switches5–8 CC76–79,
 channel1. LEDs follow the controller's toggle assignments; the feedback
 destination can receive host CC values. This does not add effect-state output
