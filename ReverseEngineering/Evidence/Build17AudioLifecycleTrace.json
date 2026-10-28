@@ -1,7 +1,7 @@
 {
   "bead": "rigkontrol3-40h.3",
   "created_utc": "2026-10-28T16:47:29.332859+00:00",
-  "state": "REVIEWED_SOURCE_CPU_PASS_AWAITING_SIGNED_PACKAGE",
+  "state": "SIGNED_REVIEWED_AUDIO17_MIDI16_MEASUREMENT_READY_FOR_INSTALLATION",
   "purpose": "ONE bounded driver-side host-client lifecycle measurement; not an NI parity fix or qualification pass",
   "baseline_source_commit": "4494b8d78c4e3ebfc6b8fdbe41a15f36c51adcbc",
   "plan_before_code": {
@@ -113,19 +113,81 @@
     "source_spec_RT": "PASS independent final6sourcepins/fullstrict+ASanUBSanlogs/mockCLIcompatibility/18corepins/factorychecker; signedcandidateaudit follows"
   },
   "package": {
-    "state": "NOT_BUILT_NOT_INSTALLED",
-    "planned_audio": "0.2.12/build17 trace only",
-    "preserved_MIDI": "exact0.2.11/build16 source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
-    "private_recipe": ".build/native/build17-audio-lifecycle/build-package.py",
-    "recipe_sha256": "110a2a6a6d3a8bdb1cd2c35c3cb9f6245c611559a0705921e1f6341f6ba2b260",
-    "factory_trace_checker": ".build/native/build17-audio-lifecycle/trace-factory-check.c",
-    "hardware_qualification": false
+    "state": "SIGNED_REVIEWED_NOT_INSTALLED",
+    "candidate": ".build/native/candidates/build17-audio-lifecycle-845fa089dd90",
+    "source_commit": "845fa089dd907b2f50794721142e17028fe02b0c",
+    "audio_version": "0.2.12/build17",
+    "MIDI_version": "0.2.11/build16",
+    "MIDI_source_commit": "6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+    "MIDI_six_files_byte_identical": true,
+    "MIDI_recompiled": false,
+    "MIDI_resigned": false,
+    "manifest_sha256": "39e5dec1b9cbd5dc056fbf007c3fcbea4a200bbb98fbb759e9522205bd7b6ba8",
+    "manifest_files": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": "ada852482e23f68e05ca1673426a46191052857415b0fbb68ce3589fd4b44baf",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "655c48e25312d21e7b973356e668f31440ca1753a7fee80e19c4064b83153886",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "089d874c0e5f2c8aae4d90641a9e43e5b00f59a41e3e163914a947dd37d36651",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "fb7786e6774523846567a397b6b72471b0430d88a7d3348894e9ff360605d135",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "b1f14be156e6c2c75ecf110244cd4d393df6bdd6454e8cff3e3880c0118cad6b",
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "a2d60d2bdb61965a2423a556bc4d4443d1bbcef54e8330c6c53009d3b026eee5",
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": "132d03386308e1f798cfe1f7927ed96ac5d48b42235ab484876c0ab954c69496",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "0038fad0e1f3434d8527a3d072997deca52ebd11bc4b229225e16b8459d02c47",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "bbb922ea2982fa5be849422e227e3e63d82e05c6311630b9aa3a6bd1352b0e19",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "4dc45b1f0253e0a2441141c995f014d48a367da1b292bd8ef2bf7d19d119ccb0",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "ff6cdec724526bc186562ad21e3b46ed4cfae5908812677066a50895ec7d6456",
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "42b706ae6af547463884accf0e02a9d94dba8aa5479a2f646ef3fa96ffbd11e3"
+    },
+    "audio_UUID": "BBA97FD9-7C62-37D0-9018-369DEC888E7D",
+    "MIDI_UUID": "CDE3EF77-6195-3DED-8C5C-18927D401F2D",
+    "checks": {
+      "candidate": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build17-audio-lifecycle-845fa089dd90",
+      "checks": [
+        {
+          "checker": "audio-factory-check",
+          "exit": 0,
+          "stdout": "Audio CFPlugIn: real ARM bundle factory, COM, 44.1k default and five-rate metadata passed (no Initialize/hardware)\n",
+          "stderr": ""
+        },
+        {
+          "checker": "midi-factory-check",
+          "exit": 0,
+          "stdout": "RK3 MIDI CFPlugIn: built bundle factory and interface2 COM passed (no Start / no hardware)\n",
+          "stderr": ""
+        },
+        {
+          "checker": "trace-factory-check",
+          "exit": 0,
+          "stdout": "Trace factory ABI PASS: disk audio17 natr/version1/22576B; no Initialize or hardware\n",
+          "stderr": ""
+        }
+      ],
+      "RigKontrol3Audio.driver": {
+        "version": "0.2.12",
+        "build": "17",
+        "identifier": "org.rigkontrol3.ni-arm.audio"
+      },
+      "RigKontrol3MIDI.plugin": {
+        "version": "0.2.11",
+        "build": "16",
+        "identifier": "org.rigkontrol3.ni-arm.midi"
+      },
+      "manifest_sha256": "39e5dec1b9cbd5dc056fbf007c3fcbea4a200bbb98fbb759e9522205bd7b6ba8",
+      "manifest_files": 12,
+      "installed": false,
+      "new_hardware_calls": 0
+    },
+    "independent_audit": "PASS all12files/MIDI6exact/bothApple-anchorstrictdeep/arm64only/dSYMUUIDs/factoryIDs/normalplists16/51sourcecommitpins/18preservedpins/recipe/check; no hardwarequalification",
+    "installer": "existinginstall-native-drivers.sh unchanged; transactionreplacesbothbundles and --restart-services restartsCoreAudio+MIDIServer; rollbackbackups preserved/SIPenabled",
+    "hardware_qualification": false,
+    "installed": false,
+    "loaded_UUID_observed": false
   },
   "next_live_measurement": {
-    "state": "NOT_RUN; requiresinstalledcandidateverification andexactcollectorplan/CPUreviewbeforeoneinvocation",
+    "state": "PRIVATE_COLLECTOR_IMPLEMENTATION_AND_CPU_CHECKS_IN_PROGRESS; live requiresinstalled17verification+independentsourceadmission",
     "bounds": "one silent input/output stop/restartcycle with logicalrolecounters+nativebefore/afterphasesnapshots;20sactive/60sparent+TERM2KILL2/reap; noautomaticretry",
     "gates": "stopAPI/cohort/newnativeerror/unknowncriticalidentity/overflow/reuse/partialcriticalsnapshot/cleanupfault=>INCONCLUSIVE/FAULT; no NIparityPASS",
-    "preserve": "strictunusedbufferNULLfailure andoriginalNIlastoutputownership/clear/no-stalereplay remain separatelyopen; noforcedglobal0/mixpolicy/timing/recoverychange"
+    "preserve": "strictunusedbufferNULLfailure andoriginalNIlastoutputownership/clear/no-stalereplay remain separatelyopen; noforcedglobal0/mixpolicy/timing/recoverychange",
+    "exact_collector_plan": "existingM3comment /private/tmp/rk3-trace-collector-frozen-plan.txt; originalcurrentrateacceptedincl44100, no rate setter; onecapture+onepost-exitreadonlydump"
   },
   "installed_state_changed": false,
   "NI_timing_recovery_policy_changed": false,
@@ -151,6 +213,16 @@
     ".build/native/build17-audio-lifecycle/trace-factory-check.c": "12282e77a074a60caf27dd22b5a7c6cb837234ef40cb4376a4611216dfa35c30",
     ".build/native/build17-audio-lifecycle/audio-factory-check": "a3b6da1ac113c7dc52a29a2a1eb9398dc7d2946b3a75ca426ca156b6835c9435",
     ".build/native/build17-audio-lifecycle/midi-factory-check": "de6330fe26f7b7139ff9944a97ca4d6ffdec3d68e03a1dee9efb52d8a4f1c1b0",
-    ".build/native/build17-audio-lifecycle/trace-factory-check": "0d42dd79d96b99329ea6f8fa02e33ef5a23bdd0bf82529e2654122412a8b59dd"
+    ".build/native/build17-audio-lifecycle/trace-factory-check": "0d42dd79d96b99329ea6f8fa02e33ef5a23bdd0bf82529e2654122412a8b59dd",
+    ".build/native/candidates/build17-audio-lifecycle-845fa089dd90/provenance.json": "8b3cad86de3a42313179e350c17bf53cf054b5c530d8c6e7c4a13dc14d83f14a",
+    ".build/native/candidates/build17-audio-lifecycle-845fa089dd90/build-log.json": "bc4d760e6f40d171ffec39696c2db186b01d5c5a05c472bc3d23a8eabe54fdd5",
+    ".build/native/candidates/build17-audio-lifecycle-845fa089dd90/drivers/manifest.json": "39e5dec1b9cbd5dc056fbf007c3fcbea4a200bbb98fbb759e9522205bd7b6ba8",
+    ".build/native/build17-audio-lifecycle/package-offline-audit.json": "1504e6724c5d897baabe9649fa809c83b1e94ff1a55b43eaa154f1b314f60cfa",
+    ".build/native/build17-audio-lifecycle/package-build.stdout": "64a3b5acc3b2690f3f4e0d931bc20facc7060f327b117527a9d1d103b283df88",
+    ".build/native/build17-audio-lifecycle/package-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "before_install_integrity": {
+    "installed16_all12_exact": true,
+    "SIP": "System Integrity Protection status: enabled."
   }
 }
