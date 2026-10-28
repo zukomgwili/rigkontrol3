@@ -1,0 +1,210 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "state": "FROZEN_REVIEWED_READY_FOR_PRIVATE_IMPLEMENTATION",
+  "created_utc": "2026-10-28T15:26:42.328861+00:00",
+  "scope": "Plan one separate public-client observation; no code or live test in this planning step",
+  "candidate": "existing unchanged0.2.11/build16 source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+  "question": "After our output registration stops, does public global output-stream IsActive change from1to0 while our input registration remains started and its callbacks continue?",
+  "decision": {
+    "selected": "client-only observer first; no diagnosticdriver package/install required",
+    "rationale": "Current public CoreAudio stream activity plus existing NativeInfo can observe this value/lifetime boundary. Neither exposes native UInt32 plug-inclientIDs, setterorigin, activeclientcount, or ISO clearcounter. Those private IDs are not required for the narrowed question.",
+    "instrumentation_gate": "No automatic nextstage. A full native control-callback trace would require separate evidence-driven necessity, exact plan, signed audio-onlymeasurementpackage preserving exactMIDI16 and administratorinstallation; not admitted by this plan."
+  },
+  "separation": {
+    "existing_strict_test": "Frozen direction-usage.c and its NULL-buffer assertion stay unchanged and its qualification remains failed/unproven.",
+    "new_observer": "Separate private executable/result namespace; continues only the lifecycle/value observation, without evaluating or waiving the existing NULL-buffer qualification.",
+    "always_unproven": [
+      "nativeNIlast-outputparity",
+      "ISOclear execution",
+      "nonzeroPCMreplay absence",
+      "full hostUInt32clientmapping",
+      "exclusive hardware input-only direction"
+    ],
+    "callback_labels": "input/output are requested logical registration roles; retained masks and continued input callbacks do not prove exclusive physical direction or last actual outputconsumer."
+  },
+  "future_files": {
+    "private_directory": ".build/native/build16-host-boundary-observer/",
+    "C": "lifetime-observer.c (<=400lines inclCPUfixtures)",
+    "parent": "run-once.py derivedfromfrozen7410ef71 wrapper with onlynecessaryprovenance/result changes",
+    "tracked_result_after_live": "ReverseEngineering/Evidence/Build16HostBoundaryObservation.json"
+  },
+  "preimplementation_gate": [
+    "Record exact implementation diff and relevant callback/listener declaration read bounds in existingM3 before code; no NIbinary/decompiler/firmware or broaderAPIresearch.",
+    "Keep production Driver/ andTools/ sources/bundles unchanged; use existinginstalled16 andoneUSBowner.",
+    "StrictARM64/Werror/pedantic andASanUBSan CPUfixtures, rootreview +independentsafety/spec review, source/binary/wrapperpins beforelive."
+  ],
+  "preflight": [
+    "Root only controls liveaudio. NormallycloseGR6 withoutsave/remap; leaveUSB/switches/pedal untouched.",
+    "Verify12installedhashes/frozencandidate/signature provenance/SIP, noownedtestclients and10sidle. ReadexactUID/currentprovider/generation/nativeversion1/connected/noFAILED/error0/48k/stereoFloat32/oneinput+oneoutputstream. RequireDeviceIsRunningSomewhere0 andnativeaudioflagidle; failprecondition without ratechange orretry.",
+    "Use reviewed --show exit0/samecohort completion contract forsettingsbaseline ifwrapperneedsdevice/generation; initialprinted0/EAGAIN/EINPROGRESS permitted onlywithCLIexit0. No settings/calibrationsetter.",
+    "Permit originaltest ONE publicbufferFrameSize128SET/readbackandfourperIOProcusageSET/readbacks[1,0,0,1] beforestart. TwoIOProcIDs mustbedistinct/nonzero, samecallback withseparatefixedroleContexts asSDKsupports. No globalIsActivesetter.",
+    "Register propertylisteners beforeAudioStart for ownoutputstreamIsActive and deviceIsRunning, withcheckedregistration. Listeners record boundedatomicnotificationcounts only, nogets/printing/locks/allocations in listenercallbacks; mainthreadpumpsrunloop andreadsvalues."
+  ],
+  "one_cycle": [
+    {
+      "phase": "idle",
+      "action": "Capture initialglobalIsActive/deviceRunning/nativecohort/counters andlistenercounts; preexistingoutput0isrecorded andcannotbeclaimedasnewinactiveedge."
+    },
+    {
+      "phase": "input_started",
+      "action": "AudioDeviceStart(inputrole) exactlyonce; within5s requireitscallbackcountprogress/nativeaudioflag3 andsampleglobalstates."
+    },
+    {
+      "phase": "both_started",
+      "action": "AudioDeviceStart(outputrole) exactlyonce; within5s requirebothrolecountsprogress/nativehealthy. Captureglobaloutput1beforeoutputstop; ifnot1classificationisPRECONDITION_UNMET, notpositiveedge."
+    },
+    {
+      "phase": "output_stopped_input_alive",
+      "action": "AudioDeviceStop(outputrole) exactlyonce. Foratmost5s sampleat50ms intervals; recordinputprogress/outputcounts/globalIsActive/nativehealth/listenercounts. Allowatmost1s ofthiswindowforoutputcallbackquiescence; recordlatecallbacks, thenrequirestableoutputcount. Aftersettlinganynewoutputcallbackinvalidatestheobservation. Inputmustremainstartedandprogress.",
+      "positive": "Priorqueriedglobal1beforeStop, thenatleasttwoqualifiedglobal0queries>=100msapart; secondinputcallbackcount>first, nativeaudioflag3/cohorthealthyineach, settledoutputcountunchangedthroughwitnessesandsubsequentpolls. ClassificationEDGE_OBSERVEDonlyaftervalidcleanupandnotificationcontrols; notcontinuouszeroorNIparity.",
+      "negative": "NOT_OBSERVED_IN_THIS_5_SECOND_WINDOWonlyhealthysequencewithprior1,continuinginput/settledoutput,>=25validpolls,first<=200msafterStopreturn,last<=200msfrom5sdeadline,maxsteadygap<=200msandvalidnotificationcontrols; no0captured. OtherwiseINCONCLUSIVE/FAULT. Zerooutputactivitynotificationsaloneisnormal.",
+      "partial": "Abriefsingle0sampleorcoalescednotificationwithoutrequiredvalue/progresswitnessisinconclusive/partial, notpositive."
+    },
+    {
+      "phase": "cleanup",
+      "action": "Snapshotdevice-runningnotificationcount beforefinalinputStop; stopinputonce, thenfor<=2spumprunloop/checkpublicrunning0/nativeidle1/samecohort andnotificationcountincrease. DestroybothIOProcIDs/removelisteners, requireactivecallbackcount0/reap/allAPIcleanup0. Nooutputrestart/repeatcycle; restoreGR6normallyafterallresourcesend."
+    }
+  ],
+  "callback_contract": {
+    "action": "Countcalls perregistration andactivecallbacks only; no PCM dereference/copy/scan/generation, no payloadlogging, malloc/locks/printf/USB/propertyAPIs inIOProc. Return0; SDKzeroedoutput-on-entry is the silence contract. No deliberate nonzero output.",
+    "limits": "Registration progress is not validPCMsignalcontinuity. This observer doesnot reclassifythe known unused-bufferNULLfailure.",
+    "storage": "FixedstaticContexts andlockfreeatomics; listenernotificationcount limit256, no unboundedtraceallocation. Overflow isINCONCLUSIVE/fault, nevernegative/noedge. Rootmain emitsboundedrecords."
+  },
+  "record_fields": [
+    "monotonic timestamp andphase",
+    "logicalregistrationroles/distinctreturnedIDsboolean/observerPID (neverclaimnativeclientID)",
+    "APIstart/stop/setup/cleanup operationresult",
+    "requestedusage/readback tuple andexactstreamIDs",
+    "input/outputcallbackcounts plusactivecallbacks",
+    "globaloutputIsActive+status/size",
+    "deviceIsRunning poll/listenercounts; DeviceIsRunningSomewhere preflight/finalonly; NativeInfo flags/provider/generation/last_error/sample_rate",
+    "listenerregistration/removal andperpropertynotificationcounts/overflow",
+    "classification/qualification-unprovenlimits/reapedownedPIDgroup/sourceandbinarypins"
+  ],
+  "classification_rules": [
+    "observation_completed only aftervalidwholephaseorder/APIcompletion/cohort/progress/checkedcleanup; exit0 meanscapturecomplete, notNIparityPASS.",
+    "EDGE_OBSERVEDonlyprior1thenqualifiedtwo0queries>=100msapart,inputcountprogressBETWEENthem/native3andstablecohort,settledoutputunchangedthroughallsubsequentpolls,adequatepollcoverageandnotificationcontrols.",
+    "NOT_OBSERVED_IN_WINDOWonlyvalidhealthy5ssequence,adequatepolledcoverage/inputprogress/outputsettle,requireddevice-runningnotificationcontrols,andnocaptured0. Outputactivitynotificationcount0aloneisexpectedifunchanged, notmissingdelivery.",
+    "Listenerregistration/removalerror,overflow,missingexpecteddevice-runningdeliverycontrol,missingpolls/progress/lateoutput/read/native/cohort/cancel/cleanupfault=>INCONCLUSIVEorFAULT; usefulpolledvaluestillretainedbutneverpositive/negativeprimaryclassificationunderdegradedcoverage.",
+    "Device-runningcontrolsrequirepolled0\u21921\u21920/nativeflags1\u21923\u21921 plusatleastonenotificationinstartwindowandcounterincreaseafterfinalinputStopwithin2s. Countsarenotexacttransitionhistoryandarenotattributedtospecificsetter;coalescing/stalenesslimitsremain.",
+    "Globaloutputzero-witnesssamplesandcountersaresequentialnotatomic; nocontinuouszero/transientexclusion/naturalLASToutputconsumer/nativeclientID/ringclear/replayclaim. NIqualificationfieldalwaysUNPROVEN.",
+    "Steadyoutput-stopwindowdeadlineis5safterStopreturn; target50mspolls,no newpollstartsafterdeadline,maxgap200ms(includingfirstreadlatency/finalcoverage). Validnegative>=25polls;firstandlastwithin200msofwindowedges. BlockingnamedAPIcallwindowsareloggedseparately, notsamples; excessivegapsremainINCONCLUSIVE."
+  ],
+  "caps_and_faults": {
+    "actual_live_invocations": 1,
+    "active_phases_max_seconds": 20,
+    "phase_readiness_max_seconds": 5,
+    "output_stop_observation_seconds": 5,
+    "poll_interval_ms": 50,
+    "output_settle_within_window_seconds": 1,
+    "parent_helper_hard_seconds": 60,
+    "cleanup": "checked stop/destroy/remove; ownedgroupTERM2s/KILL2s/reap if needed, escalationnevercompletepositive. Prelaunch/cancellationhandoffguardsandfinallycleanup. No repeatedrun orcompensatingrate/globalactivity setters.",
+    "stop_on": [
+      "anyAPI/provenance/schema/newnativeerror/generationchange/disconnect",
+      "missinginputprogress/outputcontinuesaftersettle",
+      "notificationoverflow/unboundedrecords",
+      "childdeath/cancel/deadline/cleanupfailure"
+    ],
+    "exception_scope": "KnownpriorNULLqualificationfailureisnotassessedbythisdistinctnon-PCMobserver; itremainsfailedseparately andisneverreportedpassed.",
+    "maximum_steady_poll_gap_ms": 200,
+    "negative_minimum_valid_polls": 25,
+    "positive_minimum_zero_witness_gap_ms": 100,
+    "final_notification_control_wait_max_seconds": 2
+  },
+  "CPU_fixture_requirements": [
+    "Phaseorder/onecycle/noextraStart oroutputrestart;preexistingglobal0cannotpositive;prior1\u2192qualified0withprogresspositive.",
+    "No0withvalidhealthywindownegative;singlebrief0/coalescednotificationwithoutvaluewitnesspartial;missingprogress/lateoutput/API/cohort/gap/overflowfaultnotnegative.",
+    "Realcountercallbackseam countsroles/activecalls withoutaccessingPCM orbuffercontents;knownNULLqualificationtestremainsunchanged.",
+    "Mocklisteners andcleanup registrationerror/removefailure/timeout/cancelhandoff/TERM/KILL/reap; resultcannotpositiveaftercleanupfailure.",
+    "Args/deviceUID/format/frame/rate/readsize/generation guards andsourcepins; noCAPI/hardware inselftest.",
+    "Zerooutput-activitynotificationswithvalidrunningcontrolsisnormalnegative;missingrunningcontrolisinconclusiveevenwithpolledonesorzeroedge.",
+    "InputcountmustincreaseBETWEENzero-witnessqueries;equalcountercannotpositive.25poll/200msgap/edgecoverage/deadlineboundarytests; nofinalclassificationbeforecleanupandrunningcontrol."
+  ],
+  "coverage_limits": [
+    "PublicinterfacescannotexposenativeUInt32clientIDs, actualpropertysettercaller/order, aggregateperdirectionclientcounts orISOclearcounter.",
+    "OtherprocessesmaystartI/O duringtest; publicstatescannotfullyattribute allconsumers. Preflightidleness+userappsuntouchedreduceinterferencebutdonotproveexclusiveownership.",
+    "Sampled5s negative cannotruleouteverytransient,coalescednotificationorhiddenotheroutputconsumer.",
+    "Ifnaturalglobalinactiveboundaryunobserved, stopandrecordit; no automaticdriverinstrumentation/build/reinstall/timingchange."
+  ],
+  "source_provenance": [
+    {
+      "path": "Driver/NativeControl.h",
+      "sha256": "18ae01e359747f35b176862e4e679ca2a31f588f155a0e66e516894f4421ec35",
+      "read_bounds": [
+        [
+          1,
+          188
+        ]
+      ]
+    },
+    {
+      "path": "Driver/NativeClient.h",
+      "sha256": "3a0f40eb6acb95b74cf8aaaaddcc007deccd1552a4f09ce1873fa4eab2c1ca8b",
+      "read_bounds": [
+        [
+          1,
+          132
+        ]
+      ]
+    },
+    {
+      "path": ".build/native/build16-output-usage/direction-usage.c",
+      "sha256": "750443822ba2ff5edd059191a26ae28aa23080d8192bdefef02e3263b2510897",
+      "read_bounds": [
+        [
+          120,
+          178
+        ],
+        [
+          326,
+          370
+        ]
+      ]
+    },
+    {
+      "path": ".build/native/build16-output-usage/run-once.py",
+      "sha256": "7410ef71fcb095233eea836fdd2a77137dfd6a2a15ef67bdab6096525af73f65",
+      "read_bounds": [
+        [
+          1,
+          100
+        ]
+      ]
+    }
+  ],
+  "plan_reviews": {
+    "SDK_public_observability": "PASS corrected notification/control classification,200ms pollcoverage andbetween-witness progress, exactselectors",
+    "native_state_observability": "PASS publicboundaryonly/nativeIDsandringproofunavailable/noNULLwaiver",
+    "final_frozen_plan": "PASS two independentplanreviews, clarification addressed"
+  },
+  "code_written": false,
+  "live_test_run": false,
+  "driver_or_security_changes": false,
+  "new_regular_beads": 0,
+  "exact_property_addresses": {
+    "output_listener_and_poll": "discovered outputstreamID, kAudioStreamPropertyIsActive/global/main",
+    "running_listener_and_poll": "deviceID, kAudioDevicePropertyDeviceIsRunning/global/main",
+    "preflight_and_final_only": "deviceID, kAudioDevicePropertyDeviceIsRunningSomewhere/global/main",
+    "native_health": "existing rk3_native_copy_info(device) version1/provider/generation/flags/error/rate/UID",
+    "read_result_shape": "allBoolean/UInt32propertyreads requirestatus0/exact4bytes andvalues0or1; NativeInfo exactexistingABI"
+  },
+  "planning_end_check": {
+    "installed12_file_matches": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": true,
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": true,
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": true,
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": true
+    },
+    "SIP": "System Integrity Protection status: enabled.",
+    "no_helper_source_created": true,
+    "no_live_audio_or_MIDI_or_USB_API_calls": true
+  }
+}
