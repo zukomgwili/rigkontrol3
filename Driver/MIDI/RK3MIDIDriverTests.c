@@ -37,6 +37,14 @@ static OSStatus mock_midi_set_data(MIDIObjectRef,CFStringRef,CFDataRef);
 
 static bool restart_before_producer;
 static bool toggle_listener_before_delivery;
+static bool advance_epoch_before_delivery;
+static RK3MIDIDiagnosticSnapshot last_diag_sample;
+static size_t diagnostic_samples;
+void rk3_test_diag_sample(const RK3MIDIDiagnosticSnapshot *sample) {
+    assert(sample != NULL);
+    last_diag_sample = *sample;
+    ++diagnostic_samples;
+}
 void rk3_test_before_producer(void *context) {
     Driver *driver = context;
     if (restart_before_producer) {
@@ -49,6 +57,10 @@ void rk3_test_before_producer(void *context) {
 
 void rk3_test_before_delivery(void *context) {
     Driver *driver = context;
+    if (advance_epoch_before_delivery) {
+        advance_epoch_before_delivery = false;
+        atomic_fetch_add(&driver->lifecycle_epoch,1);
+    }
     if (toggle_listener_before_delivery) {
         toggle_listener_before_delivery = false;
         assert(enable_source(driver_ref(driver),driver->source,false) == noErr);
@@ -66,6 +78,7 @@ static uint64_t expected_after;
 static uint8_t delivered[64];
 static size_t delivered_count, deliveries;
 static uint64_t delivered_time;
+static OSStatus received_result;
 static Driver *working_driver;
 static size_t writes;
 static OSStatus write_result;
@@ -163,7 +176,7 @@ static OSStatus mock_received(MIDIEndpointRef source,const MIDIPacketList *list)
     delivered_time = list->packet[0].timeStamp;
     memcpy(delivered,list->packet[0].data,delivered_count);
     ++deliveries;
-    return noErr;
+    return received_result;
 }
 
 static OSStatus mock_midi_get_data(MIDIObjectRef object,CFStringRef key,CFDataRef *data) {
@@ -497,9 +510,173 @@ static void test_transient_output_does_not_disconnect_sources(void) {
     info_generation=7;writes_to_stop=1;failures_remaining=0;free_driver(driver);
 }
 
+/* These observations use the same input_tick/mapper/delivery calls as the live
+ * driver. Every provider read, publication and log sink remains a local fake. */
+static Driver *measurement_driver(bool enabled) {
+    info_generation=7;provider_present=true;provider_flags=RK3_NATIVE_CONNECTED;
+    digital_snapshot=UINT32_C(0x80000000);cf_fault=CF_FAULT_NONE;cf_fault_selector=0;
+    received_result=noErr;deliveries=0;advance_epoch_before_delivery=false;
+    input_batch=(RK3NativeReports){.version=RK3_CONTROL_VERSION};expected_after=0;
+    Driver *driver=make_driver();
+    input_tick(NULL,driver); /* establish released-switch baseline */
+    assert(enable_source(driver_ref(driver),124,enabled)==noErr);
+    return driver;
+}
+
+static void test_diagnostic_controller_gate_and_publication(void) {
+    for(unsigned enabled=0;enabled<2;++enabled) {
+        Driver *driver=measurement_driver(enabled!=0);
+        uint64_t candidates=atomic_load(&driver->diagnostics.control_emit_candidates);
+        uint64_t suppressed=atomic_load(&driver->diagnostics.control_current_suppressed);
+        controller_batch(driver,1,0x10); /* physical switch1 -> CC80 */
+        assert(driver->cursor==1&&driver->controller.button_values[4]==127);
+        assert(atomic_load(&driver->diagnostics.input_ticks)==2);
+        assert(atomic_load(&driver->diagnostics.batch_commits)==2);
+        assert(atomic_load(&driver->diagnostics.consumed_sequence)==1);
+        assert(atomic_load(&driver->diagnostics.control_emit_candidates)==candidates+1);
+        assert(atomic_load(&driver->diagnostics.control_current_suppressed)==suppressed+!enabled);
+        assert(atomic_load(&driver->diagnostics.received_attempts)==enabled);
+        assert(atomic_load(&driver->diagnostics.received_successes)==enabled);
+        assert(atomic_load(&driver->diagnostics.controller_received_attempts)==enabled);
+        assert(atomic_load(&driver->diagnostics.controller_received_successes)==enabled);
+        assert(atomic_load(&driver->diagnostics.received_errors)==0);
+        assert(atomic_load(&driver->diagnostics.enable_calls)==1);
+        assert(atomic_load(&driver->diagnostics.last_enable_source)==124);
+        assert(atomic_load(&driver->diagnostics.last_enable_requested)==enabled);
+        assert(atomic_load(&driver->diagnostics.last_enable_status)==noErr);
+        assert(deliveries==enabled&&atomic_load(&driver->online));
+        assert(!atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
+        if(enabled)assert(delivered_source==124&&delivered_time==9876&&
+                          memcmp(delivered,(uint8_t[]){0xb0,80,127},3)==0);
+        /* Local latch state and LED output continue on both sides of the gate. */
+        uint64_t head=atomic_load(&driver->output_write);
+        assert(head>0&&driver->output[(head-1)%OUTPUT_SLOTS].command.bytes[0]==5);
+        free_driver(driver);
+    }
+}
+
+static void test_diagnostic_first_query_failure(void) {
+    Driver *driver=measurement_driver(true);
+    cf_fault=CF_FAULT_STATUS;cf_fault_selector=RK3_PROPERTY_REPORTS;
+    input_tick(NULL,driver);
+    assert(!atomic_load(&driver->online)&&atomic_load(&driver->failed_generation)==7);
+    assert(atomic_load(&driver->diagnostics.report_query_failures)==1);
+    assert(atomic_load(&driver->diagnostics.last_query_status)==kAudioHardwareUnspecifiedError);
+    assert(atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
+    RK3MIDIDiagnosticFirstFailure first=driver->diagnostics.first_failure;
+    assert(first.cause==DIAG_FAILURE_REPORT_QUERY&&first.status==kAudioHardwareUnspecifiedError);
+    assert(first.device==42&&first.generation==7&&first.epoch==0);
+    /* A second accepted latch cannot overwrite the first accepted cause. */
+    record_io_failure(driver,42,7,0,DIAG_FAILURE_MIDI_RECEIVED,kMIDIMessageSendErr);
+    const RK3MIDIDiagnosticFirstFailure *saved=&driver->diagnostics.first_failure;
+    assert(saved->cause==first.cause&&saved->status==first.status&&saved->device==first.device&&
+           saved->generation==first.generation&&saved->epoch==first.epoch);
+    cf_fault=CF_FAULT_NONE;cf_fault_selector=0;
+    free_driver(driver);
+
+    driver=measurement_driver(true);
+    record_io_failure(driver,43,7,0,DIAG_FAILURE_REPORT_QUERY,kAudioHardwareUnspecifiedError);
+    record_io_failure(driver,42,7,1,DIAG_FAILURE_REPORT_QUERY,kAudioHardwareUnspecifiedError);
+    assert(atomic_load(&driver->online));
+    assert(!atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
+    free_driver(driver);
+}
+
+static void test_diagnostic_received_failure(void) {
+    Driver *driver=measurement_driver(true);
+    received_result=kMIDIMessageSendErr;
+    controller_batch(driver,1,0x10);
+    assert(deliveries==1&&!atomic_load(&driver->online)); /* old failure policy retained */
+    assert(atomic_load(&driver->diagnostics.received_attempts)==1);
+    assert(atomic_load(&driver->diagnostics.received_successes)==0);
+    assert(atomic_load(&driver->diagnostics.received_errors)==1);
+    assert(atomic_load(&driver->diagnostics.controller_received_attempts)==1);
+    assert(atomic_load(&driver->diagnostics.controller_received_successes)==0);
+    assert(atomic_load(&driver->diagnostics.last_received_status)==kMIDIMessageSendErr);
+    assert(atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
+    RK3MIDIDiagnosticFirstFailure first=driver->diagnostics.first_failure;
+    assert(first.cause==DIAG_FAILURE_MIDI_RECEIVED&&first.status==kMIDIMessageSendErr);
+    assert(first.device==42&&first.generation==7&&first.epoch==0);
+    received_result=noErr;free_driver(driver);
+}
+
+static void test_diagnostic_sequence_and_epoch_rejection(void) {
+    Driver *driver=measurement_driver(true);
+    uint64_t suppressed=atomic_load(&driver->diagnostics.control_permission_suppressed);
+    driver->controller_min_sequence=2;
+    controller_batch(driver,1,0x10);
+    assert(driver->controller.button_values[4]==127&&deliveries==0);
+    assert(atomic_load(&driver->diagnostics.control_permission_suppressed)==suppressed+1);
+    assert(atomic_load(&driver->diagnostics.received_attempts)==0);
+    controller_batch(driver,2,0);controller_batch(driver,3,0x10);
+    assert(deliveries==1&&memcmp(delivered,(uint8_t[]){0xb0,80,0},3)==0);
+    assert(atomic_load(&driver->online));free_driver(driver);
+
+    driver=measurement_driver(true);
+    advance_epoch_before_delivery=true;
+    controller_batch(driver,1,0x10);
+    assert(deliveries==0&&atomic_load(&driver->lifecycle_epoch)==1);
+    assert(atomic_load(&driver->diagnostics.delivery_guard_reject)==1);
+    assert(atomic_load(&driver->diagnostics.received_attempts)==0);
+    assert(atomic_load(&driver->online));
+    assert(!atomic_load_explicit(&driver->diagnostics.first_failure_ready,memory_order_acquire));
+    free_driver(driver);
+}
+
+static void test_diagnostic_instance_lifecycle_and_budget(void) {
+    Driver *first=RK3MIDIDriverFactory(NULL,kMIDIDriverTypeID);
+    Driver *second=RK3MIDIDriverFactory(NULL,kMIDIDriverTypeID);
+    assert(first&&second&&first->diagnostics.instance_id!=second->diagnostics.instance_id);
+    assert(first->diagnostics.birth_tag!=0&&second->diagnostics.birth_tag!=0);
+    assert(atomic_load(&first->diagnostics.start_calls)==0);
+    assert(stop_driver(driver_ref(first))==noErr); /* empty fixture: no endpoint/server calls */
+    assert(atomic_load(&first->diagnostics.stop_calls)==1);
+    diagnostic_samples=0;
+    diag_emit_sample(first,0);
+    assert(diagnostic_samples==1&&last_diag_sample.sample_count==1);
+    assert(last_diag_sample.instance_id==first->diagnostics.instance_id);
+    assert(last_diag_sample.birth_tag==first->diagnostics.birth_tag);
+    assert(last_diag_sample.stop_calls==1&&!last_diag_sample.first_failure_ready);
+    diag_emit_sample(first,0.5);assert(diagnostic_samples==1);
+    for(unsigned sample=1;sample<DIAG_SAMPLE_LIMIT;++sample)diag_emit_sample(first,sample);
+    assert(diagnostic_samples==DIAG_SAMPLE_LIMIT);
+    diag_emit_sample(first,DIAG_SAMPLE_LIMIT);diag_emit_sample(first,DIAG_SAMPLE_LIMIT*2);
+    assert(diagnostic_samples==DIAG_SAMPLE_LIMIT&&first->diagnostics.sample_count==DIAG_SAMPLE_LIMIT);
+    free_driver(first);free_driver(second);
+}
+
+static void test_diagnostic_maximum_numeric_log_size(void) {
+    RK3MIDIDiagnosticSnapshot sample={0};
+    sample.version=sample.instance_id=sample.birth_tag=sample.sample_count=UINT64_MAX;
+#define MAX_DIAGNOSTIC_FIELD(name) sample.name=UINT64_MAX;
+    DIAG_U64_FIELDS(MAX_DIAGNOSTIC_FIELD)
+#undef MAX_DIAGNOSTIC_FIELD
+    sample.last_query_status=sample.last_received_status=sample.last_enable_status=INT32_MIN;
+    sample.last_enable_source=sample.last_enable_requested=sample.last_enable_kind=UINT32_MAX;
+    sample.generation_before=sample.generation_after=sample.epoch_before=sample.epoch_after=UINT64_MAX;
+    sample.listener_epoch=sample.controller_listener_epoch=sample.failed_generation=UINT64_MAX;
+    sample.online=sample.source_enabled=sample.controller_enabled=sample.device=sample.failed_device=UINT32_MAX;
+    sample.first_failure_ready=true;sample.first_failure_status_valid=true;
+    sample.first_failure=(RK3MIDIDiagnosticFirstFailure){UINT32_MAX,INT32_MIN,UINT32_MAX,UINT64_MAX,UINT64_MAX};
+    char first[DIAG_LINE_BYTES],second[DIAG_LINE_BYTES];
+    assert(diag_format_sample(&sample,first,second));
+    const char *prefix="RK3-MIDI-DIAG14 ";
+    assert(strncmp(first,prefix,strlen(prefix))==0&&strncmp(second,prefix,strlen(prefix))==0);
+    assert(strlen(first)<=DIAG_MAX_LOG_BYTES&&strlen(second)<=DIAG_MAX_LOG_BYTES);
+    assert(strlen(first)<DIAG_LINE_BYTES&&strlen(second)<DIAG_LINE_BYTES);
+    assert(first[strlen(first)-1]=='}'&&second[strlen(second)-1]=='}');
+    /* Explicit synthetic fixtures: the parent also parses the exact formatter
+     * output as JSON; none of these rows is a captured runtime observation. */
+    puts("Synthetic maximum-width diagnostic format fixtures:");
+    puts(first);puts(second);
+}
+
 int main(void) {
     assert(CFPlugInRegisterFactoryFunction(factory_id(),RK3MIDIDriverFactory));
     test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_cf_transport_rejection(); test_worker_generation_and_error(); test_transient_output_does_not_disconnect_sources();
+    test_diagnostic_controller_gate_and_publication();test_diagnostic_first_query_failure();test_diagnostic_received_failure();
+    test_diagnostic_sequence_and_epoch_rejection();test_diagnostic_instance_lifecycle_and_budget();
+    test_diagnostic_maximum_numeric_log_size();
     assert(CFPlugInUnregisterFactory(factory_id()));
     puts("RK3 CoreMIDI: COM, bounded queue, generation lease, history cursor and input routing passed");
     return 0;
