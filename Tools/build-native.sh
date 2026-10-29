@@ -90,6 +90,8 @@ for unit in rk3-calibrate rk3-pedals rk3-midi-monitor rk3-midi-feedback; do
 done
 xcrun clang $flags -I"$root/Driver" "$root/Tools/rk3-input-gain.c" \
     -framework CoreAudio -framework CoreFoundation -o "$out/rk3-input-gain"
+xcrun clang $flags -I"$root/Driver" "$root/Tools/rk3-direct-monitor.c" \
+    -framework CoreAudio -framework CoreFoundation -o "$out/rk3-direct-monitor"
 xcrun clang $flags "$root/Tools/rk3-driver-smoke.c" -framework CoreAudio \
     -framework CoreFoundation -o "$out/rk3-driver-smoke"
 xcrun clang $flags "$root/Tools/rk3-audio-client.c" -framework CoreAudio -framework CoreFoundation \

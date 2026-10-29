@@ -357,7 +357,7 @@ lifetimes are different contracts, not restored by coincident structure sizes.
 | S8/S9 buffer size; S11 serial write | Selected original wrappers are successful no-ops | No invented queue-size/serial control follows from helper names |
 | S10 thresholds/config | Recovered all-tip/continuous default only; per-pedal tip/ring/switch settings missing | `.2`/`.7`: coherent configuration, persistence, calibration and physical acceptance |
 | S12 fake MIDI/monitor | Mapped Controller role exists; arbitrary injection/monitor subscription ABI missing | `.2`: retain confirmed conditional agent consumer requirements |
-| S13/S14 direct monitor | Missing command0e/mode, reply12 and readback semantics; physical mode meanings unknown | `.15`: separate bounded routing/reply plan; no guessed mode labels |
+| S13/S14 direct monitor | Original command0e/low-byte SET and command12/shared-cache GET now have the typed native `ndmo` binding; physical routing meanings remain unverified | Existing `.1`: [direct-monitor contract](DirectMonitorContract.md); installed/physical qualification stays in `.3`, without guessed mode labels |
 | S15/S16 channel gain | Unity capture only; original callable software gain missing | `.15`: exact Float32/schema/channel/lifetime plan before code |
 | S19/S20 user data | No counterpart; applicable RK3 requirement unproved | `.2`: no firmware/storage writes inferred from names |
 | S21 digital arm | Native baselines/history differ; original caller/buffer ABI absent | `.2`: preserve required event/baseline function without claiming emulation |

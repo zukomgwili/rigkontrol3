@@ -1,0 +1,270 @@
+{
+  "bead": "rigkontrol3-40h.1",
+  "date": "2026-10-29",
+  "status": "SOURCE_AND_OFFLINE_IMPLEMENTATION_PASS_PHYSICAL_PENDING",
+  "baseline_commit": "6dfb1b6",
+  "new_beads": 0,
+  "scope": "Original direct-monitor device control through existing sole native USB owner; source/offline implementation only",
+  "contract_report": "ReverseEngineering/DirectMonitorContract.md",
+  "original": {
+    "reference": {
+      "path": ".build/ni/reference/2.8.0/NIUSBAudioDriver.x86_64",
+      "sha256": "41574699c507896cb3a51b4756143e8c445eb76994871eb13517a642f7adaf08",
+      "cpu": "x86_64"
+    },
+    "cached_ASM_sha256": {
+      ".build/ni/decompiled/reproduced/audio280-text/00002ee0_de_caiaq_driver_NIUSBAudioDevice__setDirectMonitoringMode.asm": "95359e7faec9f6fa935a279c3475ffd2a6c109f942be682413c2bde2bb1a3778",
+      ".build/ni/decompiled/reproduced/audio280-text/00002f10_de_caiaq_driver_NIUSBAudioDevice__getCurrentDirectMonitoringMode.asm": "456a254291d37cbd9ef9e75886f03de63cfd28059f6287f61205498a852f5577",
+      ".build/ni/decompiled/reproduced/audio280-text/000097f0_de_caiaq_driver_NIUSBUserClient__setDirectMonitoringMode.asm": "fa6adbbde9fd65a8a4bdd0d0558d927af2462c9c8a3b566332e08b0b3360e24d",
+      ".build/ni/decompiled/reproduced/audio280-text/00009820_de_caiaq_driver_NIUSBUserClient__getCurrentDirectMonitoringMode.asm": "a87b78ddcf8421b93de0b486eec5a45026ac038c7bf663705214042eb523b8ea",
+      ".build/ni/decompiled/reproduced/audio280-text/000020e0_de_caiaq_driver_NIUSBAudioDevice__commandReplyDispatch.asm": "4916c392893c22f65bc0cb1a318ae3b7328f508443279283b4878c598e88efb0"
+    },
+    "read_address_caps": [
+      [
+        "0x2ee0",
+        "0x2f10"
+      ],
+      [
+        "0x2f10",
+        "0x3020"
+      ],
+      [
+        "0x97f0",
+        "0x9820"
+      ],
+      [
+        "0x9820",
+        "0x9850"
+      ],
+      [
+        "0x20e0",
+        "0x25c0"
+      ]
+    ],
+    "jump_table": {
+      "table_base_hex": "0x2560",
+      "command_index_hex": "0x12",
+      "entry_VM_hex": "0x25a8",
+      "segment": {
+        "name": "__TEXT",
+        "vmaddr": 0,
+        "vmsize": 65536,
+        "fileoff": 0,
+        "filesize": 65536
+      },
+      "file_offset_hex": "0x25a8",
+      "actual_four_bytes_hex": "c4ffffff",
+      "signed_little_endian_delta": -60,
+      "target_VM_hex": "0x2524",
+      "expected_target_hex": "0x2524",
+      "pass": true
+    },
+    "sleep_import": "IOSleep, metadata only; no callee or stub-body read",
+    "private_proof": ".build/ni/direct-monitor-contract/asm-contract-proof.json",
+    "private_proof_sha256": "e5cbcbf0b13046f72ef296477f5a7937b44823dc9480c159d397fbe759e16d2c",
+    "set": "one0e plus low byte, ignored send result, no cache write",
+    "get": "shared DWORD -1 reset before one12, send result ignored, up to1000 check-before-1ms sleeps, ff after final sleep without cache reload",
+    "reply": "unsigned byte1 in valid12 reply updates shared cache; no query nonce",
+    "physical_mode_meanings_verified": false
+  },
+  "native_binding": {
+    "selector": "ndmo/0x6e646d6f",
+    "query_bytes": 16,
+    "value_bytes": 16,
+    "qualifier_and_data": "CFData CFPropertyList on DEVICE/global/main",
+    "set_U32_low_byte_truncation": true,
+    "normal_get_timeout_value": 255,
+    "get_timeout_IS_NOT_HAL_error": true,
+    "polling_thread": "non-RT property caller, never USB worker",
+    "poll_sleeps": 1000,
+    "requested_sleep_ns": 1000000,
+    "EINTR": "retry remaining duration, fragments not additional iterations",
+    "final_sleep": "cohort-only validation, no final mode reload",
+    "cache": "shared device-level, not audio engine; no full GET serialization or nonce correlation",
+    "session_lifetime": "extra reference spans submit/poll/output commit/error; existing owner supplies initially valid handle",
+    "cohort": "existing synchronized committed physical generation; spec_available and engine not required",
+    "native_queue_deadline_ms": 500,
+    "existing_USB_write_cap_ms": 200,
+    "platform_differences": [
+      "Typed fixed-width native property/schema/error mapping instead of legacy kernel selector ABI",
+      "Current nonzero physical generation and close/cancel/deadline admission guards; native boundary errors leave GET output unchanged",
+      "At least two valid completion bytes for a12 reply; unreported descriptor tail is not fresh mode data"
+    ],
+    "startup_reconnect_sleep_writes_added": false,
+    "automatic_SET_to_GET_or_replay_added": false,
+    "hardware_state_notification_or_optimistic_cache_added": false,
+    "generic_ncmd_whitelist_changed": false
+  },
+  "source_sha256": {
+    "Driver/NativeControl.h": "1d2d6d797424a3ba0cb21f3e3525a35436f3ac9bc15c714d48e202baeee3e3cc",
+    "Driver/NativeClient.h": "042d5d5cf63e18418c9427124e41aaa2aa6aed49b2d917f0d643770364b670b8",
+    "Driver/NativeUSB.h": "80032f96320ad61dcceef007f101d9e6ab67550a3470e9cd5828373bed1824ed",
+    "Driver/NativeUSB.c": "7eca9abac77b9013d86747984eeb49775e5c9cc1909e3af718c79682dcaa99e6",
+    "Driver/Audio/RK3AudioDriver.c": "d6e5869abe5674443c196970873dfa026f69713f8c62af2dd09f508475e54e7b",
+    "Driver/Tests/AudioDriverTests.c": "53b75634defc111b7bffbbc2c5cfd86c11321eb316a1c6570ab1b35eef23e41b",
+    "Driver/Tests/NativeUSBTests.c": "e782bc118dfebdcef8296e119827d5c0737ebeca5aac3832ec21292c072392ed",
+    "Tools/rk3-direct-monitor.c": "7c4b2e357ea90e1849ca568bff7cc481bba036b8ef53997fad9ea559ee814b47",
+    "Tools/build-native.sh": "c3596961ce9c3445b9287c4f031b68104db62180651f5a5125e822b180e303c8"
+  },
+  "preserved_source_sha256": {
+    "Driver/DeviceProtocol.c": "be408152aae1a71b6cc1b57d003671b77acadf3bf66ab0b0d3b3a69938287a98",
+    "Driver/DeviceProtocol.h": "0b65843a6cad6893e349ea0d75884b9917a0135a363121a2efef1e857aa812de",
+    "Driver/MIDIEvent.c": "a109f95e6334848c49f90d98152dc7481753e056c3d11f2d3e17e5ee95e294af",
+    "Driver/MIDIEvent.h": "39bd956c32e4ef1f64ae54030551c3b5b49b0891802fb3e9f72d092bd34c0017",
+    "Driver/AudioCodec.c": "e8d29055ca4e460871f8d51792b0c9a83f1fcb82fbf7e202fd1a35cee7af8fe6",
+    "Driver/AudioCodec.h": "5df8c222c40dc24821d2c8da916a43f20071edebcb61d4ec4ac81c918c8faa1b",
+    "Driver/AudioSchedule.c": "1687a338e3f3b085242f148863ba840ee07cea128a149da065530d609be90191",
+    "Driver/AudioSchedule.h": "2b6b10c6ee33d56146d9750a6634039ea48da99465ab7599387b4e53ef24d3ca",
+    "Driver/AudioRing.c": "98c4801e2c9572fec2febd5253ad2b99af0067df762aee597f7c0fe30d5e2950",
+    "Driver/AudioRing.h": "5ace1b7ad2fe7decafe97fe7fd1c410adc2794282cd1712d14316153af9e41d1",
+    "Driver/AudioClock.c": "b8ee00b61446c9231b1401b3d7a79cf196eb162343b0941d00757867dbe4f062",
+    "Driver/AudioClock.h": "edbbbd75216e6a43a771de75e50f0fc81f6ebbc8d1b78b16b295927746d11a53",
+    "Driver/AudioTiming.h": "ecb114b55caab868e859406f82a7addec07ec6a29abe7958283ecd8916e09258",
+    "Driver/NativeAudioISO.c": "72a7216d94d237586393be5612f3dc0d8fc6eb9f3b2d2feb28a96ee9d082831e",
+    "Driver/NativeAudioISO.h": "b88c2f59bedf84320ba3dda69bb05a9ad1e1fb1d939f5984cab0a54319d9beb1",
+    "Driver/NativeHostUSB.m": "57b2e6f84ddcd5b7cace2dd9e0f268fe53cfa0a4eaa1bda1f6be1d58cd808f8d",
+    "Driver/NativeHostUSB.h": "deea2d568a808caa4dd778674133f796dde4d2bfef3e24224ce38acaae7b012c",
+    "Driver/InputGain.c": "c7048095874b22d44b0b4210e3344a1b3de45f778ec0c2da351a58359515df4e",
+    "Driver/InputGain.h": "51ccb07adf5d7d8b54caa765a9fbab39edb8846e97793f87b279e99958687d23",
+    "Driver/Controller.c": "40bb5f5949d7a3e202f4c8bc2ede2987f6d4f6acd4085a19b94092c553dfe4d1",
+    "Driver/Controller.h": "89d3dff30f1b10d1898dcfad9678f44356f5fbc0a3c994566fb982892e50b93f",
+    "Driver/PedalSettings.h": "8e6c58afb8f6abe64a5524dfd1506241699ac521c5942bafa724216e42ed0d09",
+    "Driver/MIDI/RK3MIDIDriver.c": "ac12d108642c7314c9344145a9403e2c901349adead66dd03de77ea8e8db7810",
+    "Driver/MIDI/MIDIStream.c": "d3342fd92b48057c4b322806707fd91358fad40110610da07b04420a2d147d8c",
+    "Driver/MIDI/MIDIStream.h": "4a586eb7166910e95750f6d3e03641d60fbb50fd44585da78f70035166e35b90"
+  },
+  "targeted_validation": {
+    "root_Hal_and_CLI": ".build/native/direct-monitor/root-targets/results.json",
+    "root_result_sha256": "8433ff6848de1ff6a465e9afdf11323d97668d1e98c697f53e3a6a1868cf14a8",
+    "CLI_invalid_arguments": ".build/native/direct-monitor/root-targets/CLI-invalid-only.json",
+    "CLI_invalid_result_sha256": "1828da0cbeb1c290f6bcd77c03dd75fed64f0bef7bc8e608df266aa715d90e93",
+    "USB": ".build/native/direct-monitor/usb-targeted-freeze-results.json",
+    "USB_result_sha256": "26e63cbc78bb250352072c259f7be916a807d052b17a4715f3ed102e22295136",
+    "initial_root_failure": "Existing HAL metadata fixtures still expected6 properties; failure/logs retained, corrected to append ndmo after old6 before trace. No driver behavior failure inferred.",
+    "initial_failure_record": ".build/native/direct-monitor/root-targets-initial-metadata/results.json",
+    "initial_failure_sha256": "a27f7f11e8ba8f6c421900d755dddf09cc4486676fa1c3d78c3118c5d105efb3",
+    "no_live_CLI_or_hardware_query": true,
+    "root_targeted_before_final_ABI_assert_only_addition": true
+  },
+  "reviews": {
+    "original_contract_and_final_owner_core": "PASS_independent_bounded_original_fidelity_review",
+    "root_schema_HAL_client_CLI": "PASS_independent_CF_ownership_scope_lowbyte_and_no_lock_wait_review",
+    "combined_concurrency_test_review": "PASS_independent_owner_lifetime_shared_cache_queue_expiry_callback_retirement_and_worker_service_review"
+  },
+  "scope_preserved": {
+    "NI_ring_calendar_clock_timing_QoS": true,
+    "NI_command_and_audio_recovery": true,
+    "MIDI_controls_calibration_LED_policy": true,
+    "SIP_security_settings_unchanged": true,
+    "installed_build16_unchanged_not_requeried": true,
+    "system_bundle_install_or_service_restart": false,
+    "new_live_capture_or_device_command": false,
+    "signed_package_built": false
+  },
+  "physical_acceptance": "NOT_RUN; numeric routing meanings, real installed GET/SET/routing and combined audio qualification remain in existing M3",
+  "M2_and_M3_complete": false,
+  "Apple_case_23183489": "Separate output-attachment/cleanup contract remains open; no change or extra submission",
+  "plans_before_coding_and_affected_revisions": [
+    {
+      "bead": "rigkontrol3-40h.1",
+      "comment_id": "3b52c578-8fa4-544a-a73c-a393ed32d480",
+      "created_at": "2026-10-29T06:52:52Z",
+      "text_sha256": "e8ac54697474da1c27c1eeffdad80416104b6023152a0e924325bca941a88e77",
+      "title": "Direct-monitor implementation \u2014 bounded preparation plan, 29 October 2026, BEFORE original-body reads or coding."
+    },
+    {
+      "bead": "rigkontrol3-40h.1",
+      "comment_id": "ba87f210-de04-50fa-aba7-586069b6cb42",
+      "created_at": "2026-10-29T06:57:36Z",
+      "text_sha256": "c2acb9153c7ed21ec8771c819c887748262f1f507fe0cff755fbc10337279fa8",
+      "title": "Direct-monitor read-plan amendment BEFORE the only additional original read."
+    },
+    {
+      "bead": "rigkontrol3-40h.1",
+      "comment_id": "0d6183ec-d482-5b0e-9cb7-15c4a296c101",
+      "created_at": "2026-10-29T07:00:25Z",
+      "text_sha256": "32980bb8c1182242e3d4a5ab6a163ef2f80c756e0c3cecffae8fb05345a55bad",
+      "title": "FROZEN DIRECT-MONITOR NATIVE IMPLEMENTATION PLAN \u2014 29 October 2026, BEFORE coding, existing M2 only."
+    },
+    {
+      "bead": "rigkontrol3-40h.1",
+      "comment_id": "279eb69a-1217-56e6-a8ec-af0a9e074be9",
+      "created_at": "2026-10-29T07:02:50Z",
+      "text_sha256": "1867fda86f836f6a0f24391158ef468344e5c54942ec486bee7e4a9a71e8edbd",
+      "title": "PRE-CODE plan amendment and implementation admission \u2014 29 October 2026."
+    },
+    {
+      "bead": "rigkontrol3-40h.1",
+      "comment_id": "ba362e96-319a-5daf-b644-23910f38fc4b",
+      "created_at": "2026-10-29T07:05:32Z",
+      "text_sha256": "b8901697157a6ab89fac31032ca8e35ddaf74f5d6d980142ba75e44b9b5abb9b",
+      "title": "Implementation clarification BEFORE the affected polling/lifetime edits."
+    },
+    {
+      "bead": "rigkontrol3-40h.1",
+      "comment_id": "5a47b959-5a0e-53fb-a5b9-c3376add8af3",
+      "created_at": "2026-10-29T07:15:20Z",
+      "text_sha256": "7cefb3b4fb75968193abc3fa1d4bb89ce1aae786d02cccd89362a72e38af7b2b",
+      "title": "Direct-monitor implementation review correction BEFORE revision."
+    }
+  ],
+  "full_native_validation": {
+    "runs": [
+      {
+        "mode": "test",
+        "argv": [
+          "/bin/sh",
+          "Tools/build-native.sh",
+          "test"
+        ],
+        "exit": 0,
+        "elapsed_seconds": 16.879331958014518,
+        "timed_out": false,
+        "reaped": true,
+        "stdout_sha256": "96cb9ee55d7cce2db6af3a1896fe92c686b1bc7f1315ec87b0ab49a84aec258c",
+        "stderr_sha256": "849eedc5475f62629466483778ead26097451a5a07e4f836ef6289077d5be07a"
+      },
+      {
+        "mode": "sanitize",
+        "argv": [
+          "/bin/sh",
+          "Tools/build-native.sh",
+          "sanitize"
+        ],
+        "exit": 0,
+        "elapsed_seconds": 21.44000841700472,
+        "timed_out": false,
+        "reaped": true,
+        "stdout_sha256": "68be497cc88e8c74e809d24af4e8b864106365af00a5d51e2ef66bb9cb43887c",
+        "stderr_sha256": "747e3ccc451f6534f9559bd2cb60ee763c64ce102fe3de2b589ead5737c3da76"
+      }
+    ],
+    "result_file": ".build/native/direct-monitor/full-gates/results.json",
+    "result_sha256": "6a63dbe2d9abea61355d680c680df37e4e0616820d7edbef3309c64de5f8bb2b",
+    "native_suite_executables_per_mode": 16,
+    "CLI_fixture_variants_per_mode": 2,
+    "ASAN_OPTIONS": "detect_leaks=0",
+    "UBSAN_OPTIONS": "halt_on_error=1",
+    "stderr": "Expected existing injected MIDI/pedal CLI failures and local diagnostic ad-hoc signature replacement; no sanitizer failure",
+    "all_runtime_device_APIs_in_existing_CLI_tests_are_stubbed": true
+  },
+  "production_HAL_compile_without_test_macros": {
+    "result": ".build/native/direct-monitor/root-targets/HAL-production-compile.json",
+    "sha256": "0c7f6b1ab37a06dfb9a3ab03bdda43dd40ef0e7c8040db306558f0e84ff73f14",
+    "exit": 0,
+    "executed": false
+  },
+  "archived_checkpoint": {
+    "commit": "711d76cdf6228186cf44a359950c834d5a758965",
+    "accepted": false,
+    "cherry_picked": false,
+    "historical_failure": "Expanded fake-USB fixture hung and was terminated; no captured stack proves its actual hang location",
+    "static_fixture_problem": "Deferred OUT failure left fake IN pending without a clear callback; completing OUT alone could not release recovery and queued teardown",
+    "replacement_fixture": "Controlled current owner/run-loop callback fixture retires both IN and OUT, with bounded waits/teardown; original production recovery unchanged"
+  },
+  "documentation_sha256": {
+    "ReverseEngineering/DirectMonitorContract.md": "cb4e6b447f4ec72c1986f0be35de7183bbf08f3bbdd8adc495630246077d61b5",
+    "ReverseEngineering/AudioDriver.md": "433e25f76eef4fc62f5ffdc00e2e0f240fc0e476938f5f4491a6217f7474d851",
+    "ReverseEngineering/SelectedBindingContracts.md": "44cf8a78acddce54889be46cd7c597b942f3f8886004b55165d16e966f43ff1f"
+  }
+}

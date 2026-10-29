@@ -21,7 +21,8 @@
 
 enum { REPORT_HISTORY = 256, COMMAND_QUEUE = 32, COMMAND_TIMEOUT = 200,
        CONNECT_RETRY_MS = 1000, REPLY_TIMEOUT_MS = 3000, DRAIN_MS = 2000 };
-typedef enum { REQUEST_COMMAND, REQUEST_START, REQUEST_STOP, REQUEST_RATE } RequestKind;
+typedef enum { REQUEST_COMMAND, REQUEST_START, REQUEST_STOP, REQUEST_RATE,
+               REQUEST_MONITOR_SET, REQUEST_MONITOR_QUERY } RequestKind;
 typedef struct Request {
     struct Request *next;
     RequestKind kind;
@@ -90,6 +91,7 @@ struct rk3_usb_session {
     bool digital_known;
     uint16_t digital_snapshot;
     int ack_result;
+    int32_t monitor_mode; /* Session mutex; NI shared DWORD cache, -1 while unknown. */
     UInt8 original_alt, command_in, command_out, iso_in, iso_out;
     uint8_t read_buffer[64];
     uint8_t write_buffer[64];
@@ -551,6 +553,8 @@ static void report_complete(void *context, int32_t result, size_t length) {
     if (session->history_count < REPORT_HISTORY) ++session->history_count;
     else ++session->status.reports_dropped;
     ++session->status.reports_received;
+    if (length >= 2 && session->read_buffer[0] == 0x12)
+        session->monitor_mode = session->read_buffer[1];
     pthread_mutex_unlock(&session->mutex);
     if (length != 0 && session->read_buffer[0] == RK3_COMMAND_INFO) {
         rk3_device_info info;
@@ -1183,6 +1187,12 @@ static int32_t rate_request_error_locked(rk3_usb_session *session,Request *reque
        rk3_native_audio_iso_running(context->audio)||!rk3_native_audio_iso_is_quiescent(context->audio))return kIOReturnBusy;
     return 0;
 }
+static int32_t direct_monitor_cohort_locked(rk3_usb_session *session, uint64_t generation) {
+    if (atomic_load(&session->closing) || !session->spec_generation ||
+        session->spec_generation != session->generation) return ENODEV;
+    return generation == session->generation ? 0 : ESTALE;
+}
+
 static void process_one_request(rk3_usb_session *session, bool connected) {
     Request *request = NULL;
     pthread_mutex_lock(&session->mutex);
@@ -1217,6 +1227,23 @@ static void process_one_request(rk3_usb_session *session, bool connected) {
         if (result == 0 && request->kind == REQUEST_COMMAND) {
             if (request->generation == 0 || request->generation != session->generation) result = ESTALE;
             else if (!command_worker(session, request->bytes, request->length, REPLY_TIMEOUT_MS)) result = EIO;
+        } else if (result == 0 && (request->kind == REQUEST_MONITOR_SET ||
+                                  request->kind == REQUEST_MONITOR_QUERY)) {
+            bool query = request->kind == REQUEST_MONITOR_QUERY;
+            pthread_mutex_lock(&session->mutex);
+            result = direct_monitor_cohort_locked(session, request->generation);
+            if (!result && (request->cancelled || seconds_now() >= request->deadline)) result = ETIMEDOUT;
+            if (!result && (!session->interface || !session->opened || session->transport_failed)) result = ENODEV;
+            if (!result && session->stopping_io) result = ECANCELED;
+            if (!result && request->length != (query ? 0u : 1u)) result = EINVAL;
+            if (!result && query) session->monitor_mode = -1;
+            pthread_mutex_unlock(&session->mutex);
+            if (!result) {
+                uint8_t bytes[2] = {query ? 0x12 : 0x0e, request->bytes[0]};
+                /* Original monitor operations ignore the send result. Keep the
+                 * transport's diagnostics/drain/no-replay behavior unchanged. */
+                (void)command_worker(session, bytes, query ? 1 : 2, COMMAND_TIMEOUT);
+            }
         } else if (result == 0 && request->kind == REQUEST_RATE) {
             RetiredAudio *context=atomic_load(&session->audio);
             uint16_t capacity=0;uint8_t command[RK3_AUDIO_PARAMS_BYTES];
@@ -1373,6 +1400,7 @@ rk3_usb_session *rk3_usb_open(char *error, size_t error_size) {
     atomic_init(&session->output_active, true);
     atomic_init(&session->rt_readers, 0);
     session->sample_rate = RK3_AUDIO_DEFAULT_SAMPLE_RATE;
+    session->monitor_mode = -1;
     session->status.state = RK3_USB_OPENING;
     pthread_t thread;
     pthread_attr_t attributes;
@@ -1523,6 +1551,73 @@ bool rk3_usb_write_midi(rk3_usb_session *session, uint8_t port, const uint8_t *b
     uint8_t command[64] = { RK3_COMMAND_MIDI_OUTPUT, port, (uint8_t)length };
     memcpy(command + 3, bytes, length);
     return rk3_usb_command(session, command, length + 3, timeout_ms);
+}
+
+#ifdef RK3_NATIVE_USB_TESTING
+extern int rk3_test_direct_monitor_nanosleep(const struct timespec *, struct timespec *);
+#endif
+static int32_t direct_monitor_sleep(void) {
+    struct timespec remaining = {0, 1000000};
+    for (;;) {
+#ifdef RK3_NATIVE_USB_TESTING
+        int result = rk3_test_direct_monitor_nanosleep(&remaining, &remaining);
+#else
+        int result = nanosleep(&remaining, &remaining);
+#endif
+        if (!result) return 0;
+        if (errno != EINTR) return errno ? errno : EIO;
+    }
+}
+
+int32_t rk3_usb_direct_monitor_set(rk3_usb_session *session, uint64_t generation, uint8_t mode) {
+    if (!session || !generation) return EINVAL;
+    atomic_fetch_add(&session->references, 1);
+    pthread_mutex_lock(&session->mutex);
+    int32_t result = direct_monitor_cohort_locked(session, generation);
+    pthread_mutex_unlock(&session->mutex);
+    if (!result) result = submit(session, REQUEST_MONITOR_SET, &mode, 1, generation, 500, 0);
+    if (result) {
+        pthread_mutex_lock(&session->mutex);
+        int32_t cohort = direct_monitor_cohort_locked(session, generation);
+        if (cohort) result = cohort;
+        pthread_mutex_unlock(&session->mutex);
+    }
+    release_session(session);
+    return result;
+}
+
+int32_t rk3_usb_direct_monitor_get(rk3_usb_session *session, uint64_t generation, uint8_t *mode) {
+    if (!session || !generation || !mode) return EINVAL;
+    atomic_fetch_add(&session->references, 1);
+    pthread_mutex_lock(&session->mutex);
+    int32_t result = direct_monitor_cohort_locked(session, generation);
+    pthread_mutex_unlock(&session->mutex);
+    if (!result) result = submit(session, REQUEST_MONITOR_QUERY, NULL, 0, generation, 500, 0);
+    if (result) {
+        pthread_mutex_lock(&session->mutex);
+        int32_t cohort = direct_monitor_cohort_locked(session, generation);
+        if (cohort) result = cohort;
+        pthread_mutex_unlock(&session->mutex);
+    }
+    for (unsigned iteration = 0; !result && iteration < 1000; ++iteration) {
+        pthread_mutex_lock(&session->mutex);
+        result = direct_monitor_cohort_locked(session, generation);
+        bool received = !result && session->monitor_mode != -1;
+        if (received) *mode = (uint8_t)session->monitor_mode;
+        pthread_mutex_unlock(&session->mutex);
+        if (result || received) { release_session(session); return result; }
+        result = direct_monitor_sleep();
+    }
+    if (!result) {
+        /* Preserve NI's no-final-cache-load rule after sleep 1000, while
+         * rejecting a native cohort loss during that last sleep. */
+        pthread_mutex_lock(&session->mutex);
+        result = direct_monitor_cohort_locked(session, generation);
+        if (!result) *mode = 0xff;
+        pthread_mutex_unlock(&session->mutex);
+    }
+    release_session(session);
+    return result;
 }
 
 /* Only the non-RT property path takes this gate. Publication/unpublication

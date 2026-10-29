@@ -70,6 +70,8 @@ static pthread_t owner_test_thread;
 static atomic_uint owner_attr_inits,owner_attr_sets,owner_attr_destroys,owner_creates,owner_detaches;
 static atomic_uint owner_mutex_destroys,owner_cond_destroys,owner_allocations,owner_frees;
 static atomic_bool owner_entered;
+static _Atomic(void *) monitor_free_target;
+static atomic_uint monitor_free_count;
 static atomic_int owner_requested_qos,owner_requested_relative,owner_requested_result;
 static int owner_test_attr_init(pthread_attr_t *attributes) {
     if(owner_test_active){atomic_fetch_add(&owner_attr_inits,1);if(owner_test_failure==1)return ENOMEM;}
@@ -133,6 +135,7 @@ static void *owner_test_calloc(size_t count,size_t size) {
 }
 static void owner_test_free(void *memory) {
     if(owner_test_active&&memory==owner_test_session)atomic_fetch_add(&owner_frees,1);
+    if(memory&&memory==atomic_load(&monitor_free_target))atomic_fetch_add(&monitor_free_count,1);
     free(memory);
 }
 static void owner_creation_test(void) {
@@ -2556,8 +2559,321 @@ static void identity_snapshot_race_test(void) {
     assert(!pthread_join(thread,NULL));identity_io=NULL;session.device=NULL;
     pthread_cond_destroy(&race.barrier.condition);pthread_mutex_destroy(&race.barrier.mutex);finish(&session);
 }
+
+/* Monitor GET waits on its calling thread. The fake owner keeps an actual
+ * CF run-loop source, and retires both command directions before teardown. */
+typedef struct {
+    RK3HostInterface interface; /* Fake host's self pointer. */
+    rk3_usb_session *session;
+    rk3_native_audio_iso audio;
+    pthread_t worker;
+    CFRunLoopSourceRef source;
+    atomic_bool ready,done,pause_requests,reply_on_write,hold_write;
+    atomic_uint jobs,completed,writes,reply_value,service_seen,clock_seen;
+    atomic_int write_error;
+    uint8_t packets[1024][4];size_t lengths[1024];
+    RK3HostBulkCompletion input_callback,output_callback;
+    void *input_context,*output_context;
+} MonitorFixture;
+enum { MONITOR_REPLY=1,MONITOR_REVOKE=2,MONITOR_GENERATION=4,MONITOR_RETIRE=8,
+       MONITOR_SHORT=16,MONITOR_UNRELATED=32 };
+static void monitor_deliver(MonitorFixture *f,uint8_t command,size_t length) {
+    assert(f->session->pending&&f->input_callback);
+    f->session->read_buffer[0]=command;
+    f->session->read_buffer[1]=(uint8_t)atomic_load(&f->reply_value);
+    f->input_callback(f->input_context,0,length);
+}
+static void monitor_retire(MonitorFixture *f) {
+    if(f->session->pending)f->input_callback(f->input_context,kIOReturnAborted,0);
+    if(f->session->pending_write)f->output_callback(f->output_context,kIOReturnAborted,0);
+}
+static void monitor_jobs(void *opaque) {
+    MonitorFixture *f=opaque;unsigned jobs=atomic_exchange(&f->jobs,0);
+    if(jobs&MONITOR_SHORT) {monitor_deliver(f,0x12,0);monitor_deliver(f,0x12,1);}
+    if(jobs&MONITOR_UNRELATED)monitor_deliver(f,0x14,2);
+    if(jobs&MONITOR_REPLY)monitor_deliver(f,0x12,2);
+    if(jobs&MONITOR_RETIRE)monitor_retire(f);
+    if(jobs&(MONITOR_REVOKE|MONITOR_GENERATION)) {
+        pthread_mutex_lock(&f->session->mutex);
+        if(jobs&MONITOR_REVOKE)spec_revoke_locked(f->session);
+        else {++f->session->generation;f->session->spec_generation=f->session->generation;}
+        pthread_mutex_unlock(&f->session->mutex);
+    }
+    atomic_fetch_add(&f->completed,1);
+}
+static void monitor_event(MonitorFixture *f,unsigned jobs,unsigned value) {
+    unsigned before=atomic_load(&f->completed);atomic_store(&f->reply_value,value);
+    assert(!atomic_exchange(&f->jobs,jobs));
+    CFRunLoopSourceSignal(f->source);CFRunLoopWakeUp(f->session->run_loop);
+    double end=seconds_now()+2;
+    while(atomic_load(&f->completed)==before&&seconds_now()<end) {
+        struct timespec delay={0,100000};nanosleep(&delay,NULL);
+    }
+    assert(atomic_load(&f->completed)>before);
+}
+static int32_t monitor_read(void *opaque,uint8_t pipe,void *bytes,size_t size,
+    uint32_t timeout,RK3HostBulkCompletion callback,void *context) {
+    (void)pipe;(void)timeout;MonitorFixture *f=opaque;
+    assert(bytes==f->session->read_buffer&&size==64&&context==f->session);
+    f->input_callback=callback;f->input_context=context;return 0;
+}
+static int32_t monitor_write(void *opaque,uint8_t pipe,const void *bytes,size_t size,
+    uint32_t timeout,RK3HostBulkCompletion callback,void *context) {
+    (void)pipe;(void)timeout;MonitorFixture *f=opaque;
+    unsigned index=atomic_fetch_add(&f->writes,1);assert(index<1024&&size<=4);
+    f->lengths[index]=size;memcpy(f->packets[index],bytes,size);
+    f->output_callback=callback;f->output_context=context;
+    int32_t error=atomic_load(&f->write_error);
+    if(error)return error;
+    if(!atomic_load(&f->hold_write))callback(context,0,size);
+    if(size==1&&((const uint8_t *)bytes)[0]==0x12&&atomic_load(&f->reply_on_write))
+        monitor_deliver(f,0x12,2); /* A reply during the query write must survive. */
+    return 0;
+}
+static int32_t monitor_clear(void *opaque,uint8_t pipe) {
+    MonitorFixture *f=opaque;
+    if(atomic_load(&f->hold_write))return 0; /* Explicit RETIRE delivers both callbacks. */
+    if(pipe==f->session->command_in&&f->session->pending)
+        f->input_callback(f->input_context,kIOReturnAborted,0);
+    if(pipe==f->session->command_out&&f->session->pending_write)
+        f->output_callback(f->output_context,kIOReturnAborted,0);
+    return 0;
+}
+static void *monitor_owner(void *opaque) {
+    MonitorFixture *f=opaque;rk3_usb_session *session=f->session;
+    session->run_loop=CFRunLoopGetCurrent();
+    CFRunLoopSourceContext context={.info=f,.perform=monitor_jobs};
+    f->source=CFRunLoopSourceCreate(NULL,0,&context);assert(f->source);
+    CFRunLoopAddSource(session->run_loop,f->source,kCFRunLoopDefaultMode);
+    assert(arm_reader(session));
+    if(atomic_load(&session->audio))assert(!sync_audio_clock_timer(session));
+    atomic_store(&f->ready,true);double end=seconds_now()+12;
+    while(!atomic_load(&session->closing)) {
+        assert(seconds_now()<end);
+        if(!atomic_load(&f->pause_requests))process_one_request(session,true);
+        pump_callbacks(session,.001);
+        atomic_store(&f->service_seen,fake_service_calls);
+        atomic_store(&f->clock_seen,fake_clock_service_calls);
+    }
+    monitor_retire(f);cancel_audio_clock_timer(session);
+    CFRunLoopRemoveSource(session->run_loop,f->source,kCFRunLoopDefaultMode);
+    CFRelease(f->source);
+    pthread_mutex_lock(&session->mutex);
+    while(session->head) {
+        Request *request=session->head;session->head=request->next;--session->queued;
+        complete_locked(request,ECANCELED);
+    }
+    session->tail=NULL;session->run_loop=NULL;session->status.state=RK3_USB_CLOSED;
+    pthread_cond_broadcast(&session->wake);pthread_mutex_unlock(&session->mutex);
+    atomic_store(&f->done,true);release_session(session);return NULL;
+}
+static void monitor_begin(MonitorFixture *f,bool audio) {
+    memset(f,0,sizeof(*f));f->session=calloc(1,sizeof(*f->session));assert(f->session);
+    initialize(f->session);f->session->spec_generation=9;f->session->monitor_mode=0x63;
+    atomic_init(&f->ready,false);atomic_init(&f->done,false);atomic_init(&f->pause_requests,false);
+    atomic_init(&f->reply_on_write,false);atomic_init(&f->hold_write,false);atomic_init(&f->jobs,0);
+    atomic_init(&f->completed,0);atomic_init(&f->writes,0);atomic_init(&f->reply_value,0);
+    atomic_init(&f->service_seen,0);atomic_init(&f->clock_seen,0);atomic_init(&f->write_error,0);
+    /* Deliberately no spec_available, identity availability or engine requirement. */
+    f->interface=(RK3HostInterface){.bulk_read=monitor_read,.bulk_write=monitor_write,
+        .clear_stall=monitor_clear,.abort_pipe=monitor_clear};
+    f->session->interface=&f->interface;f->session->opened=true;
+    f->session->command_in=4;f->session->command_out=7;f->session->status.state=RK3_USB_READY;
+    if(audio) {
+        test_audio(f->session,&f->audio);fake_audio_running=fake_clock_valid=true;
+        f->audio.clock_armed=true;f->audio.incarnation=1;
+        f->audio.deadline=mach_absolute_time()+test_clock_ticks(1000000);
+    }
+    atomic_store(&monitor_free_target,f->session);atomic_store(&monitor_free_count,0);
+    assert(!pthread_create(&f->worker,NULL,monitor_owner,f));double end=seconds_now()+2;
+    while(!atomic_load(&f->ready)&&seconds_now()<end)sched_yield();
+    assert(atomic_load(&f->ready));
+}
+static void monitor_end(MonitorFixture *f,bool already_closed) {
+    if(!already_closed)rk3_usb_close(f->session);
+    assert(!pthread_join(f->worker,NULL));
+    assert(atomic_load(&f->done)&&atomic_load(&monitor_free_count)==1);
+    atomic_store(&monitor_free_target,NULL);
+}
+typedef struct {
+    MonitorFixture *fixture;
+    unsigned sleeps,fragments,at,jobs,value;
+    bool interrupt_once,fragment_pending,fail,pause,service;
+    atomic_bool waiting,released;
+} MonitorSleep;
+static _Thread_local MonitorSleep *monitor_sleep;
+int rk3_test_direct_monitor_nanosleep(const struct timespec *request,struct timespec *remaining) {
+    MonitorSleep *sleep=monitor_sleep;
+    if(!sleep)return nanosleep(request,remaining);
+    assert(request->tv_sec==0);
+    if(sleep->fragment_pending) {
+        assert(request->tv_nsec==500000);sleep->fragment_pending=false;++sleep->fragments;return 0;
+    }
+    assert(request->tv_nsec==1000000);++sleep->sleeps;
+    if(sleep->fail){errno=EIO;return -1;}
+    if(sleep->service) {
+        double end=seconds_now()+2;
+        while(!atomic_load(&sleep->fixture->clock_seen)&&seconds_now()<end)sched_yield();
+        assert(atomic_load(&sleep->fixture->clock_seen)&&atomic_load(&sleep->fixture->service_seen));
+        assert(!rk3_usb_audio_stop(sleep->fixture->session,1000));
+        const uint8_t midi[]={7,0,1,0xf8};
+        assert(rk3_usb_command_for_generation(sleep->fixture->session,midi,sizeof(midi),9,1000));
+        monitor_event(sleep->fixture,MONITOR_REPLY,0x34);sleep->service=false;
+    }
+    if(sleep->sleeps==sleep->at&&sleep->jobs)monitor_event(sleep->fixture,sleep->jobs,sleep->value);
+    if(sleep->pause) {
+        atomic_store(&sleep->waiting,true);double end=seconds_now()+2;
+        while(!atomic_load(&sleep->released)&&seconds_now()<end)sched_yield();
+        assert(atomic_load(&sleep->released));sleep->pause=false;
+    }
+    if(sleep->interrupt_once) {
+        sleep->interrupt_once=false;sleep->fragment_pending=true;*remaining=(struct timespec){0,500000};
+        errno=EINTR;return -1;
+    }
+    return 0;
+}
+static int32_t monitor_get(MonitorFixture *f,MonitorSleep *sleep,uint8_t *value) {
+    sleep->fixture=f;monitor_sleep=sleep;
+    int32_t result=rk3_usb_direct_monitor_get(f->session,9,value);monitor_sleep=NULL;return result;
+}
+static void direct_monitor_values_test(void) {
+    MonitorFixture f;monitor_begin(&f,false);atomic_store(&f.reply_on_write,true);
+    for(unsigned i=0;i<256;++i) {
+        unsigned before=atomic_load(&f.writes);
+        assert(!rk3_usb_direct_monitor_set(f.session,9,(uint8_t)i));
+        assert(f.lengths[before]==2&&f.packets[before][0]==0x0e&&f.packets[before][1]==i);
+        pthread_mutex_lock(&f.session->mutex);assert(f.session->monitor_mode==0x63);pthread_mutex_unlock(&f.session->mutex);
+    }
+    for(unsigned i=0;i<256;++i) {
+        atomic_store(&f.reply_value,i);unsigned before=atomic_load(&f.writes);
+        uint8_t value=0x42;MonitorSleep sleep={0};assert(!monitor_get(&f,&sleep,&value)&&value==i&&!sleep.sleeps);
+        assert(atomic_load(&f.writes)==before+1&&f.lengths[before]==1&&f.packets[before][0]==0x12);
+    }
+    assert(rk3_usb_direct_monitor_set(f.session,0,1)==EINVAL);
+    uint8_t unchanged=0x42;assert(rk3_usb_direct_monitor_get(f.session,0,&unchanged)==EINVAL);
+    assert(rk3_usb_direct_monitor_get(f.session,8,&unchanged)==ESTALE&&unchanged==0x42);
+    assert(rk3_usb_direct_monitor_get(NULL,9,&unchanged)==EINVAL);
+    assert(rk3_usb_direct_monitor_get(f.session,9,NULL)==EINVAL);
+    monitor_end(&f,false);
+}
+static void direct_monitor_poll_test(void) {
+    MonitorFixture f;monitor_begin(&f,false);uint8_t value=0x42;
+    monitor_event(&f,MONITOR_REPLY,0x1a);
+    MonitorSleep sleep={0};assert(!monitor_get(&f,&sleep,&value)&&value==255&&sleep.sleeps==1000);
+    sleep=(MonitorSleep){.at=2,.jobs=MONITOR_REPLY,.value=0x7f,.interrupt_once=true};
+    assert(!monitor_get(&f,&sleep,&value)&&value==0x7f&&sleep.sleeps==2&&sleep.fragments==1);
+    sleep=(MonitorSleep){.at=1,.jobs=MONITOR_SHORT|MONITOR_UNRELATED};
+    assert(!monitor_get(&f,&sleep,&value)&&value==255&&sleep.sleeps==1000);
+    sleep=(MonitorSleep){.at=1000,.jobs=MONITOR_REPLY,.value=0x5a};
+    assert(!monitor_get(&f,&sleep,&value)&&value==255&&sleep.sleeps==1000);
+    pthread_mutex_lock(&f.session->mutex);assert(f.session->monitor_mode==0x5a);pthread_mutex_unlock(&f.session->mutex);
+    sleep=(MonitorSleep){.fail=true};value=0x42;
+    assert(monitor_get(&f,&sleep,&value)==EIO&&value==0x42);
+    atomic_store(&f.write_error,kIOReturnIOError);
+    unsigned before=atomic_load(&f.writes);sleep=(MonitorSleep){0};
+    assert(!rk3_usb_direct_monitor_set(f.session,9,0x11)&&atomic_load(&f.writes)==before+1);
+    assert(!monitor_get(&f,&sleep,&value)&&value==255&&sleep.sleeps==1000);
+    monitor_end(&f,false);
+    monitor_begin(&f,false);sleep=(MonitorSleep){.at=1000,.jobs=MONITOR_GENERATION|MONITOR_REPLY,.value=0x11};
+    value=0x42;assert(monitor_get(&f,&sleep,&value)==ESTALE&&value==0x42&&sleep.sleeps==1000);
+    monitor_end(&f,false);
+    monitor_begin(&f,false);sleep=(MonitorSleep){.at=1,.jobs=MONITOR_REVOKE};
+    value=0x42;assert(monitor_get(&f,&sleep,&value)==ENODEV&&value==0x42);monitor_end(&f,false);
+    monitor_begin(&f,false);atomic_store(&f.write_error,kIOReturnNoDevice);sleep=(MonitorSleep){0};
+    value=0x42;assert(monitor_get(&f,&sleep,&value)==ENODEV&&value==0x42);monitor_end(&f,false);
+    monitor_begin(&f,true);sleep=(MonitorSleep){.service=true};
+    assert(!monitor_get(&f,&sleep,&value)&&value==0x34);monitor_end(&f,false);
+}
+typedef struct { MonitorFixture *fixture;MonitorSleep sleep;uint8_t value;int32_t result; } MonitorGetter;
+static void *monitor_get_thread(void *opaque) {
+    MonitorGetter *getter=opaque;getter->result=monitor_get(getter->fixture,&getter->sleep,&getter->value);return NULL;
+}
+static void monitor_wait_sleep(MonitorSleep *sleep) {
+    double end=seconds_now()+2;
+    while(!atomic_load(&sleep->waiting)&&seconds_now()<end)sched_yield();assert(atomic_load(&sleep->waiting));
+}
+static void direct_monitor_shared_close_test(void) {
+    MonitorFixture f;monitor_begin(&f,false);
+    MonitorGetter a={.fixture=&f,.sleep={.pause=true},.value=0x42},b=a;pthread_t first,second;
+    assert(!pthread_create(&first,NULL,monitor_get_thread,&a));monitor_wait_sleep(&a.sleep);
+    monitor_event(&f,MONITOR_REPLY,0x11);
+    assert(!pthread_create(&second,NULL,monitor_get_thread,&b));monitor_wait_sleep(&b.sleep);
+    pthread_mutex_lock(&f.session->mutex);assert(f.session->monitor_mode==-1);pthread_mutex_unlock(&f.session->mutex);
+    assert(atomic_load(&f.writes)==2);monitor_event(&f,MONITOR_REPLY,0x66);
+    atomic_store(&a.sleep.released,true);atomic_store(&b.sleep.released,true);
+    assert(!pthread_join(first,NULL)&&!pthread_join(second,NULL));
+    assert(!a.result&&!b.result&&a.value==0x66&&b.value==0x66);monitor_end(&f,false);
+    monitor_begin(&f,false);a=(MonitorGetter){.fixture=&f,.sleep={.pause=true},.value=0x42};
+    assert(!pthread_create(&first,NULL,monitor_get_thread,&a));monitor_wait_sleep(&a.sleep);
+    rk3_usb_close(f.session);assert(!pthread_join(f.worker,NULL));
+    assert(atomic_load(&f.done)&&!atomic_load(&monitor_free_count));
+    atomic_store(&a.sleep.released,true);assert(!pthread_join(first,NULL));
+    assert(a.result==ENODEV&&a.value==0x42&&atomic_load(&monitor_free_count)==1);
+    atomic_store(&monitor_free_target,NULL);
+    monitor_begin(&f,false);atomic_store(&f.pause_requests,true);
+    a=(MonitorGetter){.fixture=&f,.value=0x42};
+    assert(!pthread_create(&first,NULL,monitor_get_thread,&a));double end=seconds_now()+2;
+    for(;;) {pthread_mutex_lock(&f.session->mutex);bool queued=f.session->head!=NULL;pthread_mutex_unlock(&f.session->mutex);
+        if(queued)break;assert(seconds_now()<end);sched_yield();}
+    rk3_usb_close(f.session);
+    assert(!pthread_join(first,NULL)&&!pthread_join(f.worker,NULL));
+    assert(a.result==ENODEV&&a.value==0x42&&!atomic_load(&f.writes)&&atomic_load(&monitor_free_count)==1);
+    atomic_store(&monitor_free_target,NULL);
+}
+static void direct_monitor_property_bridge_test(void) {
+    MonitorFixture f;monitor_begin(&f,false);usb=f.session;host=NULL;
+    RK3NativeMonitorQuery query={.version=1,.generation=9};
+    for(unsigned byte=0;byte<256;++byte) {
+        RK3NativeMonitorValue value={.version=1,.mode=UINT32_C(0xaabbcc00)|byte,.generation=9};
+        unsigned before=atomic_load(&f.writes);
+        assert(!rk3_native_set_direct_monitor(DEVICE,&query,&value));
+        assert(atomic_load(&f.writes)==before+1&&f.packets[before][1]==byte);
+    }
+    atomic_store(&f.reply_on_write,true);atomic_store(&f.reply_value,0xff);
+    RK3NativeMonitorValue value={.mode=0x42};
+    assert(!rk3_native_copy_direct_monitor(DEVICE,&query,&value)&&value.version==1&&value.mode==255&&value.generation==9);
+    unsigned before=atomic_load(&f.writes);query.generation=8;value.mode=0x42;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareNotRunningError&&value.mode==0x42);
+    query.generation=9;query.reserved=1;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareIllegalOperationError&&value.mode==0x42);
+    assert(atomic_load(&f.writes)==before);
+    assert(!rk3_usb_command_for_generation(f.session,(const uint8_t[]){0x0e,0},2,9,100));
+    assert(!rk3_usb_command_for_generation(f.session,(const uint8_t[]){0x12},1,9,100));
+    usb=NULL;monitor_end(&f,false);
+}
+static void direct_monitor_admission_drain_test(void) {
+    MonitorFixture f;monitor_begin(&f,false);atomic_store(&f.pause_requests,true);
+    uint8_t value=0x42;MonitorSleep sleep={0};
+    pthread_mutex_lock(&f.session->mutex);f.session->queued=COMMAND_QUEUE;pthread_mutex_unlock(&f.session->mutex);
+    assert(rk3_usb_direct_monitor_set(f.session,9,1)==ECANCELED);
+    assert(monitor_get(&f,&sleep,&value)==ECANCELED&&value==0x42);
+    pthread_mutex_lock(&f.session->mutex);f.session->queued=0;pthread_mutex_unlock(&f.session->mutex);
+    assert(monitor_get(&f,&sleep,&value)==ETIMEDOUT&&value==0x42&&!sleep.sleeps&&!atomic_load(&f.writes));
+    atomic_store(&f.pause_requests,false);double end=seconds_now()+2;
+    for(;;) {pthread_mutex_lock(&f.session->mutex);bool empty=!f.session->head;pthread_mutex_unlock(&f.session->mutex);
+        if(empty)break;assert(seconds_now()<end);sched_yield();}
+    pthread_mutex_lock(&f.session->mutex);assert(f.session->monitor_mode==0x63);pthread_mutex_unlock(&f.session->mutex);
+    atomic_store(&f.pause_requests,true);
+    pthread_mutex_lock(&f.session->mutex);
+    Request *expired=enqueue_test_request(f.session,REQUEST_MONITOR_QUERY,NULL,0);
+    expired->deadline=seconds_now()-1; /* Not cancelled: test the worker's own deadline guard. */
+    pthread_mutex_unlock(&f.session->mutex);atomic_store(&f.pause_requests,false);end=seconds_now()+2;
+    for(;;) {pthread_mutex_lock(&f.session->mutex);bool done=expired->complete;pthread_mutex_unlock(&f.session->mutex);
+        if(done)break;assert(seconds_now()<end);sched_yield();}
+    assert(expired->result==ETIMEDOUT&&!atomic_load(&f.writes));free_test_request(expired);
+    pthread_mutex_lock(&f.session->mutex);assert(f.session->monitor_mode==0x63);pthread_mutex_unlock(&f.session->mutex);
+    atomic_store(&f.hold_write,true);assert(!rk3_usb_direct_monitor_set(f.session,9,0x34));
+    assert(f.session->pending_write&&f.session->command_recovering);
+    assert(rk3_usb_direct_monitor_set(f.session,9,0x56)==ETIMEDOUT&&atomic_load(&f.writes)==1);
+    monitor_event(&f,MONITOR_RETIRE,0);atomic_store(&f.hold_write,false);end=seconds_now()+2;
+    for(;;) {pthread_mutex_lock(&f.session->mutex);bool empty=!f.session->head;pthread_mutex_unlock(&f.session->mutex);
+        if(empty)break;assert(seconds_now()<end);sched_yield();}
+    assert(atomic_load(&f.writes)==1);monitor_end(&f,false);
+}
+
 int main(void) {
     owner_creation_test();
+    direct_monitor_values_test();direct_monitor_poll_test();direct_monitor_shared_close_test();direct_monitor_admission_drain_test();direct_monitor_property_bridge_test();
     identity_capture_publication_test();identity_partial_capture_test();identity_property_test();
     identity_held_request_close_test();identity_cohort_test();identity_snapshot_race_test();identity_pending_drain_test();identity_opaque_transport_test();
     identity_reader_first_test();identity_reader_fallback_test();identity_reader_unicode_test();identity_reader_oracles_test();identity_reader_definedness_test();

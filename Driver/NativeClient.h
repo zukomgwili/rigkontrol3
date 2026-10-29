@@ -91,6 +91,30 @@ static inline OSStatus rk3_native_copy_usb_identity(AudioObjectID device,
     }
     *value=current;return 0;
 }
+static inline OSStatus rk3_native_copy_direct_monitor(AudioObjectID device,
+    const RK3NativeMonitorQuery *query,RK3NativeMonitorValue *value) {
+    if(!query||!value||query->version!=RK3_CONTROL_VERSION||query->reserved||!query->generation)
+        return kAudioHardwareIllegalOperationError;
+    RK3NativeMonitorValue current;
+    OSStatus error=rk3_native_copy_blob(device,RK3_PROPERTY_DIRECT_MONITOR,
+        query,sizeof(*query),&current,sizeof(current));
+    if(error)return error;
+    if(current.version!=RK3_CONTROL_VERSION||current.generation!=query->generation||current.mode>UINT8_MAX)
+        return kAudioHardwareIllegalOperationError;
+    *value=current;return 0;
+}
+static inline OSStatus rk3_native_set_direct_monitor(AudioObjectID device,
+    const RK3NativeMonitorQuery *query,const RK3NativeMonitorValue *value) {
+    if(!query||!value||query->version!=RK3_CONTROL_VERSION||query->reserved||!query->generation||
+       value->version!=RK3_CONTROL_VERSION||value->generation!=query->generation)
+        return kAudioHardwareIllegalOperationError;
+    CFDataRef qualifier=CFDataCreate(NULL,(const UInt8 *)query,sizeof(*query));
+    CFDataRef data=CFDataCreate(NULL,(const UInt8 *)value,sizeof(*value));
+    if(!qualifier||!data){if(qualifier)CFRelease(qualifier);if(data)CFRelease(data);return kAudioHardwareUnspecifiedError;}
+    AudioObjectPropertyAddress address={RK3_PROPERTY_DIRECT_MONITOR,kAudioObjectPropertyScopeGlobal,kAudioObjectPropertyElementMain};
+    OSStatus error=AudioObjectSetPropertyData(device,&address,sizeof(qualifier),&qualifier,sizeof(data),&data);
+    CFRelease(data);CFRelease(qualifier);return error;
+}
 static inline OSStatus rk3_native_copy_input_gain(AudioObjectID device,
     const RK3NativeGainQuery *query,RK3NativeGainValue *value) {
     if(!query||!value)return kAudioHardwareIllegalOperationError;

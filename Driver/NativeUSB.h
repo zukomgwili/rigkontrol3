@@ -115,6 +115,16 @@ bool rk3_usb_set_audio_panic_handler(rk3_usb_session *session,
  * Optional changed is false on failure or an identical-bit successful set. */
 int32_t rk3_usb_input_gain_get(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t *bits);
 int32_t rk3_usb_input_gain_set(rk3_usb_session *session,uint64_t generation,uint32_t channel,uint32_t bits,bool *changed);
+/* Non-RT original direct-monitor byte operations through the existing owner.
+ * SET sends [0e,mode] once and does not update the cache. GET resets the shared
+ * cache before [12], then polls it up to 1000 check-before-1ms-sleep iterations
+ * on the caller, not the USB worker. Exhaustion returns ff normally, without a
+ * final cache reload. Shared/late replies are not attributed to a query token.
+ * USB send failure is deliberately ignored; native admission/lifetime failures
+ * remain errno results and leave GET output unchanged. Both calls pin session
+ * lifetime once entered, including concurrent close during GET polling. */
+int32_t rk3_usb_direct_monitor_set(rk3_usb_session *,uint64_t generation,uint8_t mode);
+int32_t rk3_usb_direct_monitor_get(rk3_usb_session *,uint64_t generation,uint8_t *mode);
 /* Non-RT stream-property update. Desired activity survives reconnect and is
  * applied before publishing each engine. It pins the engine and invokes only
  * the ISO atomic setter; no USB transfer is issued. */

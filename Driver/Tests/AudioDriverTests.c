@@ -14,6 +14,9 @@ static RK3InputGain mock_gain;
 static unsigned starts,stops,capture_calls,render_calls,opens,closes,output_active_changes;
 static unsigned spec_reads,identity_reads;
 static unsigned command_calls;
+static unsigned monitor_gets,monitor_sets;
+static uint8_t mock_monitor_mode=19,last_monitor_set;
+static int32_t mock_monitor_error;
 static uint8_t command_bytes[64];
 static size_t command_length;
 static uint64_t command_generation;
@@ -85,6 +88,21 @@ int32_t rk3_usb_input_gain_get(rk3_usb_session *s,uint64_t generation,uint32_t c
     (void)s;if(!mock_connected)return ENODEV;if(generation!=mock_generation)return ESTALE;
     return rk3_input_gain_get(&mock_gain,2,channel,bits)?0:EINVAL;
 }
+static int32_t monitor_owner_check(rk3_usb_session *s,uint64_t generation) {
+    assert(s==&mock_session);
+    assert(pthread_mutex_trylock(&control)==0);pthread_mutex_unlock(&control);
+    if(!mock_connected)return ENODEV;
+    if(generation!=mock_generation)return ESTALE;
+    return mock_monitor_error;
+}
+int32_t rk3_usb_direct_monitor_get(rk3_usb_session *s,uint64_t generation,uint8_t *mode) {
+    ++monitor_gets;int32_t error=monitor_owner_check(s,generation);
+    if(!error)*mode=mock_monitor_mode;return error;
+}
+int32_t rk3_usb_direct_monitor_set(rk3_usb_session *s,uint64_t generation,uint8_t mode) {
+    ++monitor_sets;int32_t error=monitor_owner_check(s,generation);
+    if(!error)last_monitor_set=mode;return error;
+}
 int32_t rk3_usb_input_gain_set(rk3_usb_session *s,uint64_t generation,uint32_t channel,uint32_t bits,bool *changed) {
     (void)s;*changed=false;if(!mock_connected)return ENODEV;if(generation!=mock_generation)return ESTALE;
     uint32_t previous=0;(void)rk3_input_gain_get(&mock_gain,2,channel,&previous);
@@ -128,9 +146,13 @@ static CFDataRef property_data_create(CFAllocatorRef allocator,const UInt8 *byte
     }
     return CFDataCreate(allocator,bytes,length);
 }
-static CFPropertyListRef spec_platform_reply,identity_platform_reply;
+static CFPropertyListRef spec_platform_reply,identity_platform_reply,monitor_platform_reply;
 static unsigned identity_transports;
 static OSStatus bridge_get(AudioObjectID device,const AudioObjectPropertyAddress *a,UInt32 qs,const void *q,UInt32 *size,void *out){
+    if(a->mSelector==RK3_PROPERTY_DIRECT_MONITOR&&monitor_platform_reply) {
+        CFRetain(monitor_platform_reply);memcpy(out,&monitor_platform_reply,sizeof(monitor_platform_reply));
+        *size=sizeof(monitor_platform_reply);return 0;
+    }
     if(a->mSelector==RK3_PROPERTY_USB_IDENTITY) {
         ++identity_transports;
         if(identity_platform_reply) {
@@ -202,11 +224,11 @@ static void properties(void){
     RK3NativeInfo current={0};
     assert(rk3_native_copy_info(DEVICE,&current)==0&&current.version==1&&current.generation==7);
     a.mSelector=kAudioObjectPropertyCustomPropertyInfoList;
-    AudioServerPlugInCustomPropertyInfo metadata[6+RK3_AUDIO_LIFECYCLE_TRACE];
+    AudioServerPlugInCustomPropertyInfo metadata[7+RK3_AUDIO_LIFECYCLE_TRACE];
     assert(table.GetPropertyData(driver,DEVICE,0,&a,0,NULL,sizeof(metadata),&written,metadata)==0);
     assert(written==sizeof(metadata));
 #if RK3_AUDIO_LIFECYCLE_TRACE
-    assert(metadata[6].mSelector==RK3_AUDIO_TRACE_PROPERTY&&metadata[6].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone);
+    assert(metadata[7].mSelector==RK3_AUDIO_TRACE_PROPERTY&&metadata[7].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone);
 #endif
     for(unsigned i=0;i<5;++i)assert(metadata[i].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
     assert(metadata[0].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeNone);
@@ -263,6 +285,90 @@ static void input_gain_transport_test(void) {
     struct { uint32_t version,channel; uint64_t generation; uint32_t value_bits,reserved; } value={0};
     assert(rk3_native_copy_blob(DEVICE,UINT32_C(0x6e676169),&query,sizeof(query),&value,sizeof(value))==0);
     assert(value.version==1&&value.channel==0&&value.generation==7&&value.value_bits==UINT32_C(0x3f800000));
+}
+/* Public helper -> real CFData framing -> production HAL -> device-level owner. */
+static void direct_monitor_transport_test(void) {
+    AudioObjectPropertyAddress address={RK3_PROPERTY_DIRECT_MONITOR,kAudioObjectPropertyScopeGlobal,0};
+    assert(table.HasProperty(driver,DEVICE,0,&address));Boolean writable=false;UInt32 size=0,written=0;
+    assert(table.IsPropertySettable(driver,DEVICE,0,&address,&writable)==0&&writable);
+    assert(table.GetPropertyDataSize(driver,DEVICE,0,&address,0,NULL,&size)==0&&size==sizeof(CFPropertyListRef));
+    assert(!table.HasProperty(driver,INPUT,0,&address));
+    address.mScope=kAudioObjectPropertyScopeInput;assert(!table.HasProperty(driver,DEVICE,0,&address));
+    address.mScope=kAudioObjectPropertyScopeGlobal;address.mElement=1;assert(!table.HasProperty(driver,DEVICE,0,&address));
+    address.mElement=0;
+    RK3NativeMonitorQuery query={1,0,mock_generation};RK3NativeMonitorValue value={0};
+    assert(!mock_running); /* Device control has no engine-running prerequisite. */
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==0&&value.mode==19&&value.generation==mock_generation);
+    unsigned gets=monitor_gets,sets=monitor_sets;
+    for(unsigned byte=0;byte<256;++byte) {
+        value.mode=UINT32_C(0xa1b20000)|byte;
+        assert(rk3_native_set_direct_monitor(DEVICE,&query,&value)==0&&last_monitor_set==(uint8_t)byte);
+    }
+    assert(monitor_sets==sets+256&&monitor_gets==gets&&mock_monitor_mode==19);
+    mock_monitor_mode=255;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==0&&value.mode==255);
+    mock_monitor_mode=19;
+    RK3NativeMonitorValue saved;memset(&saved,0xa5,sizeof(saved));value=saved;
+    for(unsigned i=0;i<3;++i) {
+        RK3NativeMonitorQuery bad=query;
+        if(i==0)bad.version=2;else if(i==1)bad.reserved=1;else bad.generation=0;
+        assert(rk3_native_copy_direct_monitor(DEVICE,&bad,&value)==kAudioHardwareIllegalOperationError);
+        assert(!memcmp(&value,&saved,sizeof(value)));
+    }
+    assert(rk3_native_copy_direct_monitor(DEVICE,NULL,&value)==kAudioHardwareIllegalOperationError);
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,NULL)==kAudioHardwareIllegalOperationError);
+    assert(rk3_native_set_direct_monitor(DEVICE,NULL,&value)==kAudioHardwareIllegalOperationError);
+    RK3NativeMonitorValue good={1,7,mock_generation},bad=good;bad.version=2;
+    assert(rk3_native_set_direct_monitor(DEVICE,&query,&bad)==kAudioHardwareIllegalOperationError);
+    bad=good;++bad.generation;
+    assert(rk3_native_set_direct_monitor(DEVICE,&query,&bad)==kAudioHardwareIllegalOperationError);
+    const int32_t failures[]={ENODEV,ESTALE,ETIMEDOUT,ECANCELED,ENOMEM,EINVAL};
+    const OSStatus mapped[]={kAudioHardwareNotRunningError,kAudioHardwareNotRunningError,
+        kAudioHardwareUnspecifiedError,kAudioHardwareUnspecifiedError,kAudioHardwareUnspecifiedError,
+        kAudioHardwareIllegalOperationError};
+    for(unsigned i=0;i<sizeof(failures)/sizeof(failures[0]);++i) {
+        mock_monitor_error=failures[i];value=saved;
+        assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==mapped[i]&&!memcmp(&value,&saved,sizeof(value)));
+        assert(rk3_native_set_direct_monitor(DEVICE,&query,&good)==mapped[i]);
+    }
+    mock_monitor_error=0;mock_connected=false;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareNotRunningError);
+    mock_connected=true;RK3NativeMonitorQuery stale=query;++stale.generation;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&stale,&value)==kAudioHardwareNotRunningError);
+    assert(rk3_native_copy_direct_monitor(999,&query,&value)==kAudioHardwareBadObjectError);
+    CFPropertyListRef wrong=CFSTR("not CFData"),output=NULL;
+    assert(table.GetPropertyData(driver,DEVICE,0,&address,sizeof(wrong),&wrong,sizeof(output),&written,&output)==kAudioHardwareBadPropertySizeError&&output==NULL);
+    CFDataRef short_query=CFDataCreate(NULL,(const UInt8 *)&query,sizeof(query)-1);
+    assert(table.GetPropertyData(driver,DEVICE,0,&address,sizeof(short_query),&short_query,sizeof(output),&written,&output)==kAudioHardwareBadPropertySizeError&&output==NULL);
+    CFRelease(short_query);
+    CFDataRef qualifier=CFDataCreate(NULL,(const UInt8 *)&query,sizeof(query));
+    assert(table.GetPropertyData(driver,DEVICE,0,&address,0,NULL,sizeof(output),&written,&output)==kAudioHardwareBadPropertySizeError&&output==NULL);
+    assert(table.SetPropertyData(driver,DEVICE,0,&address,sizeof(qualifier),&qualifier,sizeof(wrong),&wrong)==kAudioHardwareBadPropertySizeError);
+    for(unsigned i=0;i<3;++i) {
+        RK3NativeMonitorQuery malformed=query;
+        if(i==0)malformed.version=0;else if(i==1)malformed.reserved=1;else malformed.generation=0;
+        CFDataRef q=CFDataCreate(NULL,(const UInt8 *)&malformed,sizeof(malformed));
+        assert(table.GetPropertyData(driver,DEVICE,0,&address,sizeof(q),&q,sizeof(output),&written,&output)==kAudioHardwareIllegalOperationError&&output==NULL);
+        CFRelease(q);
+    }
+    RK3NativeMonitorValue malformed_values[3]={good,good,good};
+    malformed_values[0].version=2;++malformed_values[1].generation;malformed_values[2].mode=256;
+    for(unsigned i=0;i<3;++i) {
+        monitor_platform_reply=CFDataCreate(NULL,(const UInt8 *)&malformed_values[i],sizeof(good));value=saved;
+        assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareIllegalOperationError&&!memcmp(&value,&saved,sizeof(value)));
+        CFRelease(monitor_platform_reply);monitor_platform_reply=NULL;
+    }
+    monitor_platform_reply=CFSTR("wrong reply type");value=saved;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareBadPropertySizeError&&!memcmp(&value,&saved,sizeof(value)));
+    monitor_platform_reply=CFDataCreate(NULL,(const UInt8 *)&good,sizeof(good)-1);
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareBadPropertySizeError&&!memcmp(&value,&saved,sizeof(value)));
+    CFRelease(monitor_platform_reply);monitor_platform_reply=NULL;
+    inspect_spec_allocation=true;fail_spec_allocation=true;value=saved;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareUnspecifiedError&&!memcmp(&value,&saved,sizeof(value)));
+    inspect_spec_allocation=fail_spec_allocation=false;
+    usb=NULL;
+    assert(rk3_native_copy_direct_monitor(DEVICE,&query,&value)==kAudioHardwareNotRunningError);
+    usb=&mock_session;CFRelease(qualifier);
 }
 /* Frozen public nusb discovery; this fixture never opens USB. */
 static void usb_identity_property_test(void) {
@@ -401,11 +507,11 @@ static void usb_identity_property_validation_test(void) {
     a.mScope=kAudioObjectPropertyScopeOutput;assert(!table.HasProperty(driver,DEVICE,0,&a));
     a.mScope=kAudioObjectPropertyScopeGlobal;a.mElement=1;assert(!table.HasProperty(driver,DEVICE,0,&a));a.mElement=0;
     AudioObjectPropertyAddress metadata_address={kAudioObjectPropertyCustomPropertyInfoList,kAudioObjectPropertyScopeGlobal,0};
-    AudioServerPlugInCustomPropertyInfo metadata[6+RK3_AUDIO_LIFECYCLE_TRACE];
+    AudioServerPlugInCustomPropertyInfo metadata[7+RK3_AUDIO_LIFECYCLE_TRACE];
     assert(table.GetPropertyDataSize(driver,DEVICE,0,&metadata_address,0,NULL,&size)==0&&size==sizeof(metadata));
     assert(table.GetPropertyData(driver,DEVICE,0,&metadata_address,0,NULL,sizeof(metadata),&written,metadata)==0&&written==sizeof(metadata));
-    static const UInt32 selectors[]={0x6e696e66,0x6e727074,0x6e636d64,0x6e676169,0x6e737063,0x6e757362};
-    for(size_t i=0;i<6;++i) {
+    static const UInt32 selectors[]={0x6e696e66,0x6e727074,0x6e636d64,0x6e676169,0x6e737063,0x6e757362,0x6e646d6f};
+    for(size_t i=0;i<7;++i) {
         assert(metadata[i].mSelector==selectors[i]&&metadata[i].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
         assert(metadata[i].mQualifierDataType==(i?kAudioServerPlugInCustomPropertyDataTypeCFPropertyList:kAudioServerPlugInCustomPropertyDataTypeNone));
     }
@@ -482,7 +588,7 @@ static void spec_metadata_and_query_test(void) {
     a.mScope=kAudioObjectPropertyScopeOutput;assert(!table.HasProperty(driver,DEVICE,0,&a));
     a.mScope=kAudioObjectPropertyScopeGlobal;a.mElement=1;assert(!table.HasProperty(driver,DEVICE,0,&a));a.mElement=0;
     AudioObjectPropertyAddress metadata_address={kAudioObjectPropertyCustomPropertyInfoList,kAudioObjectPropertyScopeGlobal,0};
-    AudioServerPlugInCustomPropertyInfo metadata[6+RK3_AUDIO_LIFECYCLE_TRACE];
+    AudioServerPlugInCustomPropertyInfo metadata[7+RK3_AUDIO_LIFECYCLE_TRACE];
     assert(table.GetPropertyDataSize(driver,DEVICE,0,&metadata_address,0,NULL,&size)==0&&size==sizeof(metadata));
     assert(table.GetPropertyData(driver,DEVICE,0,&metadata_address,0,NULL,sizeof(metadata),&written,metadata)==0&&written==sizeof(metadata));
     assert(metadata[4].mSelector==UINT32_C(0x6e737063)&&metadata[4].mPropertyDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList&&metadata[4].mQualifierDataType==kAudioServerPlugInCustomPropertyDataTypeCFPropertyList);
@@ -1027,7 +1133,7 @@ static void lifecycle_trace_property_test(void) {
 }
 int main(void){
     assert(RK3AudioFactory(NULL,kAudioServerPlugInTypeUUID)==driver);
-    rk3_input_gain_init(&mock_gain);usb=&mock_session;usb_identity_property_test();usb_identity_raw_transport_test();usb_identity_client_test();usb_identity_client_header_test();usb_identity_client_field_test();usb_identity_partial_and_status_test();usb_identity_client_envelope_test();usb_identity_property_validation_test();spec_property_transport_test();spec_domain_reply_test();spec_client_transport_test();spec_client_invalid_reply_test();spec_metadata_and_query_test();spec_native_status_test();spec_client_response_matrix_test();spec_initialization_lifetime_test();usb_identity_initialization_lifetime_test();properties();pedal_configuration_transport_test();input_gain_transport_test();audio();stream_activity();panic_handshake();rate_metadata_test();rate_handshake();assert(opens==2&&closes==2);
+    rk3_input_gain_init(&mock_gain);usb=&mock_session;usb_identity_property_test();usb_identity_raw_transport_test();usb_identity_client_test();usb_identity_client_header_test();usb_identity_client_field_test();usb_identity_partial_and_status_test();usb_identity_client_envelope_test();usb_identity_property_validation_test();spec_property_transport_test();spec_domain_reply_test();spec_client_transport_test();spec_client_invalid_reply_test();spec_metadata_and_query_test();spec_native_status_test();spec_client_response_matrix_test();spec_initialization_lifetime_test();usb_identity_initialization_lifetime_test();properties();pedal_configuration_transport_test();input_gain_transport_test();direct_monitor_transport_test();audio();stream_activity();panic_handshake();rate_metadata_test();rate_handshake();assert(opens==2&&closes==2);
     lifecycle_trace_property_test();
     puts("Audio driver: host ABI, CFData, NI timing, addressed PCM, lifecycle, clock and panic handshake passed");return 0;
 }

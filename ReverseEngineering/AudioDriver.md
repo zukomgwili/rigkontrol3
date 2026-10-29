@@ -779,3 +779,27 @@ rate, both stream formats and original latency/offset metadata, ending at
 playback or stability. Those affected checks remain in `rigkontrol3-40h.3`.
 Source plans, reviews and actual results are recorded in `rigkontrol3-40h.1`
 and [the installed rate record](Evidence/Build13InstalledRateValidation.json).
+
+## Direct-monitor native binding — 29 October 2026
+
+The existing owner now exposes original direct-monitor SET/GET through the
+typed `ndmo` device property. SET sends command `0x0e` with the scalar's low
+byte once. GET resets the original shared-cache sentinel before one command
+`0x12`, checks before each of up to 1,000 requested one-millisecond sleeps,
+and returns `0xff` on exhaustion without a final cache reload. Original
+ignored-send-result semantics and shared/late replies are retained.
+
+The wait occurs on the non-RT property caller, with a session reference and
+short cohort/cache mutex sections; it does not occupy the USB worker. Existing
+audio/clock service, command recovery, request deadlines and pending callback
+storage remain unchanged. Native schema, queue and generation errors and the
+two-valid-byte reply guard are explicit platform bindings. No named routing
+mode, initialization/reconnect write, automatic query after SET or persistence
+is added. The new CLI uses the installed sole owner.
+
+The [direct-monitor contract](DirectMonitorContract.md) explains the exact
+original functions and native differences. The [implementation record](Evidence/DirectMonitorImplementation.json)
+holds source and offline-test evidence. Installed build 16 and SIP were not
+changed for this implementation. Physical routing and whole-driver parity
+remain in the existing milestones; Apple case `23183489` concerns the separate
+output attachment/cleanup contract.

@@ -17,6 +17,7 @@
 enum {
     RK3_CONTROL_VERSION = 1,
     RK3_PROPERTY_INPUT_GAIN = 0x6e676169, /* ngai; raw Float32 software input gain */
+    RK3_PROPERTY_DIRECT_MONITOR = 0x6e646d6f, /* ndmo; original raw-byte direct monitor */
     RK3_PROPERTY_USB_IDENTITY = 0x6e757362, /* nusb; physical USB metadata snapshot */
     RK3_PROPERTY_SPEC = 0x6e737063,     /* nspc; cached raw14 specification */
     RK3_PROPERTY_INFO = 0x6e696e66,     /* ninf; get RK3NativeInfo */
@@ -30,6 +31,21 @@ enum {
 #define RK3_CONTROLLER_IDENTITY_KEY "org.rigkontrol3.ni-arm.midi.identity"
 #define RK3_CONTROLLER_CALIBRATION_KEY "org.rigkontrol3.ni-arm.calibration"
 #define RK3_NATIVE_DEVICE_UID "org.rigkontrol3.ni-arm.usb.17cc1940"
+
+/* Device-level operation, independent of audio-engine running state.
+ * SET sends the low byte of mode once; GET returns a byte, including NI's
+ * ambiguous 0xff timeout value. Neither SET success nor GET implies a named
+ * physical routing mode. There is no startup/reconnect persistence or replay. */
+typedef struct { uint32_t version,reserved; uint64_t generation; } RK3NativeMonitorQuery;
+typedef struct { uint32_t version,mode; uint64_t generation; } RK3NativeMonitorValue;
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeMonitorQuery)==16,"Monitor query ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeMonitorQuery,version)==0,"Monitor query version ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeMonitorQuery,reserved)==4,"Monitor query reserved ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeMonitorQuery,generation)==8,"Monitor query generation ABI");
+RK3_CONTROL_STATIC_ASSERT(sizeof(RK3NativeMonitorValue)==16,"Monitor value ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeMonitorValue,version)==0,"Monitor value version ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeMonitorValue,mode)==4,"Monitor mode ABI");
+RK3_CONTROL_STATIC_ASSERT(offsetof(RK3NativeMonitorValue,generation)==8,"Monitor value generation ABI");
 
 /* Zero-based original channel; all Float32 bit patterns are valid values.
  * This is a native functional property, not an NI user-client selector ABI. */
