@@ -3,9 +3,9 @@
 ## Project workspace
 
 Use `/Users/zukomgwili/src/rigkontrol3` on `master` for all project work,
-including edits, Git, builds, tests and Beads. Keep the chat attached to this
-established local checkout. Use a separate worktree only when the user explicitly
-requests one.
+including edits, Git, builds, tests and Beads. Set this path as the explicit
+working directory for every command, even if the chat's saved directory points
+elsewhere. Use a separate worktree only when the user explicitly requests one.
 
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
