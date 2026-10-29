@@ -1,0 +1,439 @@
+{
+  "beads": [
+    "rigkontrol3-40h.2",
+    "rigkontrol3-40h.1",
+    "rigkontrol3-40h.3"
+  ],
+  "date": "2026-10-29",
+  "status": "signed_verified_independently_reviewed_ready_for_administrator_installation",
+  "source_commit": "efe0e6521da8ecd4876d54826d13c79fc0fdcd56",
+  "version": "0.2.13/build18",
+  "candidate": ".build/native/candidates/build18-controls-efe0e6521da8",
+  "source_provenance": {
+    "source_commit": "efe0e6521da8ecd4876d54826d13c79fc0fdcd56",
+    "version": "0.2.13/build18",
+    "candidate": ".build/native/candidates/build18-controls-efe0e6521da8",
+    "build_script": "Tools/build-drivers.sh",
+    "build_script_sha256": "0c4172839ba164ff0394a31eee1b42baad5ce33aed9efd410e494901d2e1a59e",
+    "source_archive_sha256": "142f0f02650252f25a234131c1eaa646aee940dbaa1397da4bee98f71c01dd76",
+    "source_archive": "source.tar",
+    "build": "unmodified script executed from clean git archive; default output copied into fresh candidate/drivers",
+    "compile_trace_macro": "production default0; no trace compiler flag",
+    "build_exit": 0,
+    "seconds": 2.0176470830338076,
+    "build_log_sha256": "ce4582a0a796fadc651d8d36bec0a2d88938c407ba0d5ebb244f7f1bed15b1a8",
+    "source_sha256": {
+      "Driver/MIDIEvent.h": "39bd956c32e4ef1f64ae54030551c3b5b49b0891802fb3e9f72d092bd34c0017",
+      "Driver/DeviceProtocol.c": "be408152aae1a71b6cc1b57d003671b77acadf3bf66ab0b0d3b3a69938287a98",
+      "Driver/Controller.c": "3912585fa3c9f8242ec9304fe0b3dd741f2a95e405c28467b912b9b4bfe8fc1d",
+      "Driver/AudioRing.c": "98c4801e2c9572fec2febd5253ad2b99af0067df762aee597f7c0fe30d5e2950",
+      "Driver/NativeHostUSB.h": "deea2d568a808caa4dd778674133f796dde4d2bfef3e24224ce38acaae7b012c",
+      "Driver/InputGain.c": "c7048095874b22d44b0b4210e3344a1b3de45f778ec0c2da351a58359515df4e",
+      "Driver/AudioCodec.h": "5df8c222c40dc24821d2c8da916a43f20071edebcb61d4ec4ac81c918c8faa1b",
+      "Driver/NativeUSB.h": "80032f96320ad61dcceef007f101d9e6ab67550a3470e9cd5828373bed1824ed",
+      "Driver/AudioTiming.h": "ecb114b55caab868e859406f82a7addec07ec6a29abe7958283ecd8916e09258",
+      "Driver/NativeAudioISO.c": "72a7216d94d237586393be5612f3dc0d8fc6eb9f3b2d2feb28a96ee9d082831e",
+      "Driver/AudioLifecycleTrace.h": "a941bc53a70b2fd279659ba5601e30e8a74da52567b5732674066de8b6228396",
+      "Driver/AudioClock.h": "edbbbd75216e6a43a771de75e50f0fc81f6ebbc8d1b78b16b295927746d11a53",
+      "Driver/NativeControl.h": "14faafe9dd0dbacaf858a86e80381016c9929b12d9cb7105ad64114b955c1cd8",
+      "Driver/AudioSchedule.h": "2b6b10c6ee33d56146d9750a6634039ea48da99465ab7599387b4e53ef24d3ca",
+      "Driver/PedalSettings.h": "8e6c58afb8f6abe64a5524dfd1506241699ac521c5942bafa724216e42ed0d09",
+      "Driver/Controller.h": "002feb35c5ebe7ca4761c971850956f97ee58f5b69920c7e8ca3f3b6bd3e4dca",
+      "Driver/AudioRing.h": "5ace1b7ad2fe7decafe97fe7fd1c410adc2794282cd1712d14316153af9e41d1",
+      "Driver/Display.h": "9ba6e88359aa3e658eab2c8d85916cbfeda36d1c7edb9610542991beae8f1f28",
+      "Driver/DeviceProtocol.h": "0b65843a6cad6893e349ea0d75884b9917a0135a363121a2efef1e857aa812de",
+      "Driver/MIDIEvent.c": "a109f95e6334848c49f90d98152dc7481753e056c3d11f2d3e17e5ee95e294af",
+      "Driver/NativeUSB.c": "ea2e42f8e8afde7c55bff65dc75a9fdf3fa7512aec00759fdd99ec8635dd2fe1",
+      "Driver/NativeClient.h": "042d5d5cf63e18418c9427124e41aaa2aa6aed49b2d917f0d643770364b670b8",
+      "Driver/AudioCodec.c": "e8d29055ca4e460871f8d51792b0c9a83f1fcb82fbf7e202fd1a35cee7af8fe6",
+      "Driver/InputGain.h": "51ccb07adf5d7d8b54caa765a9fbab39edb8846e97793f87b279e99958687d23",
+      "Driver/NativeHostUSB.m": "57b2e6f84ddcd5b7cace2dd9e0f268fe53cfa0a4eaa1bda1f6be1d58cd808f8d",
+      "Driver/AudioClock.c": "b8ee00b61446c9231b1401b3d7a79cf196eb162343b0941d00757867dbe4f062",
+      "Driver/NativeAudioISO.h": "b88c2f59bedf84320ba3dda69bb05a9ad1e1fb1d939f5984cab0a54319d9beb1",
+      "Driver/AudioSchedule.c": "1687a338e3f3b085242f148863ba840ee07cea128a149da065530d609be90191",
+      "Driver/MIDI/MIDIStream.h": "4a586eb7166910e95750f6d3e03641d60fbb50fd44585da78f70035166e35b90",
+      "Driver/MIDI/MIDIStreamTests.c": "7581024133130b092876837846c00320817c20877b0e2398c55c805ada9da18e",
+      "Driver/MIDI/FactorySmokeTest.c": "f865d990326bef721cdda8ec22f0228a1411f159eead7fd62b1f721e9405f499",
+      "Driver/MIDI/README.md": "eb4dd123ff3b7b57d6f2df1ebf03c849d2bb0352306076360a9f7404b6fec8cc",
+      "Driver/MIDI/RK3MIDIDriverTests.c": "545d65dfeb3d3015e522f66ca84abebf62e27d08165e347cc22974c9d3159984",
+      "Driver/MIDI/RK3MIDIDriver.c": "2cce945539c4fac9577ef20c38cdb383443870f1f5c4be383951dafb6960b49a",
+      "Driver/MIDI/MIDIStream.c": "d3342fd92b48057c4b322806707fd91358fad40110610da07b04420a2d147d8c",
+      "Driver/MIDI/Info.plist": "e1514f9562662c9768d782978a11ef72d3c0a62127904492eee3069617957252",
+      "Driver/Tests/AudioRingTests.c": "45e3da865aabbe68398f491db0e0ade91c0d5d12655ac330e0dc3861d77d3298",
+      "Driver/Tests/AudioLifecycleTraceTests.c": "64b2a2438933262c88c6ad86b65ef8bc28c3571477e7a63bb5d3f9d130a30359",
+      "Driver/Tests/MIDIEventTests.c": "bf895519618720dbb16b2e44e0db96b9ec41dcad9274934e220319bd422b2837",
+      "Driver/Tests/ControllerTests.c": "8ed5919a9b0445aead3e0be81e690116a09f9ee3f3bff8f18a4cea8e5fa6ef93",
+      "Driver/Tests/InputGainTests.c": "ce7618ac2386a78fc384489100b91e78abcbe6e959efe0426e2f5f680831d063",
+      "Driver/Tests/NativeUSBTests.c": "cedb9e039eb6d266672a8099454692a82379a92c898af3e48e71d4250921f03b",
+      "Driver/Tests/AudioFactoryTests.c": "55c019e29e141626dad3503b5b670155953838df736dd25b13f4369617a79c9a",
+      "Driver/Tests/AudioDriverTests.c": "ff2adb9927c27c2a60478e60eb8754bc7a5e16183abfe9727cea1bb9d293359f",
+      "Driver/Tests/DeviceProtocolTests.c": "92fb9aff5f37d0672f2febd71426480d5e3193b3db84aafaf9bdf3905788b124",
+      "Driver/Tests/AudioScheduleTests.c": "42a02dea07fb03777963fa4969b4e12f57238205910c00e8fe1c2706db5d02c5",
+      "Driver/Tests/AudioClockTests.c": "95bc8b34bff9292dc4e3be5c37cb85c1a93750d69fced339f5433911e08894ae",
+      "Driver/Tests/NativeAudioISOTests.c": "0f0d542521445e36a356f6bb807eb3d2e977f3b4ce3c0ee11d84605696d63da6",
+      "Driver/Tests/NativeHostUSBTests.m": "6228f8fe6837a3f5fa1041a9c0c4898097d314ca94bccdcdc3d8347da2c678c2",
+      "Driver/Tests/AudioCodecTests.c": "8b5a5b04493979d25cde4d6641376f59f53d40aef322d853d75e72ae53f6aaf9",
+      "Driver/Audio/AudioLifecycleTraceState.h": "df72bf2631bebc8faa447b468f263f840e8a3f46f690462c9fcde5f7352bc951",
+      "Driver/Audio/RK3AudioDriver.c": "8b5e62852286004973b273fa334c3a38332e0b9f251e0bf65e6acc23e90ee3c0",
+      "Driver/Audio/Info.plist": "b77b564aade72c9ebce0c61f913c6d5b124934cf19b569f4d832a36c1addaf50"
+    },
+    "installed": false,
+    "hardware_tested": false
+  },
+  "bundle_results": [
+    {
+      "bundle": "RigKontrol3Audio.driver",
+      "id": "org.rigkontrol3.ni-arm.audio",
+      "version": "0.2.13",
+      "build": "18",
+      "architecture": "arm64",
+      "signer": "Apple Development, Apple anchor verified",
+      "uuid": "83286710-CB55-3276-B1D7-7C8E2FBB65ED",
+      "factory": "COM/type only; no Initialize or Start",
+      "debug_symbols": "Complete original in-bundle dSYM; UUID matched and compile units verified"
+    },
+    {
+      "bundle": "RigKontrol3MIDI.plugin",
+      "id": "org.rigkontrol3.ni-arm.midi",
+      "version": "0.2.13",
+      "build": "18",
+      "architecture": "arm64",
+      "signer": "Apple Development, Apple anchor verified",
+      "uuid": "693FD30A-A07F-366E-AB1F-B95E1A3A525B",
+      "factory": "COM/type only; no Initialize or Start",
+      "debug_symbols": "Complete original in-bundle dSYM; UUID matched and compile units verified"
+    }
+  ],
+  "manifest": {
+    "schema": 1,
+    "architecture": "arm64",
+    "files": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": "b77b564aade72c9ebce0c61f913c6d5b124934cf19b569f4d832a36c1addaf50",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "cea44f058bdd16073ea44b5841b75aa3558489a936ca2b604224cea713e4c995",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "d6b97247aa1ea5025e2d4ecebc3bdc061b53640751eaba36c2cf0dfce53f0f47",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "f265c3022d200e13823b6e57c3042b871d89632b35686e48d3755a01611efa93",
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "2b3b9b5ac3f8edb929ff97d4ac03afa08e3076fc647f06e5433051e916f3e58a",
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "83b9ba5b1f9a8ae5267063a308ac319fcd41ead6d5266e01916468d98650416d",
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": "e1514f9562662c9768d782978a11ef72d3c0a62127904492eee3069617957252",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "18ab187a954194ed504694922f88dc6dacffdf393f6e9b9f38f6b2b847511583",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "87ac9453257b3bc77f13d5f05798fd35d593b5cb698e32de66281ab8414249a9",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "bfdeca76b90077ebcdd93ffdc086528e20e34fb91f2bba45fa4aaa3fe0105dbe",
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "60c7091df960ffd7306ba45b6d5d3d9c7da8438a521f5062b2f0e8c7cf351600",
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "370a58096808658ba083c2eb53bb0c307dddbdf97718b580f675626b5caf72d4"
+    }
+  },
+  "manifest_sha256": "8cd71c056ad8972e167bb7cae45ec9c57cc2c4fd67431bd8c0ab15e8e87c981a",
+  "root_checks": [
+    {
+      "name": "compile-factory-only",
+      "argv": [
+        "xcrun",
+        "clang",
+        "-std=c11",
+        "-arch",
+        "arm64",
+        "-mmacosx-version-min=13.0",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/factory-only.c",
+        "-framework",
+        "CoreAudio",
+        "-framework",
+        "CoreMIDI",
+        "-framework",
+        "CoreFoundation",
+        "-o",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/factory-only"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "audio-arch",
+      "argv": [
+        "/usr/bin/lipo",
+        "-archs",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver"
+      ],
+      "exit": 0,
+      "log_sha256": "c1669e1d8edca98769c37d494b76442a1d6e5ffffd7b4da1fb63aef8ebaf6f01"
+    },
+    {
+      "name": "audio-signature",
+      "argv": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--strict",
+        "--deep",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3Audio.driver"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "audio-apple-anchor",
+      "argv": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--strict",
+        "-R=anchor apple generic",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3Audio.driver"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "audio-signing-metadata",
+      "argv": [
+        "/usr/bin/codesign",
+        "--display",
+        "--verbose=4",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3Audio.driver"
+      ],
+      "exit": 0,
+      "log_sha256": "54b6b213a004fd7b403ed58f5ee021603af33864deb3d6fbab07a4c305641210"
+    },
+    {
+      "name": "audio-factory-only",
+      "argv": [
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/factory-only",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3Audio.driver",
+        "audio"
+      ],
+      "exit": 0,
+      "log_sha256": "ccaf967738455b17e7fc145c3a3650b0660b0a26dbb853a7e25e9c42d6a8f48c"
+    },
+    {
+      "name": "audio-dsym",
+      "argv": [
+        "xcrun",
+        "dsymutil",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver",
+        "-o",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/RigKontrol3Audio.driver.dSYM"
+      ],
+      "exit": 0,
+      "log_sha256": "1692fdb544df1409860581a417125f28735bad567a5716c99e837b44b66c1cb9"
+    },
+    {
+      "name": "audio-binary-uuid",
+      "argv": [
+        "xcrun",
+        "dwarfdump",
+        "--uuid",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver"
+      ],
+      "exit": 0,
+      "log_sha256": "6f2254f45477bd4d7ad6eca74cc5b050d551ff05f290940c6ba9dea7935caac9"
+    },
+    {
+      "name": "audio-dsym-uuid",
+      "argv": [
+        "xcrun",
+        "dwarfdump",
+        "--uuid",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/RigKontrol3Audio.driver.dSYM"
+      ],
+      "exit": 0,
+      "log_sha256": "ce2f37174663ae17eb2a74de465421051064ad2e149dc0ef7a24dde61c31f0d9"
+    },
+    {
+      "name": "midi-arch",
+      "argv": [
+        "/usr/bin/lipo",
+        "-archs",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+      ],
+      "exit": 0,
+      "log_sha256": "c1669e1d8edca98769c37d494b76442a1d6e5ffffd7b4da1fb63aef8ebaf6f01"
+    },
+    {
+      "name": "midi-signature",
+      "argv": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--strict",
+        "--deep",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3MIDI.plugin"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "midi-apple-anchor",
+      "argv": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--strict",
+        "-R=anchor apple generic",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3MIDI.plugin"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "midi-signing-metadata",
+      "argv": [
+        "/usr/bin/codesign",
+        "--display",
+        "--verbose=4",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3MIDI.plugin"
+      ],
+      "exit": 0,
+      "log_sha256": "a10d31f1bbe5e375dc833914c93567173ee0fa6b359c194cce02393e177c5fad"
+    },
+    {
+      "name": "midi-factory-only",
+      "argv": [
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/factory-only",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3MIDI.plugin",
+        "midi"
+      ],
+      "exit": 0,
+      "log_sha256": "c93f9b9bc04a5eaa8cb60e436bdc91e991fc697e212ce4bc480c6284032a1392"
+    },
+    {
+      "name": "midi-dsym",
+      "argv": [
+        "xcrun",
+        "dsymutil",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver",
+        "-o",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/RigKontrol3MIDI.plugin.dSYM"
+      ],
+      "exit": 0,
+      "log_sha256": "0d2222d27197a14872cb4043210906f9f23c4460a72a7bf42724217664aca050"
+    },
+    {
+      "name": "midi-binary-uuid",
+      "argv": [
+        "xcrun",
+        "dwarfdump",
+        "--uuid",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+      ],
+      "exit": 0,
+      "log_sha256": "38876e38b4501c5683ea413cfe78e865aed7018ed81efd7add56d0b47af26f32"
+    },
+    {
+      "name": "midi-dsym-uuid",
+      "argv": [
+        "xcrun",
+        "dwarfdump",
+        "--uuid",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/RigKontrol3MIDI.plugin.dSYM"
+      ],
+      "exit": 0,
+      "log_sha256": "2f731c83d3fe63c95cd769b11a97a0dc615c242c391f4ae6dc4a429beb6cd3e3"
+    },
+    {
+      "name": "installer-check",
+      "argv": [
+        "/bin/sh",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/Tools/install-native-drivers.sh",
+        "--check",
+        "--source",
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build18-controls-efe0e6521da8/drivers"
+      ],
+      "exit": 0,
+      "log_sha256": "040f405a5e7ea27a26ab7b924b0d0695e0706763edaaccb70ad0c7efdb10b3a6"
+    },
+    {
+      "name": "sip-status",
+      "argv": [
+        "/usr/bin/csrutil",
+        "status"
+      ],
+      "exit": 0,
+      "log_sha256": "83fb612043aa785d573f4d9ad5bae8ed63dc175f4c39f984d66c367f996f0d36"
+    }
+  ],
+  "source_pins_verified": 53,
+  "factory_runner_sha256": "022a551f60488f69d5a1d28ccf6bf0cffca966ad2521e93e5ac76a9fa789ff18",
+  "package_check_runner": {
+    "path": ".build/native/display/package-check.py",
+    "sha256": "2f48fce8721c0acd687a3dd27b31c1aae631b18fdc525fc9b868875de9ad6233"
+  },
+  "root_result_sha256": "0a877504d64af1efbab4e812d71e19d4c3c9bea960a02469fba09b7849af1506",
+  "module_evidence": {
+    "display": "ReverseEngineering/Evidence/DisplayImplementation.json",
+    "direct_monitor": "ReverseEngineering/Evidence/DirectMonitorImplementation.json"
+  },
+  "full_native_gates": [
+    {
+      "mode": "test",
+      "argv": [
+        "/bin/sh",
+        "Tools/build-native.sh",
+        "test"
+      ],
+      "exit": 0,
+      "seconds": 17.371228999982122,
+      "log": ".build/native/display/full-gates/test.log",
+      "sha256": "747e8914d7853fc6a1f4f7f3e42ee976cc78fdfd0ba8edba1b9bbbf800f22923"
+    },
+    {
+      "mode": "sanitize",
+      "argv": [
+        "/bin/sh",
+        "Tools/build-native.sh",
+        "sanitize"
+      ],
+      "exit": 0,
+      "seconds": 22.146603291970678,
+      "log": ".build/native/display/full-gates/sanitize.log",
+      "sha256": "46d267bb2ff57edf1661ab2a14df8fec11a1f90be2d4603d786c70f2b616130d"
+    }
+  ],
+  "existing_installation": {
+    "build": "0.2.11/build16",
+    "all12files_match_previous_frozen_manifest": true,
+    "services_restarted": false,
+    "hardware_access_or_audio_MIDI_client_for_package_checks": false
+  },
+  "SIP": {
+    "current_readonly_status": "enabled",
+    "settings_changed": false
+  },
+  "installed": false,
+  "physical_display_or_monitor_routing_acceptance": "NOT_RUN",
+  "no_new_beads": true,
+  "remaining": "Administrator installation then bounded installed readback/display observation and applicable direct-monitor routing checks in existing M3; no unknown mode-byte sweep. Apple23183489 output-lifetime binding and remaining finite qualification gates remain open.",
+  "independent_package_review": "PASS: archive/current/commit53 source pins, unchanged builder, production trace0, exact12-file manifest, both Apple Development/strict Apple-anchor/arm64/IDs/versions/minOS/factories, safe COM factory and installer checks. Installed16 unchanged; SIP enabled.",
+  "debug_symbols": {
+    "authoritative": "original in-bundle dSYMs produced by the normal compiler during the signed build, included in the signed12-file manifest",
+    "audio": {
+      "path": "drivers/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM",
+      "compile_units": 10,
+      "units": [
+        "RK3AudioDriver.c",
+        "NativeUSB.c",
+        "NativeAudioISO.c",
+        "DeviceProtocol.c",
+        "AudioCodec.c",
+        "AudioSchedule.c",
+        "AudioRing.c",
+        "AudioClock.c",
+        "InputGain.c",
+        "NativeHostUSB.m"
+      ]
+    },
+    "MIDI": {
+      "path": "drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM",
+      "compile_units": 4,
+      "units": [
+        "RK3MIDIDriver.c",
+        "MIDIEvent.c",
+        "MIDIStream.c",
+        "Controller.c"
+      ]
+    },
+    "root_external_dsym_correction": "Later dsymutil regeneration outside the bundles could not recover removed temporary objects: audio1/MIDI0 compile units. UUID matches alone did not establish usable symbols. Warnings and incomplete external artifacts retained as historical validation evidence; do not use them. Original signed in-bundle10/4-unit dSYMs are complete; no rebuild/re-sign required."
+  },
+  "independent_package_review_evidence": {
+    "path": ".build/native/candidates/build18-controls-efe0e6521da8/independent-package-review.json",
+    "sha256": "8985333a046055a4c19ddfa13bdac882eac5d3d1331d214748d7bbd608111ce8"
+  }
+}

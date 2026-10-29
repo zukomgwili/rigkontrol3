@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleIdentifier</key><string>org.rigkontrol3.ni-discovery-probe</string>
+    <key>CFBundleExecutable</key><string>RK3DiscoveryProbeHost</string>
+    <key>CFBundleName</key><string>RK3 Discovery Probe Host</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>13.0</string>
+    <key>LSBackgroundOnly</key><true/>
+    <key>NSSystemExtensionUsageDescription</key><string>Activate a software-only class-discovery probe. It does not access USB, guitar audio, MIDI or RK3 hardware and supplies no NI device or selector responses.</string>
+</dict></plist>

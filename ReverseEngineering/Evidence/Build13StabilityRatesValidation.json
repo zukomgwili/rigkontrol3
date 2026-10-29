@@ -1,0 +1,1775 @@
+{
+  "schema": 1,
+  "bead": "rigkontrol3-40h.3",
+  "audio_bead": "rigkontrol3-40h.1",
+  "recorded_utc": "2026-10-27T16:54:00.419723+00:00",
+  "version": "0.2.8/build13",
+  "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "repository_head_at_admission": "193d1d204c06fa064027b6bfb010fa853f5a3b70",
+  "SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261027T141749Z-e61d2f53",
+  "result": "PASS_seven_fresh_silent_stability_rate_gates",
+  "M2_complete": false,
+  "M3_complete": false,
+  "lift_and_shift_complete": false,
+  "campaign": {
+    "result": "PASS",
+    "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/campaign-1793115729583370000",
+    "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+    "plan_rates": [
+      48000,
+      48000,
+      48000,
+      44100,
+      88200,
+      96000,
+      192000
+    ],
+    "per_run_active_cap_seconds": 600,
+    "maximum_active_seconds": 4200,
+    "original_rate": 44100,
+    "device": 128,
+    "generation": 1,
+    "driver_pid": 72936,
+    "started_utc": "2026-10-27T15:42:09.583440+00:00",
+    "phases": [
+      {
+        "index": 1,
+        "rate": 48000,
+        "result": "PASS",
+        "started_utc": "2026-10-27T15:42:09.592732+00:00",
+        "gate_pid": 86886,
+        "owned_pgid": 86886,
+        "evidence_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/48000-run1-9xqeq9xc",
+        "exit": 0,
+        "active_seconds": 600.0489800829964,
+        "ended_utc": "2026-10-27T15:52:12.054096+00:00"
+      },
+      {
+        "index": 2,
+        "rate": 48000,
+        "result": "PASS",
+        "started_utc": "2026-10-27T15:52:12.068334+00:00",
+        "gate_pid": 88394,
+        "owned_pgid": 88394,
+        "evidence_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/48000-run2-4w7lm72q",
+        "exit": 0,
+        "active_seconds": 600.001910083025,
+        "ended_utc": "2026-10-27T16:02:13.280101+00:00"
+      },
+      {
+        "index": 3,
+        "rate": 48000,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:02:13.291186+00:00",
+        "gate_pid": 89846,
+        "owned_pgid": 89846,
+        "evidence_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/48000-run3-efi9yt2v",
+        "exit": 0,
+        "active_seconds": 600.012063415983,
+        "ended_utc": "2026-10-27T16:12:14.524790+00:00"
+      },
+      {
+        "index": 4,
+        "rate": 44100,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:12:14.534904+00:00",
+        "gate_pid": 91306,
+        "owned_pgid": 91306,
+        "evidence_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/44100-run4-f37fe41u",
+        "exit": 0,
+        "active_seconds": 600.0365600829828,
+        "ended_utc": "2026-10-27T16:22:15.865694+00:00"
+      },
+      {
+        "index": 5,
+        "rate": 88200,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:22:15.871444+00:00",
+        "gate_pid": 92846,
+        "owned_pgid": 92846,
+        "evidence_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/88200-run5-wpl32qnh",
+        "exit": 0,
+        "active_seconds": 600.0139230420173,
+        "ended_utc": "2026-10-27T16:32:17.183849+00:00"
+      },
+      {
+        "index": 6,
+        "rate": 96000,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:32:17.188620+00:00",
+        "gate_pid": 94309,
+        "owned_pgid": 94309,
+        "evidence_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/96000-run6-_gyjmtrl",
+        "exit": 0,
+        "active_seconds": 600.0154435410223,
+        "ended_utc": "2026-10-27T16:42:18.238723+00:00"
+      },
+      {
+        "index": 7,
+        "rate": 192000,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:42:18.246329+00:00",
+        "gate_pid": 95897,
+        "owned_pgid": 95897,
+        "evidence_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/192000-run7-6vswq9ha",
+        "exit": 0,
+        "active_seconds": 600.0044142080005,
+        "ended_utc": "2026-10-27T16:52:19.255672+00:00"
+      }
+    ],
+    "restoration_attempted": true,
+    "cleanup_escalations": [],
+    "reason": "All seven fresh gates passed; original rate restored healthy idle",
+    "ended_utc": "2026-10-27T16:52:19.426187+00:00",
+    "log_sha256": {
+      "transition4.log": "93de292d9d96b2951966a5dc453ebc83530eee0b7cb5889329b888393a1c5427",
+      "transition5.log": "d22ec59f0e4563888101e817cd05cd18f0947e4076a573f3e7ea59335aff69f3",
+      "transition7.log": "061b848b76a8271333e706924e83925e2704a450eb09755f11f7657c85098497",
+      "transition6.log": "a82598334e8099b73cf9b05e266a55bc5a482ff3107943b127e4726963a77dda",
+      "transition2.log": "7244a4cf61d059e2e710950af1d7bc9a95a26a477262fb393b8cac8e76294f7a",
+      "transition3.log": "7244a4cf61d059e2e710950af1d7bc9a95a26a477262fb393b8cac8e76294f7a",
+      "transition1.log": "c65038cccbab24fd765a387dd6593db57c6b33e4daeca76f489851e5263e5bc2",
+      "gate1.log": "fba87d991202509f05b7e9718470ea6517250e643322313406d7a7f2bce1834d",
+      "gate3.log": "069c38cff0a91409d362a9d94cde7f7d62193f118ff3cba8a346ec6e17b8637c",
+      "gate2.log": "c21d4927087548bf7537d18db78b0cc2a991ee36b8d5a0190580fbd4a1d890de",
+      "gate6.log": "bd29790404bb3f49929d0c386cdfdebadd339831e0182be2574997fa2a3a3b94",
+      "gate7.log": "aa0ce141fd2de8b6261946c4c72b0e932b171d53565fa82d0b061e2b0c2018b6",
+      "gate5.log": "b4319fd526017533e811cdddd44e3fa4fe0cc16f6e1831935efaea84a68e8b06",
+      "gate4.log": "86d1ec3ea8707d19f513f958db3b64cca9a359709638c492250e4add2ae7662f",
+      "restore-original.log": "fe10ae823fafb071f8ae18c2425c7596e3f3ed8173e3c84e88e9fd82f297177b"
+    }
+  },
+  "installed_before": {
+    "manifest_sha256": "1f1ca4e62c723c9136049809fdedc61fd3957c4f77736d5e929b8d8ef7667660",
+    "installed_files": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143"
+    },
+    "signatures": {
+      "audio": {
+        "exit": 0,
+        "message": "",
+        "version": "0.2.8",
+        "build": "13"
+      },
+      "midi": {
+        "exit": 0,
+        "message": "",
+        "version": "0.2.8",
+        "build": "13"
+      }
+    },
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "live": {
+      "device": 128,
+      "nominal_rate": 44100,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 0,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 44100,
+      "available_rates": [
+        [
+          44100,
+          44100
+        ],
+        [
+          48000,
+          48000
+        ],
+        [
+          88200,
+          88200
+        ],
+        [
+          96000,
+          96000
+        ],
+        [
+          192000,
+          192000
+        ]
+      ]
+    },
+    "processes": [
+      "72936 Core Audio Driver (RigKontrol3Audio.driver)"
+    ],
+    "driver_pid": 72936
+  },
+  "installed_after": {
+    "installed_files": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143"
+    },
+    "pinned_inputs_unchanged": true,
+    "signatures": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      },
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      }
+    },
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "readback_exit": 0,
+    "live": {
+      "device": 128,
+      "nominal_rate": 44100,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 0,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 44100,
+      "available_rates": [
+        [
+          44100,
+          44100
+        ],
+        [
+          48000,
+          48000
+        ],
+        [
+          88200,
+          88200
+        ],
+        [
+          96000,
+          96000
+        ],
+        [
+          192000,
+          192000
+        ]
+      ]
+    },
+    "owned_pids_no_longer_present": {
+      "86886": true,
+      "86894": true,
+      "86896": true,
+      "86898": true,
+      "86902": true,
+      "88394": true,
+      "88397": true,
+      "88398": true,
+      "88399": true,
+      "88400": true,
+      "89846": true,
+      "89849": true,
+      "89850": true,
+      "89851": true,
+      "89852": true,
+      "91306": true,
+      "91309": true,
+      "91310": true,
+      "91311": true,
+      "91312": true,
+      "92846": true,
+      "92849": true,
+      "92850": true,
+      "92851": true,
+      "92852": true,
+      "94309": true,
+      "94312": true,
+      "94313": true,
+      "94314": true,
+      "94320": true,
+      "95897": true,
+      "95903": true,
+      "95904": true,
+      "95906": true,
+      "95907": true
+    },
+    "owner_processes": [
+      "72936 Core Audio Driver (RigKontrol3Audio.driver)"
+    ]
+  },
+  "pins": {
+    "files": {
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/gate.py": "1557a7b77971dca5278eefa31a5d9bc8570670dfaab5ec66424b1fcdbe32be7d",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/campaign.py": "2e766844512550c3324ef260538d86c290e112c417b7e0b567953ac9bac0820d",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/rate-readback": "5f02b05df931b3fbd9c99ed2ce14565732f2fc99f6adea11fe4a521df098998d",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-control.c": "f8d73e2f48b488eb1f4016c7ecbd07425138bb0af99c2f187b60bf8d3292a21e",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-control": "9380581d9ee82f0a13b8d1af9219d6a31b6922b36a44d134fa0bc74edcd386f2",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch.c": "ca1b89813f1ed926d95e7a6c44490f22d84533e50b0f3c3690a3eb2b4896bcfc",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch": "7c88bafa07b269be8062e28c105bd9a04d6ccb7f078bd30ea62a8a7837abe042",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/verification-before.json": "125a0fd3ba56064c0c881abdd87db2efc1e7d9f100437fe2c58bd6fa4adf8bb3",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/offline-wrapper-fixtures.json": "c59d68caaeaf0d1e83606b10cdb5d95cc10c85645518d69943d4ba03a1267795",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/Driver/NativeClient.h": "3a0f40eb6acb95b74cf8aaaaddcc007deccd1552a4f09ce1873fa4eab2c1ca8b",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/Tools/rk3-midi-monitor.c": "e61c34ddaadcbf75f65964e309e0ab8c8ba0e8c239dfc5c3bbae222314644569",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client": "6d027c389193c456ad6e63172258ab97fc36cc0488fd1cc6dc588e2ded3b70de",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/sources/audio-clock-client.c": "eb167198918bb92690fc76aa44fb22211c65cc18a0ed05338dc50952ee17576a",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor": "ad5adb79c04b93e9d17bdbe7dac6e017e67437d41947c319a8154f1484195364",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build13-e61aa5ab5e7afbb16e96217ba689f1f0785d1782/drivers/manifest.json": "1f1ca4e62c723c9136049809fdedc61fd3957c4f77736d5e929b8d8ef7667660"
+    },
+    "production_source": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+    "audio_midi_diagnostic_source": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+    "no_build12_driver_used": true
+  },
+  "pins_sha256": "309868e062b2b6eee85e18d0adb0689d2c481138c67155813e99cebc281382dc",
+  "reviews_before": {
+    "C_helpers": "PASS independent safety/spec; failed UID release fixed, strict ARM compile and no-CAPI selftests passed",
+    "wrapper": "PASS independent safety/spec; owned group cleanup, cancellation, exact identity/duration/exits validated",
+    "gate_sha256": "1557a7b77971dca5278eefa31a5d9bc8570670dfaab5ec66424b1fcdbe32be7d",
+    "campaign_sha256": "2e766844512550c3324ef260538d86c290e112c417b7e0b567953ac9bac0820d",
+    "pins_sha256": "309868e062b2b6eee85e18d0adb0689d2c481138c67155813e99cebc281382dc",
+    "live_actions_before_admission": false,
+    "pure_wrapper_fixtures_passed": 28
+  },
+  "offline_mock_report": {
+    "path": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/mock-review/evidence-o5fu6zyr/report.json",
+    "sha256": "31c3457e4ffe10fd6f6bd3814714abda046504c942bb93a86f4afc3a29033d66"
+  },
+  "runs": [
+    {
+      "index": 1,
+      "rate": 48000,
+      "state_sha256": "40d51e417a0db9573b53a4ffec8463d3e248969b41fe4be1294ab76a17a18080",
+      "state": {
+        "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/48000-run1-9xqeq9xc",
+        "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+        "diagnostic_source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+        "rate": 48000,
+        "buffer_frames": 128,
+        "run_number": 1,
+        "device": 128,
+        "driver_pid": 72936,
+        "generation": 1,
+        "cap_seconds": 600.0,
+        "result": "PASS",
+        "started_utc": "2026-10-27T15:42:09.863275+00:00",
+        "children": {
+          "driver": {
+            "pid": 86894,
+            "argv": [
+              "/usr/bin/log",
+              "stream",
+              "--style",
+              "compact",
+              "--level",
+              "default",
+              "--predicate",
+              "processIdentifier == 72936 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+            ],
+            "exit": 0
+          },
+          "midi": {
+            "pid": 86896,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+              "--live"
+            ],
+            "exit": 0
+          },
+          "audio": {
+            "pid": 86898,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+              "--live",
+              "--buffer-frames",
+              "128"
+            ],
+            "exit": 0
+          },
+          "status": {
+            "pid": 86902,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch",
+              "128",
+              "1",
+              "48000"
+            ],
+            "exit": 0
+          }
+        },
+        "cleanup_escalations": [],
+        "preflight": {
+          "device": 128,
+          "nominal_rate": 48000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 48000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "active_started_utc": "2026-10-27T15:42:11.761537+00:00",
+        "active_seconds": 600.0489800829964,
+        "status_rows": 5674,
+        "clock_records": 5790,
+        "last_status": {
+          "tick": 3815038015443,
+          "status": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "version": 1,
+          "rate": 48000,
+          "native_rate": 48000,
+          "bad": false
+        },
+        "reason": "600-second cap reached without watched fault",
+        "stop_requested_utc": "2026-10-27T15:52:11.810030+00:00",
+        "audio_summary": "CoreAudio callbacks=225062 input1frames=28807936 RMS=0.000046 input_peak=0.003778 stop=0",
+        "midi_messages": 1,
+        "midi_zero_events_allowed": true,
+        "postflight": {
+          "device": 128,
+          "nominal_rate": 48000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 48000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "ended_utc": "2026-10-27T15:52:11.950377+00:00",
+        "log_sha256": {
+          "preflight.log": "b8d6819f5d11528f751a908a7cd022da10c82f6bdea42260d355baf750c8d839",
+          "midi.log": "9f40c6dd31d76e0bdfe828b9ddce572502fac094fb70c55939fdd5b29cd042c5",
+          "status.log": "05f08f02af95b44ee8a8106f187163fdf006f792e278f6df5f363b8e34e9d2ca",
+          "postflight.log": "b8d6819f5d11528f751a908a7cd022da10c82f6bdea42260d355baf750c8d839",
+          "audio.log": "76e9812ffbfe75a7fde592f91609bed92163799830d9e493900d5009fdbfcb58",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        }
+      },
+      "callbacks": 225062,
+      "input_frames": 28807936,
+      "clock": {
+        "records": 5790,
+        "all_finite_valid_and_strictly_advancing": true,
+        "first": {
+          "status": 0,
+          "flags": 7,
+          "sample": 17322.0,
+          "host": 3800634439197,
+          "bad": false
+        },
+        "last": {
+          "status": 0,
+          "flags": 7,
+          "sample": 28824295.0,
+          "host": 3815037127950,
+          "bad": false
+        },
+        "minimum_sample_advance": 28.0,
+        "maximum_sample_advance": 5384.0,
+        "minimum_host_tick_advance": 13858,
+        "maximum_host_tick_advance": 2691932
+      },
+      "native": {
+        "rows": 5674,
+        "flags_observed": [
+          1,
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "nominal_and_native_rate": 48000,
+        "bad_rows": 0,
+        "error_rows": 0
+      },
+      "watched_driver_records": 0,
+      "persistent_midi_messages": 1
+    },
+    {
+      "index": 2,
+      "rate": 48000,
+      "state_sha256": "1b60b8ef0e898f0588bc551ff7db61ba2f99bc9aac79fbf6e9f6a69ac6b3ab63",
+      "state": {
+        "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/48000-run2-4w7lm72q",
+        "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+        "diagnostic_source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+        "rate": 48000,
+        "buffer_frames": 128,
+        "run_number": 2,
+        "device": 128,
+        "driver_pid": 72936,
+        "generation": 1,
+        "cap_seconds": 600.0,
+        "result": "PASS",
+        "started_utc": "2026-10-27T15:52:12.226207+00:00",
+        "children": {
+          "driver": {
+            "pid": 88397,
+            "argv": [
+              "/usr/bin/log",
+              "stream",
+              "--style",
+              "compact",
+              "--level",
+              "default",
+              "--predicate",
+              "processIdentifier == 72936 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+            ],
+            "exit": 0
+          },
+          "midi": {
+            "pid": 88398,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+              "--live"
+            ],
+            "exit": 1
+          },
+          "audio": {
+            "pid": 88399,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+              "--live",
+              "--buffer-frames",
+              "128"
+            ],
+            "exit": 0
+          },
+          "status": {
+            "pid": 88400,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch",
+              "128",
+              "1",
+              "48000"
+            ],
+            "exit": 0
+          }
+        },
+        "cleanup_escalations": [],
+        "preflight": {
+          "device": 128,
+          "nominal_rate": 48000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 48000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "active_started_utc": "2026-10-27T15:52:13.027422+00:00",
+        "active_seconds": 600.001910083025,
+        "status_rows": 5621,
+        "clock_records": 5733,
+        "last_status": {
+          "tick": 3829466393194,
+          "status": 0,
+          "flags": 3,
+          "generation": 1,
+          "error": 0,
+          "version": 1,
+          "rate": 48000,
+          "native_rate": 48000,
+          "bad": false
+        },
+        "reason": "600-second cap reached without watched fault",
+        "stop_requested_utc": "2026-10-27T16:02:13.029028+00:00",
+        "audio_summary": "CoreAudio callbacks=225045 input1frames=28805760 RMS=0.000045 input_peak=0.003773 stop=0",
+        "midi_messages": 0,
+        "midi_zero_events_allowed": true,
+        "postflight": {
+          "device": 128,
+          "nominal_rate": 48000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 48000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "ended_utc": "2026-10-27T16:02:13.175605+00:00",
+        "log_sha256": {
+          "preflight.log": "b8d6819f5d11528f751a908a7cd022da10c82f6bdea42260d355baf750c8d839",
+          "midi.log": "299a8cdea295651b57bf4154846c08c4921f9974e02497d0c090af9946f785bd",
+          "status.log": "c29bd8f2ea840b6bb3fc98714926b5e9496d3ef4530a6417dca97cffe7e59ea0",
+          "postflight.log": "b8d6819f5d11528f751a908a7cd022da10c82f6bdea42260d355baf750c8d839",
+          "audio.log": "1741d66df2101e60cdb975f3fc58e00b34014880a61e9222c9983a92917efc1b",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        }
+      },
+      "callbacks": 225045,
+      "input_frames": 28805760,
+      "clock": {
+        "records": 5733,
+        "all_finite_valid_and_strictly_advancing": true,
+        "first": {
+          "status": 0,
+          "flags": 7,
+          "sample": 17019.0,
+          "host": 3815064471817,
+          "bad": false
+        },
+        "last": {
+          "status": 0,
+          "flags": 7,
+          "sample": 28821865.0,
+          "host": 3829466096813,
+          "bad": false
+        },
+        "minimum_sample_advance": 18.0,
+        "maximum_sample_advance": 6399.0,
+        "minimum_host_tick_advance": 8876,
+        "maximum_host_tick_advance": 3198864
+      },
+      "native": {
+        "rows": 5621,
+        "flags_observed": [
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "nominal_and_native_rate": 48000,
+        "bad_rows": 0,
+        "error_rows": 0
+      },
+      "watched_driver_records": 0,
+      "persistent_midi_messages": 0
+    },
+    {
+      "index": 3,
+      "rate": 48000,
+      "state_sha256": "966fe48ee7886f3af84a67b83f52a00222d455dbfaabf8d3537cb9d0ef2c302e",
+      "state": {
+        "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/48000-run3-efi9yt2v",
+        "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+        "diagnostic_source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+        "rate": 48000,
+        "buffer_frames": 128,
+        "run_number": 3,
+        "device": 128,
+        "driver_pid": 72936,
+        "generation": 1,
+        "cap_seconds": 600.0,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:02:13.454973+00:00",
+        "children": {
+          "driver": {
+            "pid": 89849,
+            "argv": [
+              "/usr/bin/log",
+              "stream",
+              "--style",
+              "compact",
+              "--level",
+              "default",
+              "--predicate",
+              "processIdentifier == 72936 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+            ],
+            "exit": 0
+          },
+          "midi": {
+            "pid": 89850,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+              "--live"
+            ],
+            "exit": 1
+          },
+          "audio": {
+            "pid": 89851,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+              "--live",
+              "--buffer-frames",
+              "128"
+            ],
+            "exit": 0
+          },
+          "status": {
+            "pid": 89852,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch",
+              "128",
+              "1",
+              "48000"
+            ],
+            "exit": 0
+          }
+        },
+        "cleanup_escalations": [],
+        "preflight": {
+          "device": 128,
+          "nominal_rate": 48000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 48000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "active_started_utc": "2026-10-27T16:02:14.259035+00:00",
+        "active_seconds": 600.012063415983,
+        "status_rows": 5659,
+        "clock_records": 5782,
+        "last_status": {
+          "tick": 3843896992650,
+          "status": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "version": 1,
+          "rate": 48000,
+          "native_rate": 48000,
+          "bad": false
+        },
+        "reason": "600-second cap reached without watched fault",
+        "stop_requested_utc": "2026-10-27T16:12:14.270789+00:00",
+        "audio_summary": "CoreAudio callbacks=225051 input1frames=28806528 RMS=0.000045 input_peak=0.003783 stop=0",
+        "midi_messages": 0,
+        "midi_zero_events_allowed": true,
+        "postflight": {
+          "device": 128,
+          "nominal_rate": 48000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 48000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "ended_utc": "2026-10-27T16:12:14.417500+00:00",
+        "log_sha256": {
+          "preflight.log": "b8d6819f5d11528f751a908a7cd022da10c82f6bdea42260d355baf750c8d839",
+          "midi.log": "47d9ae4d2a7d60a9d12a3cc38d112833401a88806472fe3a759073fd63c5171d",
+          "status.log": "d6f7585d7aaaf3ae2ed4bfbe3be3e568f84bc5979dc6bc95b2833fae76aa1047",
+          "postflight.log": "b8d6819f5d11528f751a908a7cd022da10c82f6bdea42260d355baf750c8d839",
+          "audio.log": "fb0bbe30e754e0be6676e107b9d2b3440aa526748c695b5e16de65e832d0b891",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        }
+      },
+      "callbacks": 225051,
+      "input_frames": 28806528,
+      "clock": {
+        "records": 5782,
+        "all_finite_valid_and_strictly_advancing": true,
+        "first": {
+          "status": 0,
+          "flags": 7,
+          "sample": 17113.0,
+          "host": 3829494080608,
+          "bad": false
+        },
+        "last": {
+          "status": 0,
+          "flags": 7,
+          "sample": 28822954.0,
+          "host": 3843896203545,
+          "bad": false
+        },
+        "minimum_sample_advance": 24.0,
+        "maximum_sample_advance": 5380.0,
+        "minimum_host_tick_advance": 11877,
+        "maximum_host_tick_advance": 2689109
+      },
+      "native": {
+        "rows": 5659,
+        "flags_observed": [
+          1,
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "nominal_and_native_rate": 48000,
+        "bad_rows": 0,
+        "error_rows": 0
+      },
+      "watched_driver_records": 0,
+      "persistent_midi_messages": 0
+    },
+    {
+      "index": 4,
+      "rate": 44100,
+      "state_sha256": "030d5cdefd7401c5994d94a9a99d645ab24f05ae303c5753f91d29953a5e5a33",
+      "state": {
+        "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/44100-run4-f37fe41u",
+        "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+        "diagnostic_source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+        "rate": 44100,
+        "buffer_frames": 128,
+        "run_number": 4,
+        "device": 128,
+        "driver_pid": 72936,
+        "generation": 1,
+        "cap_seconds": 600.0,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:12:14.738253+00:00",
+        "children": {
+          "driver": {
+            "pid": 91309,
+            "argv": [
+              "/usr/bin/log",
+              "stream",
+              "--style",
+              "compact",
+              "--level",
+              "default",
+              "--predicate",
+              "processIdentifier == 72936 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+            ],
+            "exit": 0
+          },
+          "midi": {
+            "pid": 91310,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+              "--live"
+            ],
+            "exit": 1
+          },
+          "audio": {
+            "pid": 91311,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+              "--live",
+              "--buffer-frames",
+              "128"
+            ],
+            "exit": 0
+          },
+          "status": {
+            "pid": 91312,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch",
+              "128",
+              "1",
+              "44100"
+            ],
+            "exit": 0
+          }
+        },
+        "cleanup_escalations": [],
+        "preflight": {
+          "device": 128,
+          "nominal_rate": 44100,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 44100,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "active_started_utc": "2026-10-27T16:12:15.572755+00:00",
+        "active_seconds": 600.0365600829828,
+        "status_rows": 5620,
+        "clock_records": 5736,
+        "last_status": {
+          "tick": 3858329385662,
+          "status": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "version": 1,
+          "rate": 44100,
+          "native_rate": 44100,
+          "bad": false
+        },
+        "reason": "600-second cap reached without watched fault",
+        "stop_requested_utc": "2026-10-27T16:22:15.607655+00:00",
+        "audio_summary": "CoreAudio callbacks=206781 input1frames=26467968 RMS=0.000048 input_peak=0.003834 stop=0",
+        "midi_messages": 0,
+        "midi_zero_events_allowed": true,
+        "postflight": {
+          "device": 128,
+          "nominal_rate": 44100,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 44100,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "ended_utc": "2026-10-27T16:22:15.753040+00:00",
+        "log_sha256": {
+          "preflight.log": "3ac433cb4bcb0bc86ebe66974deb577d743b8ea56d221edd293527bdad1acb55",
+          "midi.log": "24c6aef1740b54dbefc0a9f78ee070d61fc5324fe095abe257338109379f6e5f",
+          "status.log": "72ade642a75eaca8c41b4a12efdab3854715ae9a07150ba14a4a18697befe42e",
+          "postflight.log": "3ac433cb4bcb0bc86ebe66974deb577d743b8ea56d221edd293527bdad1acb55",
+          "audio.log": "6ebaa63eaadba7e4461a6effa4be39f6a42f8a46ed847f3e704c3cd326caa28d",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        }
+      },
+      "callbacks": 206781,
+      "input_frames": 26467968,
+      "clock": {
+        "records": 5736,
+        "all_finite_valid_and_strictly_advancing": true,
+        "first": {
+          "status": 0,
+          "flags": 7,
+          "sample": 17335.0,
+          "host": 3843925603634,
+          "bad": false
+        },
+        "last": {
+          "status": 0,
+          "flags": 7,
+          "sample": 26484436.0,
+          "host": 3858328331252,
+          "bad": false
+        },
+        "minimum_sample_advance": 9.0,
+        "maximum_sample_advance": 6520.0,
+        "minimum_host_tick_advance": 4925,
+        "maximum_host_tick_advance": 3548313
+      },
+      "native": {
+        "rows": 5620,
+        "flags_observed": [
+          1,
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "nominal_and_native_rate": 44100,
+        "bad_rows": 0,
+        "error_rows": 0
+      },
+      "watched_driver_records": 0,
+      "persistent_midi_messages": 0
+    },
+    {
+      "index": 5,
+      "rate": 88200,
+      "state_sha256": "83a0ee9785e7335c167532c84b69d7627a6b2da1671521b438bc873ecd9c61a0",
+      "state": {
+        "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/88200-run5-wpl32qnh",
+        "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+        "diagnostic_source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+        "rate": 88200,
+        "buffer_frames": 128,
+        "run_number": 5,
+        "device": 128,
+        "driver_pid": 72936,
+        "generation": 1,
+        "cap_seconds": 600.0,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:22:16.074305+00:00",
+        "children": {
+          "driver": {
+            "pid": 92849,
+            "argv": [
+              "/usr/bin/log",
+              "stream",
+              "--style",
+              "compact",
+              "--level",
+              "default",
+              "--predicate",
+              "processIdentifier == 72936 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+            ],
+            "exit": 0
+          },
+          "midi": {
+            "pid": 92850,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+              "--live"
+            ],
+            "exit": 1
+          },
+          "audio": {
+            "pid": 92851,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+              "--live",
+              "--buffer-frames",
+              "128"
+            ],
+            "exit": 0
+          },
+          "status": {
+            "pid": 92852,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch",
+              "128",
+              "1",
+              "88200"
+            ],
+            "exit": 0
+          }
+        },
+        "cleanup_escalations": [],
+        "preflight": {
+          "device": 128,
+          "nominal_rate": 88200,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 88200,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "active_started_utc": "2026-10-27T16:22:16.910309+00:00",
+        "active_seconds": 600.0139230420173,
+        "status_rows": 5628,
+        "clock_records": 5745,
+        "last_status": {
+          "tick": 3872761031441,
+          "status": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "version": 1,
+          "rate": 88200,
+          "native_rate": 88200,
+          "bad": false
+        },
+        "reason": "600-second cap reached without watched fault",
+        "stop_requested_utc": "2026-10-27T16:32:16.923684+00:00",
+        "audio_summary": "CoreAudio callbacks=413539 input1frames=52932992 RMS=0.000035 input_peak=0.003755 stop=0",
+        "midi_messages": 0,
+        "midi_zero_events_allowed": true,
+        "postflight": {
+          "device": 128,
+          "nominal_rate": 88200,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 88200,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "ended_utc": "2026-10-27T16:32:17.071245+00:00",
+        "log_sha256": {
+          "preflight.log": "d763e1cf81f290be0e2f91b9d90e8cfa571f2348ef3c2653cfb59879283b2824",
+          "midi.log": "875ce7fb6fed734c05108703e800ec722c332e8ee90b2366960082cda6e76714",
+          "status.log": "d0612ab57e58854ef61114140df8cc1db9f42cc2adec34820c608990095df358",
+          "postflight.log": "d763e1cf81f290be0e2f91b9d90e8cfa571f2348ef3c2653cfb59879283b2824",
+          "audio.log": "fae4f588ffbb5655d1482224e96dd0cdc4eb39cead7278170f483f89e8ebe8ac",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        }
+      },
+      "callbacks": 413539,
+      "input_frames": 52932992,
+      "clock": {
+        "records": 5745,
+        "all_finite_valid_and_strictly_advancing": true,
+        "first": {
+          "status": 0,
+          "flags": 7,
+          "sample": 17554.0,
+          "host": 3858357851293,
+          "bad": false
+        },
+        "last": {
+          "status": 0,
+          "flags": 7,
+          "sample": 52949340.0,
+          "host": 3872759924820,
+          "bad": false
+        },
+        "minimum_sample_advance": 15.0,
+        "maximum_sample_advance": 9856.0,
+        "minimum_host_tick_advance": 4002,
+        "maximum_host_tick_advance": 2669079
+      },
+      "native": {
+        "rows": 5628,
+        "flags_observed": [
+          1,
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "nominal_and_native_rate": 88200,
+        "bad_rows": 0,
+        "error_rows": 0
+      },
+      "watched_driver_records": 0,
+      "persistent_midi_messages": 0
+    },
+    {
+      "index": 6,
+      "rate": 96000,
+      "state_sha256": "ec78d2e393aa1651ed33f55a414ec763e3fd637c1dc13725b189341d23e95254",
+      "state": {
+        "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/96000-run6-_gyjmtrl",
+        "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+        "diagnostic_source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+        "rate": 96000,
+        "buffer_frames": 128,
+        "run_number": 6,
+        "device": 128,
+        "driver_pid": 72936,
+        "generation": 1,
+        "cap_seconds": 600.0,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:32:17.374064+00:00",
+        "children": {
+          "driver": {
+            "pid": 94312,
+            "argv": [
+              "/usr/bin/log",
+              "stream",
+              "--style",
+              "compact",
+              "--level",
+              "default",
+              "--predicate",
+              "processIdentifier == 72936 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+            ],
+            "exit": 0
+          },
+          "midi": {
+            "pid": 94313,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+              "--live"
+            ],
+            "exit": 1
+          },
+          "audio": {
+            "pid": 94314,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+              "--live",
+              "--buffer-frames",
+              "128"
+            ],
+            "exit": 0
+          },
+          "status": {
+            "pid": 94320,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch",
+              "128",
+              "1",
+              "96000"
+            ],
+            "exit": 0
+          }
+        },
+        "cleanup_escalations": [],
+        "preflight": {
+          "device": 128,
+          "nominal_rate": 96000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 96000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "active_started_utc": "2026-10-27T16:32:17.984704+00:00",
+        "active_seconds": 600.0154435410223,
+        "status_rows": 5681,
+        "clock_records": 5798,
+        "last_status": {
+          "tick": 3887185760572,
+          "status": 0,
+          "flags": 3,
+          "generation": 1,
+          "error": 0,
+          "version": 1,
+          "rate": 96000,
+          "native_rate": 96000,
+          "bad": false
+        },
+        "reason": "600-second cap reached without watched fault",
+        "stop_requested_utc": "2026-10-27T16:42:17.999614+00:00",
+        "audio_summary": "CoreAudio callbacks=450093 input1frames=57611904 RMS=0.000032 input_peak=0.003581 stop=0",
+        "midi_messages": 0,
+        "midi_zero_events_allowed": true,
+        "postflight": {
+          "device": 128,
+          "nominal_rate": 96000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 96000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "ended_utc": "2026-10-27T16:42:18.130034+00:00",
+        "log_sha256": {
+          "preflight.log": "0e65b99e27b1849c06582a613c4eb1a02e97000ca824961b61652a388392e825",
+          "midi.log": "ce7e247e6fe88e5ffda14dc35e9fe022d0dff2e977c9ad34556f8e0ee2ff09e1",
+          "status.log": "0358bc203eae6552f54221cdab77b9cdcaf5cd64e59d90714a67397c930798b7",
+          "postflight.log": "0e65b99e27b1849c06582a613c4eb1a02e97000ca824961b61652a388392e825",
+          "audio.log": "a9a2c1aa0db76a638af252901ef93ae4b8a2013ad2d3b45bfa59ad612196c7aa",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        }
+      },
+      "callbacks": 450093,
+      "input_frames": 57611904,
+      "clock": {
+        "records": 5798,
+        "all_finite_valid_and_strictly_advancing": true,
+        "first": {
+          "status": 0,
+          "flags": 7,
+          "sample": 17268.0,
+          "host": 3872783826024,
+          "bad": false
+        },
+        "last": {
+          "status": 0,
+          "flags": 7,
+          "sample": 57620011.0,
+          "host": 3887183712328,
+          "bad": false
+        },
+        "minimum_sample_advance": 38.0,
+        "maximum_sample_advance": 10710.0,
+        "minimum_host_tick_advance": 9349,
+        "maximum_host_tick_advance": 2678478
+      },
+      "native": {
+        "rows": 5681,
+        "flags_observed": [
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "nominal_and_native_rate": 96000,
+        "bad_rows": 0,
+        "error_rows": 0
+      },
+      "watched_driver_records": 0,
+      "persistent_midi_messages": 0
+    },
+    {
+      "index": 7,
+      "rate": 192000,
+      "state_sha256": "dec3473ccfc2087ece84fadbc39123b0dfbc07f7ef4dfa15ba4343e112535793",
+      "state": {
+        "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/192000-run7-6vswq9ha",
+        "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+        "diagnostic_source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+        "rate": 192000,
+        "buffer_frames": 128,
+        "run_number": 7,
+        "device": 128,
+        "driver_pid": 72936,
+        "generation": 1,
+        "cap_seconds": 600.0,
+        "result": "PASS",
+        "started_utc": "2026-10-27T16:42:18.462321+00:00",
+        "children": {
+          "driver": {
+            "pid": 95903,
+            "argv": [
+              "/usr/bin/log",
+              "stream",
+              "--style",
+              "compact",
+              "--level",
+              "default",
+              "--predicate",
+              "processIdentifier == 72936 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+            ],
+            "exit": 0
+          },
+          "midi": {
+            "pid": 95904,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+              "--live"
+            ],
+            "exit": 1
+          },
+          "audio": {
+            "pid": 95906,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+              "--live",
+              "--buffer-frames",
+              "128"
+            ],
+            "exit": 0
+          },
+          "status": {
+            "pid": 95907,
+            "argv": [
+              "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-stability/tools/rate-watch",
+              "128",
+              "1",
+              "192000"
+            ],
+            "exit": 0
+          }
+        },
+        "cleanup_escalations": [],
+        "preflight": {
+          "device": 128,
+          "nominal_rate": 192000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 192000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "active_started_utc": "2026-10-27T16:42:18.985207+00:00",
+        "active_seconds": 600.0044142080005,
+        "status_rows": 5631,
+        "clock_records": 5745,
+        "last_status": {
+          "tick": 3901609522620,
+          "status": 0,
+          "flags": 3,
+          "generation": 1,
+          "error": 0,
+          "version": 1,
+          "rate": 192000,
+          "native_rate": 192000,
+          "bad": false
+        },
+        "reason": "600-second cap reached without watched fault",
+        "stop_requested_utc": "2026-10-27T16:52:18.987251+00:00",
+        "audio_summary": "CoreAudio callbacks=900155 input1frames=115219840 RMS=0.000059 input_peak=0.002433 stop=0",
+        "midi_messages": 0,
+        "midi_zero_events_allowed": true,
+        "postflight": {
+          "device": 128,
+          "nominal_rate": 192000,
+          "nominal_settable": true,
+          "buffer_frames": 512,
+          "running_somewhere": 0,
+          "flags": 1,
+          "generation": 1,
+          "error": 0,
+          "native_sample_rate": 192000,
+          "available_rates": [
+            [
+              44100,
+              44100
+            ],
+            [
+              48000,
+              48000
+            ],
+            [
+              88200,
+              88200
+            ],
+            [
+              96000,
+              96000
+            ],
+            [
+              192000,
+              192000
+            ]
+          ]
+        },
+        "ended_utc": "2026-10-27T16:52:19.143320+00:00",
+        "log_sha256": {
+          "preflight.log": "b55711f59c48ad6729bb701c45ee0f5f1d7472f8f1b3230fa546aec1ec2b03e7",
+          "midi.log": "e9a94adb1a8b793f9ae2dc1cdab8d382a389eae82387607883e743465bcb3a7c",
+          "status.log": "428ff68c389b5d818a1d8069cba7831e716b35a0dbff44fb79a24ac894390ea3",
+          "postflight.log": "b55711f59c48ad6729bb701c45ee0f5f1d7472f8f1b3230fa546aec1ec2b03e7",
+          "audio.log": "4fdc4d8f740f12b75b0ec320da699968fc469fcd125faf26504cbce99eebaf0f",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        }
+      },
+      "callbacks": 900155,
+      "input_frames": 115219840,
+      "clock": {
+        "records": 5745,
+        "all_finite_valid_and_strictly_advancing": true,
+        "first": {
+          "status": 0,
+          "flags": 7,
+          "sample": 17376.0,
+          "host": 3887208003793,
+          "bad": false
+        },
+        "last": {
+          "status": 0,
+          "flags": 7,
+          "sample": 115221600.0,
+          "host": 3901607730747,
+          "bad": false
+        },
+        "minimum_sample_advance": 53.0,
+        "maximum_sample_advance": 21733.0,
+        "minimum_host_tick_advance": 6583,
+        "maximum_host_tick_advance": 2707736
+      },
+      "native": {
+        "rows": 5631,
+        "flags_observed": [
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "nominal_and_native_rate": 192000,
+        "bad_rows": 0,
+        "error_rows": 0
+      },
+      "watched_driver_records": 0,
+      "persistent_midi_messages": 0
+    }
+  ],
+  "campaign_state_sha256": "79f1306e2a9b8bd44c7473a25433b105dbb92df5cb9e46c9611d22929a57f0fd",
+  "total_active_seconds": 4200.133294456027,
+  "requested_total_active_seconds": 4200,
+  "timer_limit": "Seven600s active caps observed by a100ms polling gate. Total measured overshoot is 0.133294456s; maximum single-run overshoot 0.048980083s. No cap extension or retry.",
+  "total_callbacks": 2645726,
+  "total_input_frames": 338652928,
+  "total_clock_records": 40329,
+  "total_status_rows": 39514,
+  "transition_records": {
+    "transition1.log": "{\"rate\":44100,\"native_rate\":44100,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":64,\"output_latency\":128,\"input_offset\":128,\"output_offset\":128,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\n{\"set_rate\":48000,\"status\":0}\n{\"rate\":48000,\"native_rate\":48000,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":68,\"output_latency\":136,\"input_offset\":136,\"output_offset\":136,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\nPASS one stopped target selection; no audio I/O started\n",
+    "transition2.log": "{\"rate\":48000,\"native_rate\":48000,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":68,\"output_latency\":136,\"input_offset\":136,\"output_offset\":136,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\nPASS already selected target; no rate write; no audio I/O started\n",
+    "transition3.log": "{\"rate\":48000,\"native_rate\":48000,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":68,\"output_latency\":136,\"input_offset\":136,\"output_offset\":136,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\nPASS already selected target; no rate write; no audio I/O started\n",
+    "transition4.log": "{\"rate\":48000,\"native_rate\":48000,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":68,\"output_latency\":136,\"input_offset\":136,\"output_offset\":136,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\n{\"set_rate\":44100,\"status\":0}\n{\"rate\":44100,\"native_rate\":44100,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":64,\"output_latency\":128,\"input_offset\":128,\"output_offset\":128,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\nPASS one stopped target selection; no audio I/O started\n",
+    "transition5.log": "{\"rate\":44100,\"native_rate\":44100,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":64,\"output_latency\":128,\"input_offset\":128,\"output_offset\":128,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\n{\"set_rate\":88200,\"status\":0}\n{\"rate\":88200,\"native_rate\":88200,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":88,\"output_latency\":176,\"input_offset\":176,\"output_offset\":176,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\nPASS one stopped target selection; no audio I/O started\n",
+    "transition6.log": "{\"rate\":88200,\"native_rate\":88200,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":88,\"output_latency\":176,\"input_offset\":176,\"output_offset\":176,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\n{\"set_rate\":96000,\"status\":0}\n{\"rate\":96000,\"native_rate\":96000,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":92,\"output_latency\":184,\"input_offset\":184,\"output_offset\":184,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\nPASS one stopped target selection; no audio I/O started\n",
+    "transition7.log": "{\"rate\":96000,\"native_rate\":96000,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":92,\"output_latency\":184,\"input_offset\":184,\"output_offset\":184,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\n{\"set_rate\":192000,\"status\":0}\n{\"rate\":192000,\"native_rate\":192000,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":140,\"output_latency\":280,\"input_offset\":280,\"output_offset\":280,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\nPASS one stopped target selection; no audio I/O started\n"
+  },
+  "restoration_record": "{\"rate\":192000,\"native_rate\":192000,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":140,\"output_latency\":280,\"input_offset\":280,\"output_offset\":280,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\n{\"set_rate\":44100,\"status\":0}\n{\"rate\":44100,\"native_rate\":44100,\"flags\":1,\"generation\":1,\"error\":0,\"running_somewhere\":0,\"input_latency\":64,\"output_latency\":128,\"input_offset\":128,\"output_offset\":128,\"streams\":[129,130],\"both_physical_virtual_stereo_float32\":true}\nPASS one stopped target selection; no audio I/O started\n",
+  "scope_and_guards": [
+    "Plan and refinements recorded in existing Beads before private-tool edits/live actions; no new issue.",
+    "Seven fresh installedbuild13 runs:48000x3 then44100,88200,96000,192000; actual same-client buffer128/outputsilence/CLOCK_READY before each active timer.",
+    "Persistent native MIDI input during each whole600s gate; quiet MIDI exit1 accepted only with zero-message final footer.",
+    "Live checks require finite strictly advancing same-client sample/host clocks, receipt freshness<=2s, expected nominal/native rate, stable generation, connected+running/error0 during active phase and no watched driver error/fault/timing record; firstfault stops campaign.",
+    "All observers owned/reaped; clean idle rate snapshot after everygate; maxone normalstopped public nominalSET pertransition, NOOP alreadytarget; original44100 restored only after allsevenPASS.",
+    "No production source/bundle/install/QoS/calendar/ring/clock/recovery/controller mapping/calibration/LED/security changes; SIPenabled before+after.",
+    "Original rate-agnostic frozen build12 diagnostic clients only observe installedbuild13; no build12 driver or result reused."
+  ],
+  "limits": [
+    "Silent full-duplex host callback/clock/transport qualification only. Input frame/callback and clock advancement observations do not prove uninterrupted PCM waveform or output audibility.",
+    "Zero watched fault/status-error/generation-change observations are bounded by this campaign and do not prove absence of every unobserved internal event or long-term reliability.",
+    "Clock checks use sampled API time and strictly positive advances, not an exact PCM sample-by-sample continuity check; this is not true-loopback latency measurement.",
+    "Quiet MIDI observer liveness/clean disposal is not physical eight-switch/pedal delivery, LED feedback, DIN, toe/external-pedal or recovery acceptance. Build12 physical checks remain historical and were not repeated or credited to build13.",
+    "No sleep/wake, unplug/reconnect, last-output/input-only restart, gain/directmonitor or rollback/clean-reinstall gate was run here; wider M2/M3 delivery remains open.",
+    "The final readback helper reports its separate client buffer512. Each actual running audio client independently set/read128 and logged callback*128 frame totals.",
+    "Public CoreAudio nominal-rateSET cannot carry the caller generation atomically; helpers check before/after plus production HAL cohort fencing. No unplug was admitted; no direct USB access or wire trace was performed.",
+    "The protected root-only installer backup journal was not newly read; installed file hashes/signatures were verified directly."
+  ]
+}

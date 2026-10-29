@@ -1,0 +1,313 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "scope": "read-only contract audit, no new probe/code/runtime/device/security action",
+  "created_utc": "2026-10-28T15:00:46.480134+00:00",
+  "baseline_commit": "6030d19",
+  "driver_candidate": "unchanged0.2.11/build16/source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+  "question": "Do SDK identity or native HAL binding contracts establish why retained per-IOProc masks still yielded nonnull disabled-direction buffers?",
+  "result": "NO_WRONG_IOPROCID_USE_OR_NATIVE_CONTRACT_VIOLATION_ESTABLISHED_UNPROVEN_HOST_TO_GLOBAL_ACTIVITY_BOUNDARY",
+  "findings": [
+    {
+      "id": "C1",
+      "status": "SOURCE_CONTRACT_CONFIRMED",
+      "claim": "A created AudioDeviceIOProcID identifies a callback registration together with its clientdata and is permitted wherever a regular IOProc is used; same callback may be registered repeatedly with different contexts.",
+      "evidence": [
+        "AudioHardware.h839..846",
+        "AudioHardware.h1355..1375"
+      ],
+      "consequence": "The opaque returned ID is not semantically replaced by the raw original callback address."
+    },
+    {
+      "id": "C2",
+      "status": "NO_HELPER_ID_MISUSE_ESTABLISHED",
+      "claim": "The frozen helper registers process with two distinct Context pointers, requires distinct returned IDs, copies each returned ID into mIOProc, and configures one stream of each direction separately.",
+      "evidence": [
+        "direction-usage.c125..141",
+        "direction-usage.c335..343",
+        "RK3AudioDriver.c345..349"
+      ],
+      "consequence": "No contract evidence justifies substituting raw process function pointers or merging the registrations."
+    },
+    {
+      "id": "C3",
+      "status": "STRICT_CALLBACK_CONTRACT_RETAINED",
+      "claim": "Per-IOProc stream usage is selected by registration and direction, covers all streams in that direction, and unused streams are specified to deliver null callbackdata while retaining byte size.",
+      "evidence": [
+        "AudioHardware.h755..775",
+        "AudioHardware.h849..867",
+        "AudioHardware.h971..979"
+      ],
+      "consequence": "Keep the NULL assertion; successful mask readback plus nonnull callback remains an unresolved discrepancy."
+    },
+    {
+      "id": "C4",
+      "status": "DISTINCT_IDENTIFIER_DOMAINS",
+      "claim": "AudioServerPlugIn client IDs are UInt32 host-provided client identities, distinct from PID and capable of distinguishing multiple clients in one process. The admitted contracts do not define a one-to-one mapping from application IOProcID to plug-in clientID.",
+      "evidence": [
+        "AudioServerPlugIn.h179..202",
+        "AudioServerPlugIn.h698..732",
+        "AudioServerPlugIn.h948..984"
+      ],
+      "consequence": "Do not equate an IOProc pointer or PID with the native client counter identifier."
+    },
+    {
+      "id": "C5",
+      "status": "NATIVE_DEVICE_LIFETIME_SOURCE_CONFIRMED",
+      "claim": "Native StartIO tracks active device-client IDs, starts USBaudio for the first active client, and stops it when the last active device-client stops. Add/Remove callbacks discard client metadata; Will/Begin/Do callbacks ignore the client argument while offering ReadInput and WriteMix.",
+      "evidence": [
+        "RK3AudioDriver.c250..252",
+        "RK3AudioDriver.c535..551",
+        "RK3AudioDriver.c589..618",
+        "AudioServerPlugIn.h948..967",
+        "AudioServerPlugIn.h1017..1050"
+      ],
+      "consequence": "This implements aggregate device lifetime. Ignoring unused clientmetadata or offering the same operations to clients is not by itself a proved SDK violation."
+    },
+    {
+      "id": "C6",
+      "status": "SOURCE_OWNERSHIP_LIMIT",
+      "claim": "IOProcStreamUsage is absent from the native plug-in supported property selectors; native get/set paths reject unsupported selectors.",
+      "evidence": [
+        "RK3AudioDriver.c305..322",
+        "RK3AudioDriver.c377..380",
+        "RK3AudioDriver.c481..484"
+      ],
+      "consequence": "Successful public IOProc mask queries are not evidence that these masks entered this native handler. An intervening host/client layer answering them is a source-level inference; which internal component dispatched the observed buffer is unproved."
+    },
+    {
+      "id": "C7",
+      "status": "GLOBAL_OUTPUT_ACTIVITY_CHAIN_SOURCE_CONFIRMED",
+      "claim": "Global output IsActive is a separate native Boolean. Its setter updates USB desired output activity and currentISO state; republishing an audio engine reapplies desired activity. The ISO clear function conditionally invokes the original ring-clear routine when inactive, PCMready, render lock available and either output_written or output_ring.stream_written is set. Service invokes the clear helper. Inactive render skips new ring writes.",
+      "evidence": [
+        "RK3AudioDriver.c27..30",
+        "RK3AudioDriver.c421",
+        "RK3AudioDriver.c519..524",
+        "NativeUSB.c271..278",
+        "NativeUSB.c1373",
+        "NativeUSB.c1553..1561",
+        "NativeAudioISO.c261..268",
+        "NativeAudioISO.c319..323",
+        "NativeAudioISO.c393",
+        "NativeAudioISO.c568..585"
+      ],
+      "consequence": "The existing NI-derived clear path is present. output_written can be set before a priming no-op or render-lock/write outcome, so the flag alone is not proof that PCM was written. Source presence and call edges do not establish physical last-output behavior or exact runtime cadence."
+    },
+    {
+      "id": "C8",
+      "status": "PARITY_BOUNDARY_STILL_UNPROVEN",
+      "claim": "No admitted contract equates one IOProc output mask zero with global output-stream IsActive zero or last device-client StopIO. The native source has no explicit mapping from those public per-IOProc masks into its global activity Boolean.",
+      "evidence": [
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7"
+      ],
+      "consequence": "Per-IOProc routing qualification, aggregate device Start/Stop, and global output-inactive ring clearing are separate obligations. The last-output test has not established that it exercised the native global inactive boundary."
+    }
+  ],
+  "observed_runtime_baseline": {
+    "evidence": "ReverseEngineering/Evidence/Build16PostStartUsageValidation.json",
+    "sha256": "b5db6e578fbae65e7483fa0168ed1019f6a7bb713ae34af0492f1b3e92fac8d4",
+    "facts": "Previously captured before/afterStart masks1,0,0,1 matched; callbackdisabledoutputdataPRESENT;39inputcallbacks/0PCMframes/outputneverstarted/0cycles. No runtime test repeated here."
+  },
+  "binding_map": [
+    {
+      "layer": "application/CoreAudio API",
+      "identity": "AudioDeviceIOProcID registration+context",
+      "state": "per-IOProc stream-use masks",
+      "owner_observed": "public API readbacks; actual dispatcher untraced"
+    },
+    {
+      "layer": "AudioServerPlugIn native integration",
+      "identity": "host UInt32 device-clientID; not PID or application pointer",
+      "state": "aggregate active-client count and device-global input/output IsActive",
+      "owner_observed": "source only; live callback IDs/property event sequence untraced"
+    },
+    {
+      "layer": "USB/ISO and NI-derived output ring",
+      "identity": "single native USB owner / published ISO engine",
+      "state": "desired output-active flag and conditional clear/render",
+      "owner_observed": "source call edges; physical last-output transition remains unqualified"
+    }
+  ],
+  "decision": {
+    "implementation_change_admitted": false,
+    "why": "No causal evidence justifies an ARM binding repair from retained public masks alone. The helper uses returned IDs consistently with SDK; the global output-clear path already exists. Preserve original NI timing/ring/recovery and the strict unused-buffer assertion.",
+    "minimum_remaining_question": "What host-origin client and global stream-activity events occur while one output consumer stops and an input consumer stays active?",
+    "next_step_before_code": "Record one bounded host-boundary event observation plan in existingM3 covering device-client Start/Stop and global output IsActive transitions; keep it separate from the unresolved public IOProc NULL-buffer assertion. No probe or temporary instrumentation is implemented/admitted by this read-only audit.",
+    "limits": "Do not swap registration IDs for raw callback pointers, add a native IOProcStreamUsage selector, change scheduling, force global activity to claim natural client-stop success, or declare parity from this source audit."
+  },
+  "read_manifest": [
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioHardware.h",
+      "sha256": "a699437248e079d9ebe47078ef3861492d8253fef1a6007e476031031d3535ca",
+      "read_bounds_inclusive": [
+        [
+          738,
+          793
+        ],
+        [
+          839,
+          867
+        ],
+        [
+          971,
+          979
+        ],
+        [
+          1353,
+          1477
+        ]
+      ],
+      "lines_selected": 219
+    },
+    {
+      "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioServerPlugIn.h",
+      "sha256": "de0ecbec543ac46b051ea731968ded0706401991ebec6d7976063e19651947e8",
+      "read_bounds_inclusive": [
+        [
+          174,
+          202
+        ],
+        [
+          690,
+          738
+        ],
+        [
+          944,
+          1008
+        ],
+        [
+          1014,
+          1159
+        ]
+      ],
+      "lines_selected": 289
+    },
+    {
+      "path": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/Driver/Audio/RK3AudioDriver.c",
+      "sha256": "4e67a30d7d8419ba146098ad80f6d3ddb3edc81e04dd072e77c05d33f7eeb10a",
+      "read_bounds_inclusive": [
+        [
+          20,
+          49
+        ],
+        [
+          214,
+          252
+        ],
+        [
+          289,
+          372
+        ],
+        [
+          377,
+          436
+        ],
+        [
+          481,
+          552
+        ],
+        [
+          589,
+          622
+        ]
+      ],
+      "lines_selected": 319
+    },
+    {
+      "path": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/Driver/NativeUSB.c",
+      "sha256": "cf9df3fadf431660e07a0986a7c8d1ff49efa44ff1e2a1200db55dfb3387704e",
+      "read_bounds_inclusive": [
+        [
+          262,
+          280
+        ],
+        [
+          1370,
+          1376
+        ],
+        [
+          1547,
+          1567
+        ]
+      ],
+      "lines_selected": 47
+    },
+    {
+      "path": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/Driver/NativeAudioISO.c",
+      "sha256": "72a7216d94d237586393be5612f3dc0d8fc6eb9f3b2d2feb28a96ee9d082831e",
+      "read_bounds_inclusive": [
+        [
+          252,
+          268
+        ],
+        [
+          564,
+          586
+        ],
+        [
+          316,
+          326
+        ],
+        [
+          388,
+          398
+        ]
+      ],
+      "lines_selected": 62
+    },
+    {
+      "path": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build16-output-usage/direction-usage.c",
+      "sha256": "750443822ba2ff5edd059191a26ae28aa23080d8192bdefef02e3263b2510897",
+      "read_bounds_inclusive": [
+        [
+          120,
+          166
+        ],
+        [
+          326,
+          352
+        ]
+      ],
+      "lines_selected": 74
+    }
+  ],
+  "online_verification": {
+    "official_targets": [
+      "https://developer.apple.com/documentation/coreaudio/audiodeviceioprocid",
+      "https://developer.apple.com/documentation/coreaudio/audioserverpluginclientinfo"
+    ],
+    "result": "Both pages returned JS shells; their supplied .md representations failed with unsupported text/markdown. No online declaration body was used; facts rely on pinned current Apple SDK headers.",
+    "lookup_limit": "Only these two exact declarations and their linked Markdown representations; no broader research."
+  },
+  "independent_reviews": {
+    "SDK_and_helper": "PASS bounded SDK/helper contract review by separateagent",
+    "native_path": "PASS bounded source-only activity/lifetime review; C7 flag-vs-written-PCM wording corrected",
+    "final_report": "PASS SDK/helper and native-path integration reviews; six source manifests, prior runtime evidence pin and semantic limits checked; C7 flag-versus-written-PCM wording corrected"
+  },
+  "production_code_changes": false,
+  "tests_or_live_calls_run": false,
+  "NI_binary_reads": false,
+  "new_regular_beads": 0,
+  "read_only_end_check": {
+    "installed12_file_matches": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": true,
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": true,
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": true,
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": true
+    },
+    "SIP": "System Integrity Protection status: enabled.",
+    "no_audio_or_MIDI_or_USB_API_calls": true,
+    "no_app_restart_or_driver_install": true
+  }
+}

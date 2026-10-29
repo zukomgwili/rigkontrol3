@@ -1,0 +1,220 @@
+{
+  "schema": 1,
+  "bead": "rigkontrol3-40h.1",
+  "recorded_utc": "2026-10-27T14:11:45.892398+00:00",
+  "purpose": "Restore NI original five-rate/default behavior in the existing native ARM audio stack, without changing its timing or recovery.",
+  "base_commit": "9c0362b0d592fd5920bdf08d142b6e0c8a1bdcb6",
+  "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "version": "0.2.8",
+  "build": 13,
+  "implementation_status": "IMPLEMENTED_OFFLINE_VERIFIED_SIGNED_CANDIDATE",
+  "installed_status": "NOT_INSTALLED_admin_authentication_required; build12 remains installed",
+  "M2_complete": false,
+  "M3_complete": false,
+  "plan": "Initial, frozen per-file/API/test plan and necessary review amendments recorded in the existing bead BEFORE each code change. No new issue or planning-only card.",
+  "original_rates": [
+    {
+      "rate_Hz": 44100,
+      "NI_code": 0,
+      "command_capacity_bytes": 128,
+      "input_latency_frames": 64,
+      "output_latency_frames": 128,
+      "sample_offset_frames": 128,
+      "24bit_command9": [
+        9,
+        0,
+        2,
+        128,
+        0,
+        1
+      ],
+      "hardware_qualification": "NOT_RUN_on_build13"
+    },
+    {
+      "rate_Hz": 48000,
+      "NI_code": 1,
+      "command_capacity_bytes": 136,
+      "input_latency_frames": 68,
+      "output_latency_frames": 136,
+      "sample_offset_frames": 136,
+      "24bit_command9": [
+        9,
+        1,
+        2,
+        136,
+        0,
+        1
+      ],
+      "hardware_qualification": "NOT_RUN_on_build13"
+    },
+    {
+      "rate_Hz": 88200,
+      "NI_code": 4,
+      "command_capacity_bytes": 176,
+      "input_latency_frames": 88,
+      "output_latency_frames": 176,
+      "sample_offset_frames": 176,
+      "24bit_command9": [
+        9,
+        4,
+        2,
+        176,
+        0,
+        1
+      ],
+      "hardware_qualification": "NOT_RUN_on_build13"
+    },
+    {
+      "rate_Hz": 96000,
+      "NI_code": 2,
+      "command_capacity_bytes": 184,
+      "input_latency_frames": 92,
+      "output_latency_frames": 184,
+      "sample_offset_frames": 184,
+      "24bit_command9": [
+        9,
+        2,
+        2,
+        184,
+        0,
+        1
+      ],
+      "hardware_qualification": "NOT_RUN_on_build13"
+    },
+    {
+      "rate_Hz": 192000,
+      "NI_code": 3,
+      "command_capacity_bytes": 280,
+      "input_latency_frames": 140,
+      "output_latency_frames": 280,
+      "sample_offset_frames": 280,
+      "24bit_command9": [
+        9,
+        3,
+        2,
+        24,
+        1,
+        1
+      ],
+      "hardware_qualification": "NOT_RUN_on_build13"
+    }
+  ],
+  "default_rate_Hz": 44100,
+  "implemented_binding": {
+    "HAL": "Five discrete nominal rates and physical/virtual stereoFloat32 ASBDs; setters share the existing host configuration queue. Unique action/cohort transactions retain old properties until successful stopped/drained ACK commit; stale/aborted/rejected work cannot clear newer work. Scoped rate/format/latency notifications occur outside control mutex. Existing panic is deferred or covered by matching host pause/resume.",
+    "owner_API": "rk3_usb_audio_set_sample_rate(session, expected_generation, sample_rate, timeout_ms)",
+    "owner": "One command9 with existing1200ms adapter budget while stopped/drained; immutable expected USB generation. Final cancellation/deadline/cohort/pointer guards, pure ISO selection, published session rate and request completion occur under the same mutex. Failed format leaves old rate; guarded healthy idle logical-state rollback permits a later explicit request without automatic command replay. Reconnection applies retained rate before engine publication.",
+    "ISO": "Worker-only stopped/drained selection. Original startup stop/selected-rate command capacity now encoded by existing NI helpers. No new transfer geometry, calendar, ring, estimator or recovery behavior.",
+    "clock": "NI USB-frame interval estimator,128ms/every8 timer/counter, exact wrap anchor and16,384-frame period retained. Normal start seed increment and USB generation distinguish new clock incarnations.",
+    "controller": "CoreMIDI mappings/calibration/LED policy, gain/output activity and single USB owner retained.",
+    "tool_dependency": "Existing direct-driver smoke diagnostic compiles against current selected rate and latency; it was NOT executed. Separate package factory tests do not Initialize/Start hardware."
+  },
+  "preserved_contracts": [
+    "Mode2/physical24-bit conversion with nativeFloat32 stereo host PCM; no resampling/additional rates.",
+    "64IN/128OUT, eight fixed512-byte IN microframe reservations,4096-byte input slots, live16K-frame ring and input-led actual output counts.",
+    "USB initial+100/64 priming, slot63 transition and oldStart+64 input-led calendar.",
+    "NI start stop-sentinel result handling,5realformat attempts/200ms delay and128ms/every8 USB clock estimator unchanged.",
+    "Status-specific audio-only panic/EP1 recovery/no-replay semantics, MIDI/controller leases, calibration and incoming LED feedback unchanged."
+  ],
+  "quality": {
+    "semantic_RED": "Old fixed48k HAL default, native public info default and actual ISO start default assertions fail with compile0/abort-6; actual queued new-rate worker handler also proved missing before implementation.",
+    "full_strict": {
+      "exit": 0,
+      "suites": 14
+    },
+    "full_ASan_UBSan": {
+      "exit": 0,
+      "suites": 14,
+      "ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1"
+    },
+    "whitespace": "PASS",
+    "meaningful_seams": [
+      "Literal five-rate command/capacity/latency goldens including192k highcapacitybyte and unsupported176400 rejection.",
+      "Actual HAL setters/old-before-Perform visibility/host request failure/backend failure/Abort/stale tokens/reentrant notifications/deferred panic/clock seed.",
+      "Actual worker expected-generation entry race,12lateACK/lifetime mutations, ACK/write/deadline cancellation failure and atomic completion, explicit failure retry without replay, drain/admission and replacement publication.",
+      "Actual ISO start/descriptor/calendar/clock-state/seed assertions; fractional44.1/88.2 input patterns and192k ringwrap, with existing48k golden witnesses explicitly still48k."
+    ],
+    "known_fixture_corrections": "Intermediate header inconsistency, global-counter ordering, missing fake panic registration and incomplete fake command-recovery pending callback were fixture/integration corrections; they are not claimed live driver failures.",
+    "installer_fixture_tests": "PASS; private staging only, no real system bundles or services changed.",
+    "private_full_record_sha256": "a55974702006ce7bb37a769a9d87a648a286fd2c3cf7567d0735a9cfe47869b2"
+  },
+  "independent_reviews": {
+    "Standards": {
+      "result": "PASS",
+      "actionable_findings": 0,
+      "basis": "AGENTS.md and code-review baseline; exact base...source commit diff."
+    },
+    "Spec": {
+      "result": "PASS",
+      "actionable_findings": 0,
+      "basis": "Existing bead frozen plan/amendments, recovered NI contracts, actual production/test seams and current local SDK."
+    },
+    "root_ISO_contract_review": "PASS; no findings.",
+    "pre_review_integration_repairs": "Expected USB generation passed explicitly; guarded idle format failure rollback; existing1200ms NI format adapter budget. All recorded before edits and included in final full tests/reviews."
+  },
+  "package": {
+    "candidate": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build13-e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+    "manifest_sha256": "1f1ca4e62c723c9136049809fdedc61fd3957c4f77736d5e929b8d8ef7667660",
+    "manifest_entries": 12,
+    "source_record_sha256": "3f5f7e6eda6f2f4a35a88b4de02544eb55ba00f69902744c55da1fb6ce0966a3",
+    "package_verification_sha256": "20f2614dd366a12d4c97f415911cc01f2bec78837b62a1c9c9d4c4738e8feb51",
+    "source_archive_exact_commit": true,
+    "active_stale_build8_output_not_overwritten": true,
+    "signature_architecture_dependencies_exports": "PASS bothbundles; Apple-issued signatures/deepstrictAppleanchor/arm64",
+    "audio_factory": "PASS realbundle COM,44.1k default,5discrete rates/formats; noInitialize",
+    "MIDI_factory": "PASS realbundle interface2 COM; noStart/hardware",
+    "installer_read_only_check": "PASS exactidentities/signatures/all12manifestfiles",
+    "source_files_sha256": {
+      "Driver/Audio/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "Driver/Audio/RK3AudioDriver.c": "cbe395c8fa0005dcb92af5f9a76f5bb216143d50b7a7d9e48d7c68a448e3dc7c",
+      "Driver/AudioTiming.h": "ecb114b55caab868e859406f82a7addec07ec6a29abe7958283ecd8916e09258",
+      "Driver/MIDI/Info.plist": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+      "Driver/NativeAudioISO.c": "72a7216d94d237586393be5612f3dc0d8fc6eb9f3b2d2feb28a96ee9d082831e",
+      "Driver/NativeAudioISO.h": "b88c2f59bedf84320ba3dda69bb05a9ad1e1fb1d939f5984cab0a54319d9beb1",
+      "Driver/NativeUSB.c": "c6fe3cfa0a5591b80a99c6738d2beca95e5d3b3ab64baf59e38009319f18431b",
+      "Driver/NativeUSB.h": "5cd299c9d955685db4d655aaaa03470b07a1d8d13cfa9e5574caa1858ba61141",
+      "Driver/Tests/AudioDriverTests.c": "e5fc85c7b69a0543475f0a9fce499330b8cef68b648328d568701cdfb28e9bbf",
+      "Driver/Tests/AudioFactoryTests.c": "55c019e29e141626dad3503b5b670155953838df736dd25b13f4369617a79c9a",
+      "Driver/Tests/DeviceProtocolTests.c": "92fb9aff5f37d0672f2febd71426480d5e3193b3db84aafaf9bdf3905788b124",
+      "Driver/Tests/NativeAudioISOTests.c": "0f0d542521445e36a356f6bb807eb3d2e977f3b4ce3c0ee11d84605696d63da6",
+      "Driver/Tests/NativeUSBTests.c": "152bdb8724baf6b69dd785a76fe8f88b8742412720a68334663fe38adcc822d2",
+      "ReverseEngineering/AudioDriver.md": "074ece0ffbcb0fcf0fb79a84c730dec92e95b9bd6057dba610d1a83ce94e96f2",
+      "Tools/rk3-driver-smoke.c": "34f82d844f06dd3314154776227f30e57622206575a604ff9a8fbb25a33a194f"
+    }
+  },
+  "system_state": {
+    "installed_build12_12_files_unchanged": true,
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "real_device_rate_requests_or_new_audio_tests": false,
+    "GR6_session": "Left running on installed build12 from the prior restored48k/128session; no host settings altered in this coding/build task.",
+    "calibration_or_LED_writes": false
+  },
+  "remaining": [
+    "Administrator must install this exact frozen candidate; no system bundle replacement has happened.",
+    "New candidate needs affected installed48k regression and original-rate checks in existing M3. Prior build12 passes remain build12 evidence only.",
+    "Offline/synthetic packet, clock and lifecycle tests do not prove audible quality, measured latency or physical acceptance at any restored rate.",
+    "Other existing M2/M3 original-functionality/hardware/recovery/rollback gates remain open; no full lift-and-shift completion claimed."
+  ],
+  "private_evidence_sha256": {
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/full-validation.json": "a55974702006ce7bb37a769a9d87a648a286fd2c3cf7567d0735a9cfe47869b2",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/full-strict.log": "37f0462563393c7c46ae1d4d62d6fc468b96d4933894d59cc70b3c9c1dd7b0b4",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/full-sanitize.log": "0af921c5d5fc737aae33235731c441d0e17557f50cdcab21392bbbaac17d02f6",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/installer-tests.log": "5448de996d751871ccab421239a2bda5c9ab8e1118094acdd89fa59c92852e83",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/iso-red/result.json": "499f4895e25a3b4e9794a8d95e1d873e2ae6edb0e97355eb92f27b79828cf584",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/iso-red/compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/iso-red/run.log": "d6aefac0dec3a6fbd4d9e5c45e9ce378f97dbbf948458f905b219a225c74d48a",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/iso-green/result.json": "0b7f004e5da9e14aee205e717a2e752e39c82d03cb0642ffb3eb768dc2d4c511",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/protocol-green/run.log": "192b98b6aec8c221bfb3898b345a9b100372d9a62774f6904aefae89ee32e83c",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/hal-red-default/record.json": "cd34d5e2dd3547b77c51a17331a16e7111ca898f4d215230c6ec1a86b9ee42fa",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/hal-cohort-final/record.json": "f2d894b620e629ec1da237aaf2954c9f5f816b51aa45a4067082253389067dc2",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/usb-red-1793108624990759000/result.json": "5f4016b2d264e8a11dfa687862c27de227f965408adf51823f6a465437d356cf",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/usb-request-red-ready-1793108786764859000/result.json": "fe8c73e5dd9bf95d1ad36a474d6f012139101854642bb75e25b176eaf34b229b",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/usb-final-drain-fixture-1793109576667839000/result.json": "30bc12c4a8d5a95d2637d88aeca7ff08dda840001d2f1080e069cfb7c588d6a4",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/rate-restore/package-checks/validation.json": "20f2614dd366a12d4c97f415911cc01f2bec78837b62a1c9c9d4c4738e8feb51"
+  },
+  "source_and_package_record_sha256": {
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build13-e61aa5ab5e7afbb16e96217ba689f1f0785d1782/source-record.json": "3f5f7e6eda6f2f4a35a88b4de02544eb55ba00f69902744c55da1fb6ce0966a3",
+    "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build13-e61aa5ab5e7afbb16e96217ba689f1f0785d1782/package-verification.json": "20f2614dd366a12d4c97f415911cc01f2bec78837b62a1c9c9d4c4738e8feb51"
+  }
+}

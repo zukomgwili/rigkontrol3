@@ -1,0 +1,1148 @@
+{
+  "schema": 1,
+  "issue": "rigkontrol3-40h.2",
+  "cross_reference": "rigkontrol3-40h.3",
+  "date": "2026-10-28",
+  "status": "REPRODUCED_CAUSE_ESTABLISHED_NATIVE_LISTENER_INTENT_CLEARED_ON_STOP",
+  "installed_measurement": "MIDI0.2.9/build14 + exactAudio0.2.8/build13",
+  "installed_SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261028T091754Z-c8dacb00",
+  "measured_code_commit": "2f66a262b0aa",
+  "production_fix_installed": false,
+  "scope": {
+    "actual_user_sleep_cycles": 1,
+    "observer_retry": false,
+    "new_MIDI_client_during_comparison": 1,
+    "new_raw_cohorts": 2,
+    "no_app_server_USB_reset_during_comparison": true,
+    "SIP": "enabled",
+    "source_policy": "Measurementonly; originalprogrammedtimers/recovery unchanged",
+    "new_planning_beads": 0
+  },
+  "installed_verification": {
+    "utc": "2026-10-28T09:18:46.717129+00:00",
+    "SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261028T091754Z-c8dacb00",
+    "all12_match": true,
+    "files": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": {
+        "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist",
+        "sha256": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+        "expected": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+        "match": true
+      },
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": {
+        "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver",
+        "sha256": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+        "expected": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+        "match": true
+      },
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": {
+        "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist",
+        "sha256": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+        "expected": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+        "match": true
+      },
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": {
+        "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver",
+        "sha256": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+        "expected": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+        "match": true
+      },
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": {
+        "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml",
+        "sha256": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+        "expected": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+        "match": true
+      },
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": {
+        "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources",
+        "sha256": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+        "expected": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+        "match": true
+      },
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": {
+        "path": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist",
+        "sha256": "331df145cf6d4211f49960958f092bc4aa21bae72f372a3b7b5d9a3c9a2431bc",
+        "expected": "331df145cf6d4211f49960958f092bc4aa21bae72f372a3b7b5d9a3c9a2431bc",
+        "match": true
+      },
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": {
+        "path": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver",
+        "sha256": "b35fe34c969831ccb53259055473aacbaae43babb8efd9e3107d0d5132c4caf1",
+        "expected": "b35fe34c969831ccb53259055473aacbaae43babb8efd9e3107d0d5132c4caf1",
+        "match": true
+      },
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": {
+        "path": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist",
+        "sha256": "1be8c91051e2333e28689b7697bf8cef5174185ac8684c086daa4b4ca307f515",
+        "expected": "1be8c91051e2333e28689b7697bf8cef5174185ac8684c086daa4b4ca307f515",
+        "match": true
+      },
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": {
+        "path": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver",
+        "sha256": "4dc22d62c86e71b081c81aea3f1e2dd1ffc699c7d78a1f02627e817ee5a5cb8e",
+        "expected": "4dc22d62c86e71b081c81aea3f1e2dd1ffc699c7d78a1f02627e817ee5a5cb8e",
+        "match": true
+      },
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": {
+        "path": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml",
+        "sha256": "3b3b1babbfce29b4581aec55d9b30cef90d89035a46d090ab0cd545d0b8dfd9c",
+        "expected": "3b3b1babbfce29b4581aec55d9b30cef90d89035a46d090ab0cd545d0b8dfd9c",
+        "match": true
+      },
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": {
+        "path": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources",
+        "sha256": "3b4b2e4fcd072bee1f0098528517d23153c5a46990275a49941f39b8627cf4b6",
+        "expected": "3b4b2e4fcd072bee1f0098528517d23153c5a46990275a49941f39b8627cf4b6",
+        "match": true
+      }
+    },
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "audio": {
+      "short": "0.2.8",
+      "build": "13",
+      "signature_exit": 0
+    },
+    "midi": {
+      "short": "0.2.9",
+      "build": "14",
+      "signature_exit": 0
+    },
+    "processes": [
+      {
+        "pid": 57840,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 68055,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ]
+  },
+  "app_setup": {
+    "utc": "2026-10-28T09:20:37.036733+00:00",
+    "action": "Controlled UI CmdQ/reopen GR6 after installer; no Save dialog shown; same CryWah test rack visible; no remap/settings change",
+    "processes": [
+      {
+        "pid": 68055,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      },
+      {
+        "pid": 68387,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 68389,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      }
+    ]
+  },
+  "preparations": {
+    "all_helpers_before_timer": true,
+    "parent_budget_seconds": 900,
+    "helpers": [
+      ".build/native/midi-boundary-investigation/run-sleep.py",
+      ".build/native/midi-boundary-investigation/collect-diagnostics.py"
+    ],
+    "preflight_before_recording": {
+      "mode": "preflight",
+      "start_utc": "2026-10-28T09:22:46.709599+00:00",
+      "end_utc": "2026-10-28T09:23:01.709599+00:00",
+      "argv": [
+        "/usr/bin/log",
+        "show",
+        "--style",
+        "ndjson",
+        "--start",
+        "2026-10-28 09:22:46",
+        "--end",
+        "2026-10-28 09:23:02",
+        "--predicate",
+        "process == \"MIDIServer\" AND eventMessage BEGINSWITH \"RK3-MIDI-DIAG14 \""
+      ],
+      "new_subscription": false,
+      "exit": 0,
+      "pairs": 11,
+      "incomplete_pairs": 0,
+      "errors": [],
+      "analysis": "NOT_DIAGNOSED",
+      "latest_age_seconds": 0.481636,
+      "admission_checks": {
+        "image_uuid": true,
+        "pid": true,
+        "same_birth_instance": true,
+        "fresh": true,
+        "budget": true,
+        "firstfailure_unset": true,
+        "cohort_brackets": true,
+        "online": true,
+        "worker_progress": true,
+        "monotonic_sample": true
+      },
+      "admitted": true
+    },
+    "fresh_preSleep": {
+      "mode": "preflight",
+      "start_utc": "2026-10-28T09:25:16.178433+00:00",
+      "end_utc": "2026-10-28T09:25:31.178433+00:00",
+      "argv": [
+        "/usr/bin/log",
+        "show",
+        "--style",
+        "ndjson",
+        "--start",
+        "2026-10-28 09:25:16",
+        "--end",
+        "2026-10-28 09:25:32",
+        "--predicate",
+        "process == \"MIDIServer\" AND eventMessage BEGINSWITH \"RK3-MIDI-DIAG14 \""
+      ],
+      "new_subscription": false,
+      "exit": 0,
+      "pairs": 11,
+      "incomplete_pairs": 0,
+      "errors": [],
+      "analysis": "NOT_DIAGNOSED",
+      "latest_age_seconds": 1.449291,
+      "admission_checks": {
+        "image_uuid": true,
+        "pid": true,
+        "same_birth_instance": true,
+        "fresh": true,
+        "budget": true,
+        "firstfailure_unset": true,
+        "cohort_brackets": true,
+        "online": true,
+        "worker_progress": true,
+        "monotonic_sample": true
+      },
+      "admitted": true
+    },
+    "note": "EarlierpreflightarchivedwithoutoverwritingbeforererunningPREPAREDreadonlycollectorforfreshpreSleepadmission; no helpercode or observerrestartduringtimer"
+  },
+  "human": {
+    "ready": "Ready \u2014 wah and LED off, pedal at heel",
+    "pre": "Done \u2014 Cry Wah and LED 1 are on",
+    "wake": "Awake after Sleep \u2014 both stayed on",
+    "post": "Guitar Rig 6 does not respond. Cry Wah is still on. Wah knob does not move. LED is fine, comes on and stays on and off as expected"
+  },
+  "phases": {
+    "initial": {
+      "counts": {},
+      "total_CC": 0,
+      "footer_number": 1,
+      "utc": "2026-10-28T09:24:20.121683+00:00",
+      "fresh_footer": true,
+      "processes": [
+        {
+          "pid": 68055,
+          "uid": 202,
+          "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+        },
+        {
+          "pid": 68387,
+          "uid": 501,
+          "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+        },
+        {
+          "pid": 68389,
+          "uid": 501,
+          "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+        }
+      ],
+      "paired_pid": 69054,
+      "elapsed": {
+        "wall_seconds": 0.18885087966918945,
+        "monotonic_seconds": 0.18884983300813474
+      }
+    },
+    "pre": {
+      "counts": {
+        "80": {
+          "count": 1,
+          "min": 127,
+          "max": 127,
+          "last": 127
+        }
+      },
+      "total_CC": 1,
+      "footer_number": 2,
+      "utc": "2026-10-28T09:25:03.665327+00:00",
+      "fresh_footer": true,
+      "processes": [
+        {
+          "pid": 68055,
+          "uid": 202,
+          "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+        },
+        {
+          "pid": 68387,
+          "uid": 501,
+          "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+        },
+        {
+          "pid": 68389,
+          "uid": 501,
+          "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+        }
+      ],
+      "paired_pid": 69054,
+      "elapsed": {
+        "wall_seconds": 43.742594957351685,
+        "monotonic_seconds": 43.74257916701026
+      }
+    },
+    "quiet": {
+      "counts": {
+        "80": {
+          "count": 1,
+          "min": 127,
+          "max": 127,
+          "last": 127
+        }
+      },
+      "total_CC": 1,
+      "footer_number": 3,
+      "utc": "2026-10-28T09:33:58.696607+00:00",
+      "fresh_footer": true,
+      "processes": [
+        {
+          "pid": 68055,
+          "uid": 202,
+          "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+        },
+        {
+          "pid": 68387,
+          "uid": 501,
+          "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+        },
+        {
+          "pid": 68389,
+          "uid": 501,
+          "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+        }
+      ],
+      "paired_pid": 69054,
+      "elapsed": {
+        "wall_seconds": 578.7684228420258,
+        "monotonic_seconds": 192.32682958300575
+      }
+    },
+    "post": {
+      "counts": {
+        "80": {
+          "count": 1,
+          "min": 127,
+          "max": 127,
+          "last": 127
+        }
+      },
+      "total_CC": 1,
+      "footer_number": 4,
+      "utc": "2026-10-28T09:36:27.018630+00:00",
+      "fresh_footer": true,
+      "processes": [
+        {
+          "pid": 68055,
+          "uid": 202,
+          "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+        },
+        {
+          "pid": 68387,
+          "uid": 501,
+          "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+        },
+        {
+          "pid": 68389,
+          "uid": 501,
+          "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+        }
+      ],
+      "paired_pid": 69054,
+      "elapsed": {
+        "wall_seconds": 727.0922009944916,
+        "monotonic_seconds": 340.6505476250022
+      }
+    }
+  },
+  "result": {
+    "verdict": "FAIL",
+    "reason": "observed_postwake_midi_missing",
+    "state": "DONE",
+    "utc": "2026-10-28T09:36:29.295403+00:00",
+    "cleanup": [
+      {
+        "pid": 69539,
+        "exit": 0,
+        "reaped": true
+      },
+      {
+        "pid": 69055,
+        "exit": 0,
+        "reaped": true
+      },
+      {
+        "pid": 69054,
+        "exit": 0,
+        "reaped": true
+      }
+    ],
+    "controls_valid": true,
+    "paired_exit": 0,
+    "raw_exit": 0,
+    "os_sleep_confirmed": true,
+    "processes_stable": true,
+    "process_changes": [],
+    "generation_pre": 1,
+    "generation_post": 1,
+    "generation_changed_between_cohorts": false,
+    "post_CC80_delta": 0,
+    "post_CC4_delta": 0,
+    "wake_to_quiet_seconds": 36.696607,
+    "wake_to_post_seconds": 185.01863,
+    "limits": [
+      "Separate generation-qualified raw cohorts; no raw observation during Sleep",
+      "Unchanged target PIDs do not prove application subscription continuity",
+      "Native paired-client comparison only; no audio/all-eight/USB qualification",
+      "Human UI/LED observations require separate record"
+    ],
+    "elapsed": {
+      "wall_seconds": 729.3393769264221,
+      "monotonic_seconds": 342.89772350000567
+    }
+  },
+  "paired_result": {
+    "controlA": true,
+    "controlB": true,
+    "controls_valid": true,
+    "private_callbacks": 2,
+    "private_packets": 2,
+    "native_callbacks": 1,
+    "native_packets": 1,
+    "native_CC": 1,
+    "unknown_callbacks": 0,
+    "cleanup": true,
+    "exit": 0,
+    "native_writes": 0
+  },
+  "raw_pre": {
+    "valid": true,
+    "errors": [],
+    "generation": 1,
+    "initial_bit4": false,
+    "final_bit4": false,
+    "bit4_rises": 1,
+    "bit4_releases": 1,
+    "sequence_range": [
+      1309,
+      1471
+    ],
+    "fresh_reports": 163,
+    "axis2_range": [
+      83,
+      84
+    ],
+    "last_info": {
+      "event": "watch_info",
+      "object": 160,
+      "status": 0,
+      "shape": true,
+      "schema_identity_valid": true,
+      "version": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "rate": 44100,
+      "digital_snapshot": 2147483648,
+      "raw_hex": "010000000300000001000000000000000000000044ac00000200000002000000010000000100000002000000000000806f72672e7269676b6f6e74726f6c332e6e692d61726d2e7573622e3137636331393430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000526967204b6f6e74726f6c2033204e61746976652041524d00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "last_query": {
+      "event": "watch_query",
+      "after_sequence": 1469,
+      "status": 0,
+      "returned_size": 8,
+      "shape": true,
+      "bounded_cursor_schema": true,
+      "count": 2,
+      "next_sequence": 1471,
+      "latest_sequence": 1471,
+      "dropped": 0
+    },
+    "watch_end": [
+      {
+        "event": "watch_end",
+        "reason": "signal_stop",
+        "exit": 0,
+        "cursor": 1471,
+        "fresh_reports": 163,
+        "gap_or_dropped": false,
+        "exact_count_inference_valid": true,
+        "record_budget_used_conservative": 442,
+        "delivery_verdict": "NOT_TESTED"
+      }
+    ],
+    "witness": true
+  },
+  "raw_post": {
+    "valid": true,
+    "errors": [],
+    "generation": 1,
+    "initial_bit4": false,
+    "final_bit4": false,
+    "bit4_rises": 1,
+    "bit4_releases": 1,
+    "sequence_range": [
+      2164,
+      2957
+    ],
+    "fresh_reports": 794,
+    "axis2_range": [
+      65,
+      762
+    ],
+    "last_info": {
+      "event": "watch_info",
+      "object": 158,
+      "status": 0,
+      "shape": true,
+      "schema_identity_valid": true,
+      "version": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "rate": 44100,
+      "digital_snapshot": 2147483648,
+      "raw_hex": "010000000300000001000000000000000000000044ac00000200000002000000010000000100000002000000000000806f72672e7269676b6f6e74726f6c332e6e692d61726d2e7573622e3137636331393430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000526967204b6f6e74726f6c2033204e61746976652041524d00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "last_query": {
+      "event": "watch_query",
+      "after_sequence": 2956,
+      "status": 0,
+      "returned_size": 8,
+      "shape": true,
+      "bounded_cursor_schema": true,
+      "count": 1,
+      "next_sequence": 2957,
+      "latest_sequence": 2957,
+      "dropped": 0
+    },
+    "watch_end": [
+      {
+        "event": "watch_end",
+        "reason": "signal_stop",
+        "exit": 0,
+        "cursor": 2957,
+        "fresh_reports": 794,
+        "gap_or_dropped": false,
+        "exact_count_inference_valid": true,
+        "record_budget_used_conservative": 1577,
+        "delivery_verdict": "NOT_TESTED"
+      }
+    ],
+    "witness": true
+  },
+  "power": {
+    "read_exit": 0,
+    "transitions": [
+      {
+        "utc": "2026-10-28T09:26:41+00:00",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Software Sleep pid=447':TCPKeepAlive=active Using AC (Charge:53%) 244 secs  "
+      },
+      {
+        "utc": "2026-10-28T09:30:45+00:00",
+        "kind": "DarkWake",
+        "message": "DarkWake from Deep Idle [CDNP] : due to smc.sysState.Wake(0x70070000) wifibt SMC.OutboxNotEmpty/ Using AC (Charge:53%) 11 secs   "
+      },
+      {
+        "utc": "2026-10-28T09:30:56+00:00",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using AC (Charge:55%) 146 secs  "
+      },
+      {
+        "utc": "2026-10-28T09:33:22+00:00",
+        "kind": "Wake",
+        "message": "Wake from Deep Idle [CDNVA] : due to MTP.DOCK.CHANNELS.AP0.IRQ RTP.keyboard/UserActivity Assertion Using AC (Charge:55%)           "
+      }
+    ],
+    "gr6_ack_warnings": [
+      "2026-10-28 09:30:46 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)] ",
+      "2026-10-28 09:33:22 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)] "
+    ]
+  },
+  "cleanup": {
+    "utc": "2026-10-28T09:40:53.785847+00:00",
+    "all_owned_gone": true,
+    "checks": [
+      {
+        "pid": 69539,
+        "kind": "pid",
+        "absent": true
+      },
+      {
+        "pid": 69539,
+        "kind": "group",
+        "absent": true
+      },
+      {
+        "pid": 69055,
+        "kind": "pid",
+        "absent": true
+      },
+      {
+        "pid": 69055,
+        "kind": "group",
+        "absent": true
+      },
+      {
+        "pid": 69054,
+        "kind": "pid",
+        "absent": true
+      },
+      {
+        "pid": 69054,
+        "kind": "group",
+        "absent": true
+      }
+    ]
+  },
+  "diagnostics": {
+    "query": {
+      "mode": "comparison",
+      "start_utc": "2026-10-28T09:24:19.957388+00:00",
+      "end_utc": "2026-10-28T09:36:29.295403+00:00",
+      "argv": [
+        "/usr/bin/log",
+        "show",
+        "--style",
+        "ndjson",
+        "--start",
+        "2026-10-28 09:24:19",
+        "--end",
+        "2026-10-28 09:36:30",
+        "--predicate",
+        "process == \"MIDIServer\" AND eventMessage BEGINSWITH \"RK3-MIDI-DIAG14 \""
+      ],
+      "new_subscription": false,
+      "exit": 0,
+      "pairs": 233,
+      "incomplete_pairs": 0,
+      "errors": [],
+      "analysis": "NOT_DIAGNOSED"
+    },
+    "complete_pairs": 233,
+    "same_PID_birth_instance_UUID_all_pairs": true,
+    "last_pre_transition": {
+      "pid": 68389,
+      "birth": 4448269674539,
+      "instance": 1,
+      "sample": 286,
+      "P": {
+        "utc": "2026-10-28T09:26:11.227369+00:00",
+        "image_uuid": "D9D14071-E01D-3277-B27F-92D1FD4659DC",
+        "data": {
+          "row": "P",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 286,
+          "t": 73275,
+          "ia": 0,
+          "ir": 0,
+          "q": 73275,
+          "qf": 0,
+          "bs": 0,
+          "ro": 0,
+          "rv": 0,
+          "bc": 73275,
+          "cur": 1852,
+          "lat": 1852,
+          "dr": 0,
+          "cr": 1780,
+          "ce": 1526,
+          "em": 1,
+          "ps": 0,
+          "cs": 0,
+          "gr": 0,
+          "a": 1,
+          "ok": 1,
+          "er": 0,
+          "ca": 1,
+          "co": 1,
+          "qr": 0,
+          "mr": 0,
+          "ts": 4455143275764,
+          "by": 8343728,
+          "kind": 2
+        }
+      },
+      "S": {
+        "utc": "2026-10-28T09:26:11.227371+00:00",
+        "image_uuid": "D9D14071-E01D-3277-B27F-92D1FD4659DC",
+        "data": {
+          "row": "S",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 286,
+          "gb": 1,
+          "ga": 1,
+          "eb": 1,
+          "ea": 1,
+          "li": 0,
+          "cli": 1,
+          "flags": 5,
+          "dev": 160,
+          "fd": 0,
+          "fg": 0,
+          "af": 322,
+          "mn": 320,
+          "cg": 1,
+          "ce": 1,
+          "st": 1,
+          "sp": 0,
+          "en": 1,
+          "es": 280121387,
+          "ew": 1,
+          "ek": 2,
+          "er": 0,
+          "fr": 0,
+          "fc": 0,
+          "fs": 0,
+          "fdv": 0,
+          "fgf": 0,
+          "fe": 0,
+          "fsv": 0
+        }
+      }
+    },
+    "first_post_transition": {
+      "pid": 68389,
+      "birth": 4448269674539,
+      "instance": 1,
+      "sample": 287,
+      "P": {
+        "utc": "2026-10-28T09:33:22.655992+00:00",
+        "image_uuid": "D9D14071-E01D-3277-B27F-92D1FD4659DC",
+        "data": {
+          "row": "P",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 287,
+          "t": 73317,
+          "ia": 0,
+          "ir": 0,
+          "q": 73317,
+          "qf": 0,
+          "bs": 0,
+          "ro": 0,
+          "rv": 0,
+          "bc": 73317,
+          "cur": 1853,
+          "lat": 1853,
+          "dr": 0,
+          "cr": 1781,
+          "ce": 1527,
+          "em": 1,
+          "ps": 0,
+          "cs": 0,
+          "gr": 0,
+          "a": 1,
+          "ok": 1,
+          "er": 0,
+          "ca": 1,
+          "co": 1,
+          "qr": 0,
+          "mr": 0,
+          "ts": 4455143275764,
+          "by": 8343728,
+          "kind": 2
+        }
+      },
+      "S": {
+        "utc": "2026-10-28T09:33:22.655994+00:00",
+        "image_uuid": "D9D14071-E01D-3277-B27F-92D1FD4659DC",
+        "data": {
+          "row": "S",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 287,
+          "gb": 1,
+          "ga": 1,
+          "eb": 2,
+          "ea": 2,
+          "li": 0,
+          "cli": 1,
+          "flags": 1,
+          "dev": 160,
+          "fd": 0,
+          "fg": 0,
+          "af": 322,
+          "mn": 320,
+          "cg": 1,
+          "ce": 1,
+          "st": 2,
+          "sp": 1,
+          "en": 1,
+          "es": 280121387,
+          "ew": 1,
+          "ek": 2,
+          "er": 0,
+          "fr": 0,
+          "fc": 0,
+          "fs": 0,
+          "fdv": 0,
+          "fgf": 0,
+          "fe": 0,
+          "fsv": 0
+        }
+      }
+    },
+    "final": {
+      "pid": 68389,
+      "birth": 4448269674539,
+      "instance": 1,
+      "sample": 432,
+      "P": {
+        "utc": "2026-10-28T09:36:28.526049+00:00",
+        "image_uuid": "D9D14071-E01D-3277-B27F-92D1FD4659DC",
+        "data": {
+          "row": "P",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 432,
+          "t": 110433,
+          "ia": 0,
+          "ir": 0,
+          "q": 110433,
+          "qf": 0,
+          "bs": 0,
+          "ro": 0,
+          "rv": 0,
+          "bc": 110433,
+          "cur": 2969,
+          "lat": 2969,
+          "dr": 0,
+          "cr": 2943,
+          "ce": 2437,
+          "em": 123,
+          "ps": 0,
+          "cs": 122,
+          "gr": 0,
+          "a": 1,
+          "ok": 1,
+          "er": 0,
+          "ca": 1,
+          "co": 1,
+          "qr": 0,
+          "mr": 0,
+          "ts": 4455143275764,
+          "by": 8343728,
+          "kind": 2
+        }
+      },
+      "S": {
+        "utc": "2026-10-28T09:36:28.526052+00:00",
+        "image_uuid": "D9D14071-E01D-3277-B27F-92D1FD4659DC",
+        "data": {
+          "row": "S",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 432,
+          "gb": 1,
+          "ga": 1,
+          "eb": 2,
+          "ea": 2,
+          "li": 0,
+          "cli": 1,
+          "flags": 1,
+          "dev": 160,
+          "fd": 0,
+          "fg": 0,
+          "af": 2057,
+          "mn": 320,
+          "cg": 1,
+          "ce": 2,
+          "st": 2,
+          "sp": 1,
+          "en": 1,
+          "es": 280121387,
+          "ew": 1,
+          "ek": 2,
+          "er": 0,
+          "fr": 0,
+          "fc": 0,
+          "fs": 0,
+          "fdv": 0,
+          "fgf": 0,
+          "fe": 0,
+          "fsv": 0
+        }
+      }
+    },
+    "state_transitions": [
+      {
+        "utc": "2026-10-28T09:24:20.227022+00:00",
+        "pid": 68389,
+        "birth": 4448269674539,
+        "instance": 1,
+        "sample": 200,
+        "state": {
+          "row": "S",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 200,
+          "gb": 1,
+          "ga": 1,
+          "eb": 1,
+          "ea": 1,
+          "li": 0,
+          "cli": 1,
+          "flags": 5,
+          "dev": 160,
+          "fd": 0,
+          "fg": 0,
+          "af": 322,
+          "mn": 320,
+          "cg": 1,
+          "ce": 1,
+          "st": 1,
+          "sp": 0,
+          "en": 1,
+          "es": 280121387,
+          "ew": 1,
+          "ek": 2,
+          "er": 0,
+          "fr": 0,
+          "fc": 0,
+          "fs": 0,
+          "fdv": 0,
+          "fgf": 0,
+          "fe": 0,
+          "fsv": 0
+        },
+        "progress": {
+          "row": "P",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 200,
+          "t": 51076,
+          "ia": 0,
+          "ir": 0,
+          "q": 51076,
+          "qf": 0,
+          "bs": 0,
+          "ro": 0,
+          "rv": 0,
+          "bc": 51076,
+          "cur": 1310,
+          "lat": 1310,
+          "dr": 0,
+          "cr": 1239,
+          "ce": 985,
+          "em": 0,
+          "ps": 0,
+          "cs": 0,
+          "gr": 0,
+          "a": 0,
+          "ok": 0,
+          "er": 0,
+          "ca": 0,
+          "co": 0,
+          "qr": 0,
+          "mr": 0,
+          "ts": 0,
+          "by": 0,
+          "kind": 0
+        }
+      },
+      {
+        "utc": "2026-10-28T09:33:22.655994+00:00",
+        "pid": 68389,
+        "birth": 4448269674539,
+        "instance": 1,
+        "sample": 287,
+        "state": {
+          "row": "S",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 287,
+          "gb": 1,
+          "ga": 1,
+          "eb": 2,
+          "ea": 2,
+          "li": 0,
+          "cli": 1,
+          "flags": 1,
+          "dev": 160,
+          "fd": 0,
+          "fg": 0,
+          "af": 322,
+          "mn": 320,
+          "cg": 1,
+          "ce": 1,
+          "st": 2,
+          "sp": 1,
+          "en": 1,
+          "es": 280121387,
+          "ew": 1,
+          "ek": 2,
+          "er": 0,
+          "fr": 0,
+          "fc": 0,
+          "fs": 0,
+          "fdv": 0,
+          "fgf": 0,
+          "fe": 0,
+          "fsv": 0
+        },
+        "progress": {
+          "row": "P",
+          "v": 1,
+          "i": 1,
+          "b": 4448269674539,
+          "s": 287,
+          "t": 73317,
+          "ia": 0,
+          "ir": 0,
+          "q": 73317,
+          "qf": 0,
+          "bs": 0,
+          "ro": 0,
+          "rv": 0,
+          "bc": 73317,
+          "cur": 1853,
+          "lat": 1853,
+          "dr": 0,
+          "cr": 1781,
+          "ce": 1527,
+          "em": 1,
+          "ps": 0,
+          "cs": 0,
+          "gr": 0,
+          "a": 1,
+          "ok": 1,
+          "er": 0,
+          "ca": 1,
+          "co": 1,
+          "qr": 0,
+          "mr": 0,
+          "ts": 4455143275764,
+          "by": 8343728,
+          "kind": 2
+        }
+      }
+    ]
+  },
+  "causal_chain": [
+    "CoreMIDIStop/StartoccursinsideSAMEdriverinstance:Startcalls1to2/Stop0to1; exactcalltimesunlogged, bracket09:26:11.227371..09:33:22.655994",
+    "EnableSourceentrycountremains1andlastrequestedcontrollerenabletrue; noDisableorEnable callbackduringStop/Start",
+    "NativeStopclearscontroller_enabled;Startdoesnotrestoreit, flags5to1(liveonlinebutcontrollerdisabled), lifecycleepoch1to2/G1unchanged",
+    "Workerinputtick/query/batch/cursorcontinue: final110433ticks/commits,cursor2969; raw794postreportscontiguous withswitchpulse+pedalmovement",
+    "123mappermessagecandidates total minus1pre=122post; all122suppressedbycurrentdeliverygate; actualMIDIReceivedattempt/successremains1preonly",
+    "Noquery/info/schema/order/revalidation/publisherrorsandno acceptedfailurelatch, fr0; thisisnotprevioussameG-latchhypothesis",
+    "PairedprivateA/Bpassandnativeprepositive+postzero, humanGR6fails/localLEDtracks agreewithnativecontrollergate cause"
+  ],
+  "original_NI_contract": {
+    "Stop": "CompleteStop0x25c0(35instructions) removesrunloopsource/destroysnotificationport, loopsRETAINEDdevicearray andonlyclearsMIDIDeviceRef+0x270; no directlistenerflagclear/free",
+    "EnableSource": "0x26d6 SETNZbyte[device+port+2] representsperportlistenerintent",
+    "Start": "CompleteStart0x2490/constructor0x21d0/EnableSource0x2640 combined176instructions,noStart/constructorlistenerflagclear",
+    "local_SDK": "Start/Stopbegin/terminateI/O; EnableSourceclientconnectionintent; endpointRefConsreinitializedonStart",
+    "limit": "IndirectlistenToService/device-add/reusecalltreeoutsideadmittedbounds; nofullcalltreeclaim",
+    "artifacts": {
+      "StopASM": {
+        "path": ".build/ni/decompiled/midi280-text/000025c0_CaiaqUSBMIDIDriver__Stop.asm",
+        "sha256": "8aa32ede32e047745e744056c7bd344b1ad4b155e37d1e84ebd42e9a9dc8a2fa"
+      },
+      "StopC": {
+        "path": ".build/ni/decompiled/midi280-text/000025c0_CaiaqUSBMIDIDriver__Stop.c",
+        "sha256": "c9cb1d4175be9761cda5603a22d7dd0a772c7c93c4ea6a7b6a03cc27e9e910a8"
+      },
+      "StartASM": {
+        "path": ".build/ni/decompiled/midi280-text/00002490_CaiaqUSBMIDIDriver__Start.asm",
+        "sha256": "b72a482921d74cb036a1de667d750e5916e15afc0359eec728fda38082e47583"
+      },
+      "ConstructorASM": {
+        "path": ".build/ni/decompiled/midi280-text/000021d0_CaiaqUSBMIDIDriver__CaiaqUSBMIDIDriver.asm",
+        "sha256": "dabef204a6cbc6de29be1041667b905ce9229f1ff79d084d8c8b9dfe30c23fff"
+      },
+      "EnableASM": {
+        "path": ".build/ni/decompiled/midi280-text/00002640_CaiaqUSBMIDIDriver__EnableSource.asm",
+        "sha256": "63bd3534124db9cc01a08dc84a60efb48bde1809456c24db39fa3081849109c0"
+      }
+    }
+  },
+  "independent_runtime_review": {
+    "reviewer": "/root/midi_measurement_review",
+    "result": "PASS immediategatecause/raw794/power/sameinstance/233pairs",
+    "limits": "ExactStop/Startcalltimesbracketed; causewhyCoreMIDIdidnotre-enableisseparatefromourincorrectflagclear"
+  },
+  "corrective_plan": "Frozeninexisting.2BEFOREcorrectioncode; /private/tmp/rk3-listener-fix-frozen-plan.txt plusminimumamendment. Retainexistinglistenerintentflags acrossI/OStopStart;2rememberedsourceIDsrecognizeexplicitdisablewhileStopped; sameendpointrebindonly; DINsilentbaseline/controllerheldbaseline; striptemporaryDIAG14; REDrealStartStopseamFIRST",
+  "limits": [
+    "401secondsuserSleep-toWakewallincludesDarkWake/Maintenance; notcontinuous401ssleep",
+    "Quiet36.696607safterWake/finalpost185.018630safterWake, noexact10secondresponseclaim",
+    "Separateboundedrawcohorts, norawcoveragewhileasleep",
+    "No audibleguitar/audio-continuity/all8/USB/DINexternalhardwarequalificationinthismeasurement",
+    "Installedfixnotyetbuilt/tested/installed; thisrecordsdiagnosis, notrecoveryPASS"
+  ],
+  "source_pins": {
+    ".build/native/midi-boundary-investigation/collect-diagnostics.py": "19d3a4af940465e687efc58a260766076c46a5335e8dd279763effdff740759e",
+    ".build/native/midi-boundary-investigation/diagnostic-state-transitions.json": "e282aa7f68c6cf4dcf31c14341c88c402a7d1a08d40dbafe5e8421ab054a3dd4",
+    ".build/native/midi-boundary-investigation/diagnostics-before-recording/pairs.json": "cb969575d3ec99c3964f2649a9124df564cabed1d3e03aa78b2f3c99409a6d81",
+    ".build/native/midi-boundary-investigation/diagnostics-before-recording/records.ndjson": "83fdfa397300842594403e06b6cf99e140d10f7bebab00c0b0fa0a469c6c03a3",
+    ".build/native/midi-boundary-investigation/diagnostics-before-recording/result.json": "65dc411c8259431561513a9d6fe86abf2f3c23000e8cc5288f9eaae20b0de8d5",
+    ".build/native/midi-boundary-investigation/diagnostics-before-recording/stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/diagnostics-comparison/pairs.json": "b7afc70459ba57bd42472f83fd9fc99d7076f5fde810ce23cbaaa334fe5b883f",
+    ".build/native/midi-boundary-investigation/diagnostics-comparison/records.ndjson": "d2428982c1d3badfcc8c1a66b2e655f459e67a11166d083ec96f1de09764f992",
+    ".build/native/midi-boundary-investigation/diagnostics-comparison/result.json": "4d79f666ba2202bc0ee5ec8ca566cfc8a72dbd250be7a41908e9e83ea08d6947",
+    ".build/native/midi-boundary-investigation/diagnostics-comparison/stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/diagnostics-preflight/pairs.json": "30da5ab1841ba7ff43dcc7f6322d0d8fecf4b72a49b57fc5fcb43402447f358a",
+    ".build/native/midi-boundary-investigation/diagnostics-preflight/records.ndjson": "136be2830548518f372568bd6d9b07935ce35fce0282b4163a928eb621be6d98",
+    ".build/native/midi-boundary-investigation/diagnostics-preflight/result.json": "107a68469b9f6649c5d03f0795134e947826be0f793cf579447ca0830075b554",
+    ".build/native/midi-boundary-investigation/diagnostics-preflight/stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/installed-measurement/audio-signature.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/installed-measurement/midi-signature.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/installed-measurement/reopened-diagnostics.ndjson": "e9e7279c0eebf32352b3b08bb3244da0dcd891c92a94d97a56a34c72e3b8a04f",
+    ".build/native/midi-boundary-investigation/installed-measurement/reopened-diagnostics.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/installed-measurement/reopened.json": "1b8e28c3be1ba00059008da75c58331aab8cf82e7f25c588deada9f0b5ac4606",
+    ".build/native/midi-boundary-investigation/installed-measurement/verification.json": "05e84c976839fb9076c8b2c087f443dbaf9653e77705af3b29b6e02c5c6fbd1d",
+    ".build/native/midi-boundary-investigation/reviewed-source/Driver/MIDI/RK3MIDIDriver.c": "867c33348468356fb03639171ae3ddba361c03243df55de4da85be710de46725",
+    ".build/native/midi-boundary-investigation/run-sleep.py": "96dbab78af5e9635ce4db991d5185a48bf041614f88b246353ed4f022e122853",
+    ".build/native/midi-boundary-investigation/sleep-1/events.json": "c32bc74950cd7e16814bd727daa8e1dac1c5bfa466ed439fa2189f316ce698b2",
+    ".build/native/midi-boundary-investigation/sleep-1/initial.json": "73ebb8997aba6e4bbccc88276154693105b9031bf18dc523f31bce7a11201fff",
+    ".build/native/midi-boundary-investigation/sleep-1/midi.log": "d29c198037dcc6564fa807f2816a951966c0a3a67d87b2e16d61fae171ea86da",
+    ".build/native/midi-boundary-investigation/sleep-1/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/sleep-1/paired-result.json": "3b9eb8f8de1631ad76e99ab3a4deca9b160d6dbae50be6e865953c2f8b9caf74",
+    ".build/native/midi-boundary-investigation/sleep-1/pmset.log": "740e76306e9e9eaa655fdc9c9ae89e309a938a86fd83517e3c78112781d17cb3",
+    ".build/native/midi-boundary-investigation/sleep-1/pmset.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/sleep-1/post-cleanup.json": "d2eab62fe1b131f7424c46e10327efec378a0b2e13e4bbb1edef780575f3c554",
+    ".build/native/midi-boundary-investigation/sleep-1/post.json": "afd24bb63fb6eb44b06a8c0c6e7241a3f9e682c89154fd97d77e4d482aafa22e",
+    ".build/native/midi-boundary-investigation/sleep-1/power.json": "d46b4c412152ae87fc8bbd6d690f181c4bdba14aa1526a038975821c1f3b5000",
+    ".build/native/midi-boundary-investigation/sleep-1/pre-raw.json": "db6e01cab276b836c5a2d4e90ba752c94d2ef2f910f9c78275ef1aeeadffe11a",
+    ".build/native/midi-boundary-investigation/sleep-1/pre.json": "92d14c95c86a1c808f8daf6a4262e2d6a1eb506a242fd7afa4e906e50233b91c",
+    ".build/native/midi-boundary-investigation/sleep-1/quiet.json": "e26134b30a7ca16bf7fbbc551b3fa247468ae343e3ecd615c3c3ef0895800c6c",
+    ".build/native/midi-boundary-investigation/sleep-1/raw-post-summary.json": "96215c6011dcb11ed07f8e031b6d80d1bfc3bde5a0f98dc021e4c4bc83f3a3f1",
+    ".build/native/midi-boundary-investigation/sleep-1/raw-post.log": "e8243c3b960599ebff599ffb33f0cbac48daacfeb5c8f43d8a8470f2f6c20fa2",
+    ".build/native/midi-boundary-investigation/sleep-1/raw-post.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/sleep-1/raw-pre-summary.json": "db6e01cab276b836c5a2d4e90ba752c94d2ef2f910f9c78275ef1aeeadffe11a",
+    ".build/native/midi-boundary-investigation/sleep-1/raw-pre.log": "db00f314e3f98cc17a7a087d4cf1346b661242799086a65e9d9e34ebc6ab7fd0",
+    ".build/native/midi-boundary-investigation/sleep-1/raw-pre.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/midi-boundary-investigation/sleep-1/result.json": "41e5d002f861fb710f58b2923d6c1f96b76e61a89fec7ed61231690aeaed2f11",
+    ".build/ni/decompiled/midi280-text/000021d0_CaiaqUSBMIDIDriver__CaiaqUSBMIDIDriver.asm": "dabef204a6cbc6de29be1041667b905ce9229f1ff79d084d8c8b9dfe30c23fff",
+    ".build/ni/decompiled/midi280-text/00002490_CaiaqUSBMIDIDriver__Start.asm": "b72a482921d74cb036a1de667d750e5916e15afc0359eec728fda38082e47583",
+    ".build/ni/decompiled/midi280-text/000025c0_CaiaqUSBMIDIDriver__Stop.asm": "8aa32ede32e047745e744056c7bd344b1ad4b155e37d1e84ebd42e9a9dc8a2fa",
+    ".build/ni/decompiled/midi280-text/000025c0_CaiaqUSBMIDIDriver__Stop.c": "c9cb1d4175be9761cda5603a22d7dd0a772c7c93c4ea6a7b6a03cc27e9e910a8",
+    ".build/ni/decompiled/midi280-text/00002640_CaiaqUSBMIDIDriver__EnableSource.asm": "63bd3534124db9cc01a08dc84a60efb48bde1809456c24db39fa3081849109c0"
+  }
+}

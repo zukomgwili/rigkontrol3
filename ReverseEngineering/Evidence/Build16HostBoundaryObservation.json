@@ -1,0 +1,598 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "created_utc": "2026-10-28T16:01:20.373891+00:00",
+  "candidate": "unchanged0.2.11/build16 source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+  "result": "NOT_OBSERVED_IN_THIS_5_SECOND_WINDOW",
+  "question": "Does public global output-stream IsActive transition from1to0 after stopping our output registration while our input registration continues?",
+  "answer": "Not observed in this single sampled five-second window: all90 public output IsActive reads returned1, input callbacks progressed at every successive sample, and stopped output callback count stayed21. This is a bounded public-state observation, not proof of NI last-output parity or exclusive hardware direction.",
+  "plan": {
+    "path": "ReverseEngineering/Evidence/Build16HostBoundaryObservationPlan.json",
+    "sha256": "03a176dee742cb8f053fcf563ae82920546e2c2ca40013064d71a60e06edbd61",
+    "status": "frozen historical planning artifact unchanged; implementation and live admission recorded in existingM3 before code/run; no newissue",
+    "implementation_admission": "/private/tmp/rk3-host-boundary-implementation-admission.txt",
+    "live_admission": "/private/tmp/rk3-host-boundary-live-admission.txt"
+  },
+  "private_implementation": {
+    "source": ".build/native/build16-host-boundary-observer/lifetime-observer.c",
+    "source_lines": 222,
+    "source_sha256": "dfe7f358f1053e3b3692731d0a64d1c0b44fcc043b4b2f15527eea758c8ab416",
+    "strict_binary_sha256": "19d0376db9eeb3931c5f696412fcd5045f9a05f45822791c068992e70d792dc2",
+    "callback_contract": "static separate registration Contexts, lockfree count/active atomics only; ignore all PCM/buffer/timestamp contents, no callback printing/allocation/property/USB API",
+    "listeners": "two bounded filtered public listeners;16addresses/256notification limits; no callback property access",
+    "classification": "separate HOST_BOUNDARY_RESULT namespace; always NIqualificationUNPROVEN; adequatepollcoverage/runningnotificationcontrols/cleanup mandatory",
+    "wrapper": "path-only substitution in frozen7410ef71 parent; same10sidle/settingscompletionguard/freshdirectory/60s/TERM2KILL2/reap",
+    "wrapper_sha256": "bc0b190e5c41e30a3d34914f2ae6cd0aa51afaf0ce9d96f8dc7e49599a646213",
+    "allowed_public_writes": "ONE bufferFrameSize128SET/readback plusfour beforeStart IOProcusage SET/readbacks; no rate/globalIsActive/gain/calibration/MIDI/USBcommands",
+    "production_sources_bundles_changed": false
+  },
+  "offline": {
+    "created_utc": "2026-10-28T15:55:42.422545+00:00",
+    "frozen_plan_sha256": "03a176dee742cb8f053fcf563ae82920546e2c2ca40013064d71a60e06edbd61",
+    "source": ".build/native/build16-host-boundary-observer/lifetime-observer.c",
+    "source_sha256": "dfe7f358f1053e3b3692731d0a64d1c0b44fcc043b4b2f15527eea758c8ab416",
+    "source_lines": 222,
+    "cpu_only": true,
+    "live_run": false,
+    "checks": 42,
+    "tests": [
+      {
+        "kind": "strict",
+        "build_command": [
+          "clang",
+          "-arch",
+          "arm64",
+          "-std=c11",
+          "-g",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-Wpedantic",
+          "-I.",
+          "-O2",
+          ".build/native/build16-host-boundary-observer/lifetime-observer.c",
+          "-framework",
+          "CoreAudio",
+          "-framework",
+          "CoreFoundation",
+          "-o",
+          ".build/native/build16-host-boundary-observer/lifetime-observer"
+        ],
+        "build_exit": 0,
+        "selftest_exit": 0,
+        "binary": ".build/native/build16-host-boundary-observer/lifetime-observer",
+        "binary_sha256": "19d0376db9eeb3931c5f696412fcd5045f9a05f45822791c068992e70d792dc2"
+      },
+      {
+        "kind": "sanitizer",
+        "build_command": [
+          "clang",
+          "-arch",
+          "arm64",
+          "-std=c11",
+          "-g",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-Wpedantic",
+          "-I.",
+          "-O1",
+          "-fsanitize=address,undefined",
+          "-fno-omit-frame-pointer",
+          ".build/native/build16-host-boundary-observer/lifetime-observer.c",
+          "-framework",
+          "CoreAudio",
+          "-framework",
+          "CoreFoundation",
+          "-o",
+          ".build/native/build16-host-boundary-observer/lifetime-observer-sanitized"
+        ],
+        "build_exit": 0,
+        "selftest_exit": 0,
+        "binary": ".build/native/build16-host-boundary-observer/lifetime-observer-sanitized",
+        "binary_sha256": "0f26737efc13fd9588fa0b7748b5a3cac8c5f2c334e4d5987b5a0ffd67255926"
+      }
+    ]
+  },
+  "wrapper_CPU_fixtures": {
+    "CPU_only": true,
+    "real_processes_or_hardware": 0,
+    "admission_cases": [
+      {
+        "name": "zero",
+        "accepted": true
+      },
+      {
+        "name": "EAGAIN",
+        "accepted": true
+      },
+      {
+        "name": "EINPROGRESS",
+        "accepted": true
+      },
+      {
+        "name": "CLI_error",
+        "accepted": false
+      },
+      {
+        "name": "native_error",
+        "accepted": false
+      },
+      {
+        "name": "provider_changed",
+        "accepted": false
+      },
+      {
+        "name": "generation_changed",
+        "accepted": false
+      },
+      {
+        "name": "missing",
+        "accepted": false
+      }
+    ],
+    "cleanup_cases": [
+      "nochild",
+      "reaped",
+      "TERM_reap",
+      "KILL_reap",
+      "signal"
+    ],
+    "wrapper_sha256": "bc0b190e5c41e30a3d34914f2ae6cd0aa51afaf0ce9d96f8dc7e49599a646213",
+    "pass": true
+  },
+  "prelive_reviews": {
+    "root": "PASS all222C lines and wrapper",
+    "independent": "PASS all222C lines/sourceandbinarypins/callbackRT/listenerfilter/controlcoverage/cleanup/nonwaiver; no blocking findings"
+  },
+  "execution": {
+    "started_utc": "2026-10-28T15:59:32.121631+00:00",
+    "source_sha256": "dfe7f358f1053e3b3692731d0a64d1c0b44fcc043b4b2f15527eea758c8ab416",
+    "binary_sha256": "19d0376db9eeb3931c5f696412fcd5045f9a05f45822791c068992e70d792dc2",
+    "parent_cap_seconds": 60,
+    "escalations": [],
+    "settings_completion": {
+      "initial_printed_status": 36,
+      "CLI_exit": 0,
+      "final_same_cohort_application_confirmed_by_wait_applied_exit0": true
+    },
+    "argv": [
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build16-host-boundary-observer/lifetime-observer",
+      "352",
+      "3"
+    ],
+    "pid": 41316,
+    "exit": 0,
+    "elapsed_seconds": 5.837848583003506,
+    "reaped": true,
+    "cancelled": false,
+    "owned_group_absent": true,
+    "ended_utc": "2026-10-28T15:59:49.124603+00:00",
+    "files": {
+      "stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout.log": "1052e148c60ac971bd016306940dbcfe2a90c47760de155722bc61a397e91e0a",
+      "settings-before.log": "069b76a2fb6397e9a9dc92c7ec0d4dd5cca3094e0872a3d4471d5a2569bee53f"
+    }
+  },
+  "actual_helper_invocations": 1,
+  "registration_roles": [
+    {
+      "PID": 41316,
+      "distinct_returned_IDs": true,
+      "input_stream": 354,
+      "output_stream": 353,
+      "qualification": "UNPROVEN"
+    }
+  ],
+  "requested_usage_readbacks": [
+    {
+      "scope": 1768845428,
+      "expected": 1,
+      "actual": 1,
+      "streams": 1,
+      "matches": true
+    },
+    {
+      "scope": 1869968496,
+      "expected": 0,
+      "actual": 0,
+      "streams": 1,
+      "matches": true
+    },
+    {
+      "scope": 1768845428,
+      "expected": 0,
+      "actual": 0,
+      "streams": 1,
+      "matches": true
+    },
+    {
+      "scope": 1869968496,
+      "expected": 1,
+      "actual": 1,
+      "streams": 1,
+      "matches": true
+    }
+  ],
+  "phase_actions": [
+    {
+      "action": "start",
+      "role": "input"
+    },
+    {
+      "action": "start",
+      "role": "output"
+    },
+    {
+      "action": "stop",
+      "role": "output_observation"
+    },
+    {
+      "action": "stop",
+      "role": "input_cleanup"
+    }
+  ],
+  "initial_and_ready_samples": {
+    "idle": [
+      {
+        "phase": "idle",
+        "before": 0.0,
+        "after": 0.000353,
+        "input_before": 0,
+        "input_after": 0,
+        "output_before": 0,
+        "output_after": 0,
+        "input_active_callbacks": 0,
+        "output_active_callbacks": 0,
+        "output_IsActive": 1,
+        "device_IsRunning": 0,
+        "native_flags": 1,
+        "output_notifications": 0,
+        "running_notifications": 0,
+        "healthy": true
+      }
+    ],
+    "input_started": [
+      {
+        "phase": "input_started",
+        "before": 0.0,
+        "after": 0.000336,
+        "input_before": 1,
+        "input_after": 1,
+        "output_before": 0,
+        "output_after": 0,
+        "input_active_callbacks": 0,
+        "output_active_callbacks": 0,
+        "output_IsActive": 1,
+        "device_IsRunning": 1,
+        "native_flags": 3,
+        "output_notifications": 0,
+        "running_notifications": 1,
+        "healthy": true
+      }
+    ],
+    "both_started": [
+      {
+        "phase": "both_started",
+        "before": 0.0,
+        "after": 0.000288,
+        "input_before": 1,
+        "input_after": 1,
+        "output_before": 0,
+        "output_after": 0,
+        "input_active_callbacks": 0,
+        "output_active_callbacks": 0,
+        "output_IsActive": 1,
+        "device_IsRunning": 1,
+        "native_flags": 3,
+        "output_notifications": 0,
+        "running_notifications": 1,
+        "healthy": true
+      },
+      {
+        "phase": "both_started",
+        "before": 0.053707,
+        "after": 0.054157,
+        "input_before": 21,
+        "input_after": 22,
+        "output_before": 20,
+        "output_after": 21,
+        "input_active_callbacks": 0,
+        "output_active_callbacks": 0,
+        "output_IsActive": 1,
+        "device_IsRunning": 1,
+        "native_flags": 3,
+        "output_notifications": 0,
+        "running_notifications": 1,
+        "healthy": true
+      }
+    ]
+  },
+  "output_stopped_window": {
+    "count": 90,
+    "first": {
+      "phase": "output_stopped_input_alive",
+      "before": 0.0,
+      "after": 0.000436,
+      "input_before": 22,
+      "input_after": 22,
+      "output_before": 21,
+      "output_after": 21,
+      "input_active_callbacks": 0,
+      "output_active_callbacks": 0,
+      "output_IsActive": 1,
+      "device_IsRunning": 1,
+      "native_flags": 3,
+      "output_notifications": 0,
+      "running_notifications": 1,
+      "healthy": true
+    },
+    "last": {
+      "phase": "output_stopped_input_alive",
+      "before": 4.961961,
+      "after": 4.962877,
+      "input_before": 1883,
+      "input_after": 1883,
+      "output_before": 21,
+      "output_after": 21,
+      "input_active_callbacks": 0,
+      "output_active_callbacks": 0,
+      "output_IsActive": 1,
+      "device_IsRunning": 1,
+      "native_flags": 3,
+      "output_notifications": 0,
+      "running_notifications": 1,
+      "healthy": true
+    },
+    "maximum_interval_between_sample_completions_seconds": 0.05901599999999996,
+    "maximum_query_duration_seconds": 0.0033720000000001527,
+    "all_output_activity_1": true,
+    "all_device_running_1": true,
+    "all_healthy_native3": true,
+    "input_progress_each_successive_sample": true,
+    "output_counts": [
+      21
+    ]
+  },
+  "footer": {
+    "classification": "NOT_OBSERVED_IN_THIS_5_SECOND_WINDOW",
+    "observation_completed": true,
+    "qualification": "UNPROVEN",
+    "stage": 4,
+    "starts": 2,
+    "stops": 2,
+    "samples": 90,
+    "cleanup": true,
+    "start_notification_control": true,
+    "final_notification_control": true,
+    "listener_overflow": false,
+    "input_calls": 1904,
+    "output_calls": 21,
+    "output_notifications": 0,
+    "running_notifications": 2,
+    "global_activity_writes": 0,
+    "PCM_accesses": 0,
+    "native_client_IDs_exposed": false,
+    "exit": 0
+  },
+  "native_health_summary": {
+    "providers": [
+      352
+    ],
+    "generations": [
+      3
+    ],
+    "flags": [
+      1,
+      3
+    ],
+    "errors": [
+      0
+    ],
+    "all_valid": true
+  },
+  "API_summary": {
+    "all_status0": true,
+    "all_get_sizes_match": true,
+    "non_get": [
+      {
+        "operation": "set_buffer128",
+        "begin": 257579.042119,
+        "end": 257579.042334,
+        "status": 0
+      },
+      {
+        "operation": "listener_add",
+        "begin": 257579.042414,
+        "end": 257579.042435,
+        "status": 0
+      },
+      {
+        "operation": "listener_add",
+        "begin": 257579.042443,
+        "end": 257579.042504,
+        "status": 0
+      },
+      {
+        "operation": "create_input",
+        "begin": 257579.042512,
+        "end": 257579.055831,
+        "status": 0
+      },
+      {
+        "operation": "create_output",
+        "begin": 257579.055849,
+        "end": 257579.068425,
+        "status": 0
+      },
+      {
+        "operation": "set_usage",
+        "begin": 257579.068452,
+        "end": 257579.080426,
+        "status": 0
+      },
+      {
+        "operation": "set_usage",
+        "begin": 257579.080483,
+        "end": 257579.080524,
+        "status": 0
+      },
+      {
+        "operation": "set_usage",
+        "begin": 257579.080553,
+        "end": 257579.093113,
+        "status": 0
+      },
+      {
+        "operation": "set_usage",
+        "begin": 257579.093177,
+        "end": 257579.093224,
+        "status": 0
+      },
+      {
+        "operation": "start",
+        "begin": 257579.093635,
+        "end": 257579.627163,
+        "status": 0
+      },
+      {
+        "operation": "start",
+        "begin": 257579.627514,
+        "end": 257579.628135,
+        "status": 0
+      },
+      {
+        "operation": "stop",
+        "begin": 257579.682302,
+        "end": 257579.683253,
+        "status": 0
+      },
+      {
+        "operation": "stop",
+        "begin": 257584.702273,
+        "end": 257584.720948,
+        "status": 0
+      },
+      {
+        "operation": "destroy_output",
+        "begin": 257584.721499,
+        "end": 257584.751266,
+        "status": 0
+      },
+      {
+        "operation": "destroy_input",
+        "begin": 257584.751289,
+        "end": 257584.751514,
+        "status": 0
+      },
+      {
+        "operation": "listener_remove",
+        "begin": 257584.751527,
+        "end": 257584.751557,
+        "status": 0
+      },
+      {
+        "operation": "listener_remove",
+        "begin": 257584.751574,
+        "end": 257584.751662,
+        "status": 0
+      }
+    ],
+    "max_duration_seconds": 0.533527999999933
+  },
+  "raw_record_counts": {
+    "NATIVE": 97,
+    "API_WINDOW": 221,
+    "REGISTRATIONS": 1,
+    "USAGE": 4,
+    "SAMPLE": 94,
+    "ROLE": 4,
+    "HOST_BOUNDARY_RESULT": 1
+  },
+  "assessment": {
+    "capture_complete": true,
+    "five_second_global_inactive_edge_observed": false,
+    "device_running_controls": "PASS source-enforced public0->1->0/native1->3->1 and footer-confirmed controls; runningnotifications0->1->2, no overflow. Final Boolean value not separately printed; not exact setter history.",
+    "output_notifications": "zero is normal for unchanged queried IsActive; not missing-delivery evidence",
+    "callback_lifetime": "output21 throughout observation; input22 at first query to1883 at last,1904 total after finalstop; rolelabels do not expose native clientIDs",
+    "cleanup": "both Stop, both Destroy and both listenerRemove APIs0; activecallback/listenercount quiescence checked; helper exit0/reaped/groupabsent/no escalation",
+    "NI_last_output_parity": "UNPROVEN",
+    "existing_strict_NULL_qualification": "unchanged FAILED separately; no buffer access or waiver here",
+    "causality": "No hostIOProc->nativeclient/perdirection->globalsetter equivalence proved; no productiondriverfix justified by this observation alone"
+  },
+  "limits": [
+    "90 sequential samples are not a continuous value timeline; subpoll transients/coalesced notifications or hidden other outputconsumers cannot be excluded.",
+    "Properties and counters are sequential, not atomic simultaneous snapshots; input progress does not prove valid PCM continuity.",
+    "Public APIs do not expose native UInt32 clientIDs, propertysetterorigin/order, aggregate per-direction consumers or ISO clear execution.",
+    "No deliberate nonzero output, no output restart, no replay-absence, audible audio, MIDI or full stability qualification in this observation.",
+    "Known unused-output NULL-buffer discrepancy and NI ring-clear/replay qualification remain open.",
+    "Installed on-disk files verified; loaded audio image UUID unobserved and protected SESSION journal not verified."
+  ],
+  "restoration": {
+    "settings_show_exit": 0,
+    "installed12": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": true,
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": true,
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": true,
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": true
+    },
+    "SIP": "System Integrity Protection status: enabled.",
+    "signatures": [
+      {
+        "path": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver",
+        "exit": 0,
+        "output": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver: valid on disk\n/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver: satisfies its Designated Requirement\n"
+      },
+      {
+        "path": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin",
+        "exit": 0,
+        "output": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin: valid on disk\n/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin: satisfies its Designated Requirement\n"
+      }
+    ],
+    "owned_helper_processes": "",
+    "GR6_restored": "normal GUI reopen; original RK3 Build12 Physical Test and Cry Wah visible; no remap/save/settings edit"
+  },
+  "NI_timing_or_recovery_changed": false,
+  "security_changed": false,
+  "original_NI_binary_reads": 0,
+  "next_scope": "Stop after this one observation. Retain M3 open: mapping the public stopped registration to the native global inactivity/ring-clear boundary is unproved. No automatic instrumentation package, reinstall, timing change, repeated capture or relaxed NULL assertion. Any necessary next implementation requires an evidence-backed plan in existingM3.",
+  "file_pins": {
+    "/private/tmp/rk3-host-boundary-implementation-admission.txt": "15b02d544adf83c52c0465d8ff636fb0c3fd6139d3fb1774492d26af62e9886c",
+    "/private/tmp/rk3-host-boundary-live-admission.txt": "f2f07572c3c9b01c6be115af371006e24a10495711a69c9875e41fee20b4c08a",
+    ".build/native/build16-host-boundary-observer/lifetime-observer": "19d0376db9eeb3931c5f696412fcd5045f9a05f45822791c068992e70d792dc2",
+    ".build/native/build16-host-boundary-observer/lifetime-observer-sanitized": "0f26737efc13fd9588fa0b7748b5a3cac8c5f2c334e4d5987b5a0ffd67255926",
+    ".build/native/build16-host-boundary-observer/lifetime-observer-sanitized.dSYM/Contents/Info.plist": "d8f5535bc3a2d65011cb0ccc769cc76495b47b4ef869ee4c9f343d8eb62029e1",
+    ".build/native/build16-host-boundary-observer/lifetime-observer-sanitized.dSYM/Contents/Resources/DWARF/lifetime-observer-sanitized": "bb65e9435d08bf595acd9dc5adfc56ccef25d6dc70c399371b83ebaf96f12132",
+    ".build/native/build16-host-boundary-observer/lifetime-observer-sanitized.dSYM/Contents/Resources/Relocations/aarch64/lifetime-observer-sanitized.yml": "7ad334f5596c2b27e6c9255f56a57a0aa36d37b77310163fabd9f2ae853791fe",
+    ".build/native/build16-host-boundary-observer/lifetime-observer.c": "dfe7f358f1053e3b3692731d0a64d1c0b44fcc043b4b2f15527eea758c8ab416",
+    ".build/native/build16-host-boundary-observer/lifetime-observer.dSYM/Contents/Info.plist": "c04673b0456328d3c582345ebfdd9c23dc5441412446a86877455600b434d959",
+    ".build/native/build16-host-boundary-observer/lifetime-observer.dSYM/Contents/Resources/DWARF/lifetime-observer": "8fdba920b5b909aee6b113029c9bc6d85ce970fad52cced592ad93074098ba5f",
+    ".build/native/build16-host-boundary-observer/lifetime-observer.dSYM/Contents/Resources/Relocations/aarch64/lifetime-observer.yml": "d1569e62753bb11cdbf28ec1fc49835e39ac102021674fc0954270ec90847050",
+    ".build/native/build16-host-boundary-observer/live-1/result.json": "04e72ef806bb54340d39ba715d46bdebc91b6b5f2e7d8bee01852bb242530f21",
+    ".build/native/build16-host-boundary-observer/live-1/settings-before.log": "069b76a2fb6397e9a9dc92c7ec0d4dd5cca3094e0872a3d4471d5a2569bee53f",
+    ".build/native/build16-host-boundary-observer/live-1/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-host-boundary-observer/live-1/stdout.log": "1052e148c60ac971bd016306940dbcfe2a90c47760de155722bc61a397e91e0a",
+    ".build/native/build16-host-boundary-observer/offline-result.json": "f27a0f98c14acc8b04ad1e637d9f1116bd4b13ab433c6f85223709b01016f198",
+    ".build/native/build16-host-boundary-observer/post-restoration-integrity.json": "ce931271d78cae1b0069662af234a8de4cf5854f12456f602073758ab65c464e",
+    ".build/native/build16-host-boundary-observer/prelive-integrity.json": "126993ad96e16753089dbe44c0a158ce9a57f431f6dfa990538bdff7be3d33d3",
+    ".build/native/build16-host-boundary-observer/raw-assessment.json": "294167f1a82d10fd99cca2ffd96acd1d69abe61e4e954dab12477b1b891b4b49",
+    ".build/native/build16-host-boundary-observer/run-once.py": "bc0b190e5c41e30a3d34914f2ae6cd0aa51afaf0ce9d96f8dc7e49599a646213",
+    ".build/native/build16-host-boundary-observer/sanitizer-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-host-boundary-observer/sanitizer-selftest.log": "86c3af615072708ccfbbb69edad0148ffdf4ccec9da6819b44d0b320a9388797",
+    ".build/native/build16-host-boundary-observer/settings-after-restoration.log": "86e730ae1d139555b9027c3fdc7afd133bc21f2bdbddd0bc176e88537143896e",
+    ".build/native/build16-host-boundary-observer/strict-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-host-boundary-observer/strict-selftest.log": "86c3af615072708ccfbbb69edad0148ffdf4ccec9da6819b44d0b320a9388797",
+    ".build/native/build16-host-boundary-observer/wrapper-offline.json": "d2f333675ab8d62985b73d2a662cbc5a2548e018d8bc23807ed94f6231783828",
+    ".build/native/build16-installed/artifact-audit.json": "b329c38711c70ad8de3e2806ab10e31d47cdd171f201d13ebec8ab004cc69dbd",
+    ".build/native/build16-output-usage/direction-usage.c": "750443822ba2ff5edd059191a26ae28aa23080d8192bdefef02e3263b2510897",
+    "ReverseEngineering/Evidence/Build16HostBoundaryObservationPlan.json": "03a176dee742cb8f053fcf563ae82920546e2c2ca40013064d71a60e06edbd61"
+  },
+  "live_raw_review": "PASS independent parse all422records:90polls/59.016msmaxgap/input22to1883/output21stable/221APIand97Native0/controls+cleanup/pins; final idle Boolean itself notprinted but checked by source+footer"
+}

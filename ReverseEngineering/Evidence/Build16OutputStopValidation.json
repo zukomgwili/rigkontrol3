@@ -1,0 +1,123 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "candidate": "0.2.11/build16",
+  "last_output_boundary": {
+    "result": "UNPROVEN_NI_LAST_OUTPUT_NOT_REACHED",
+    "private_helper_result": {
+      "scope": "single bounded silent publicCoreAudio direction test; no driver or security changes",
+      "provider": 352,
+      "generation": 3,
+      "idle": {
+        "pid": 7626,
+        "exit": 0,
+        "elapsed": 10.019529165991116,
+        "samples": 96,
+        "flags": [
+          1
+        ],
+        "bad": 0
+      },
+      "argv": [
+        ".build/native/build13-recovery/tools/direction-recovery",
+        "352",
+        "3"
+      ],
+      "exe_sha256": "3d466d4685e24a7801b6135de395f8d72d910a8574b119c0bc633b8ec32cb9f0",
+      "helper": {
+        "pid": 7650,
+        "exit": 1,
+        "elapsed": 0.8944500840152614,
+        "hard60_timeout": false,
+        "reaped": true
+      },
+      "reported": [
+        {
+          "outcome": "FAIL_CALLBACK_VALIDATION",
+          "cycles_completed": 0,
+          "cleanup_clean": true,
+          "input_calls": 39,
+          "output_calls": 0,
+          "input_frames": 0,
+          "output_frames": 0,
+          "input_bad": true,
+          "output_bad": false,
+          "nonzero_PCM_replay_proven_absent": false
+        }
+      ],
+      "result": "RECORDED_NOT_YET_CLASSIFIED"
+    },
+    "point": "all preflight/usage setters+readbacks and inputStart succeeded; initialinputonly rejected callbacks beforePCMscan;outputneverstarted",
+    "not_driver_attribution": "offendinggeometry/timestampfieldnotlogged; no PCMnonfinitefailure proven; no productionfix/retry justified",
+    "clock_limit": "one actual validinitialCLOCKrow; no advancementproved",
+    "independent_review": "PASS exactfailureclassification/sourcepredicate/cleanup; noforcedglobalActive",
+    "next_finite_if_required": "existing.3 planbeforecode for first-rejected-callback scalarshape/timestamp summary+CPUfixtures, before separateboundedmeasurement; no driver/timingchanges inferred"
+  },
+  "audio_stopped_MIDI": {
+    "result": "PASS",
+    "user": "Finished \u2014 LED latches on, then off",
+    "audio_state": "GR6closed; afterhelperflags1/G3/error0; no audioIOclient started beforeuseractions",
+    "CC": {
+      "4": {
+        "count": 55,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "80": {
+        "count": 2,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      }
+    },
+    "footer": {
+      "controlA": true,
+      "controlB": true,
+      "controls_valid": true,
+      "private_callbacks": 2,
+      "private_packets": 2,
+      "native_callbacks": 57,
+      "native_packets": 57,
+      "native_CC": 57,
+      "unknown_callbacks": 0,
+      "cleanup": true,
+      "exit": 0,
+      "native_writes": 0
+    },
+    "session": {
+      "parent": 7512,
+      "pid": 7513,
+      "pgid": 7513,
+      "started_wall": 1793192108.163876,
+      "cap_seconds": 900,
+      "argv": [
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/live-midi-delivery/paired-consumer",
+        "--live"
+      ],
+      "exe_sha256": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+      "ready": true,
+      "native_writes": 0,
+      "ready_wall": 1793192108.2732348,
+      "terminal_reason": "human_finished_stop",
+      "exit": 0,
+      "ended_wall": 1793192724.0027342,
+      "elapsed_monotonic": 615.8375372089795,
+      "reaped": true
+    },
+    "scope": "fresh2switchpresses/LEDlatches andfullpedalMIDI whileaudioIOstopped, not naturaloutputinactiveproof"
+  },
+  "restoration": {
+    "GR6": "reopened once viaCua afterMIDIcapturestop; samewahpreset/no save/remap",
+    "health": "nativeflags3/G3/error0 at tick4762797339144",
+    "DIN_input": "unchecked inGuitarRigGUI beforeDINtest;Controller inputchecked;no MIDIcheckbox changed"
+  },
+  "code_or_security_changed": false,
+  "file_pins": {
+    ".build/native/build16-recovery/last-output-1/result.json": "563185ba6af1f51c8c96e7f944aace2f6ad9f620b20708c59930a10ec8b436bc",
+    ".build/native/build16-recovery/last-output-1/idle.log": "44bceef3d73b0232734209d25de0333fccda9b23924d546c5ac5c1052b9fbd94",
+    ".build/native/build16-recovery/last-output-1/direction.log": "e7db3bd95b6f3e1eeef64dafb6ea14f24b91468d67600a2ef5bdcd65895b931a",
+    ".build/native/build16-recovery/last-output-midi-1/paired.log": "b69a1e00b2a68486dbe8926e7b1e9ca96df7bbd8030a6f05fe50b582552dc02b",
+    ".build/native/build16-recovery/last-output-midi-1/session.json": "498ff7e81715baba9ef7ae16bfb8846f644df25ee2554f1a98dfd73d187d7e63",
+    ".build/native/build16-recovery/last-output-midi-1/stop": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

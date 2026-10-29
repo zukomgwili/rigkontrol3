@@ -1,0 +1,251 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "candidate": "unchanged0.2.11/build16 source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+  "result": "POST_START_MASKS_RETAINED_AT_READBACK_CALLBACK_DISCREPANCY_REMAINS",
+  "plan": "Exact private postStart four-get block/CPU/admission/live cap recorded before source reads/code/run in existingM3; no new bead",
+  "question": "Does AudioDeviceStart persistently reset beforeStart IOProc stream usage?",
+  "answer": "No reset observed at four immediate postStart query points; all masks1,0,0,1 retained expected baseline and matching IOProc fields. This is not proof against every transient reset.",
+  "private_delta": {
+    "source_lines": 370,
+    "from_source_sha256": "ff3f4dead470ba01d5fd877e22edf7c74ebf359f30066a592172b5e2b3746bcd",
+    "source_sha256": "750443822ba2ff5edd059191a26ae28aa23080d8192bdefef02e3263b2510897",
+    "binary_sha256": "307a06b7d39a059b3224c54af1c0a4dc1cfdc5a24c8649fea72a33f669369b4c",
+    "scope": "four main-thread property GETs immediately after inputStart/beforeobserve, pure shapevalidator and11CPUfixtures; expectedmaskcomparison observational only, no postStart setter",
+    "unchanged": "callbacks/NULLpredicate/rejectionCAS/PCM/counters/clock/observe/phasecalendar/cleanup plus installed drivers",
+    "wrapper": "approved b857 base withonlyhelperpathsubstitution, new7410ef71fcb095233eea836fdd2a77137dfd6a2a15ef67bdab6096525af73f65; no deadline/cleanup/preflight semantic change",
+    "quality": "strictARM/Werror andASanUBSan existing42callback+11shape casesPASS;8fullmainadmission+5cleanup mocksPASS; no liveAPIs inselftest",
+    "review": "independentprelive source/spec/safety/RT/wrapperPASS; final14pins/rawfacts/limits/restoration/installed12reviewPASS"
+  },
+  "execution": {
+    "started_utc": "2026-10-28T14:42:18.981995+00:00",
+    "source_sha256": "750443822ba2ff5edd059191a26ae28aa23080d8192bdefef02e3263b2510897",
+    "binary_sha256": "307a06b7d39a059b3224c54af1c0a4dc1cfdc5a24c8649fea72a33f669369b4c",
+    "parent_cap_seconds": 60,
+    "escalations": [],
+    "settings_completion": {
+      "initial_printed_status": 36,
+      "CLI_exit": 0,
+      "final_same_cohort_application_confirmed_by_wait_applied_exit0": true
+    },
+    "argv": [
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build16-output-usage/direction-usage",
+      "352",
+      "3"
+    ],
+    "pid": 26735,
+    "exit": 1,
+    "elapsed_seconds": 0.8432531659782398,
+    "reaped": true,
+    "cancelled": false,
+    "owned_group_absent": true,
+    "ended_utc": "2026-10-28T14:42:30.973095+00:00",
+    "files": {
+      "stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout.log": "43ca84314a62937166144acc274095bff6a4e00352ab36e639411e14e231b76a",
+      "settings-before.log": "069b76a2fb6397e9a9dc92c7ec0d4dd5cca3094e0872a3d4471d5a2569bee53f"
+    }
+  },
+  "beforeStart_baseline": "four existingusage set/get pairs allstatus0/matchestrue, values correspondto inputIOProc[1,0],outputIOProc[0,1] inunchanged fixedcallorder",
+  "afterStart": [
+    {
+      "role": "input",
+      "scope": 1768845428,
+      "status": 0,
+      "returned_bytes": 16,
+      "expected_bytes": 16,
+      "IOProc_identity_match": true,
+      "number_streams": 1,
+      "actual_mask": 1,
+      "expected_mask": 1,
+      "shape_valid": true,
+      "matches_expected": true
+    },
+    {
+      "role": "input",
+      "scope": 1869968496,
+      "status": 0,
+      "returned_bytes": 16,
+      "expected_bytes": 16,
+      "IOProc_identity_match": true,
+      "number_streams": 1,
+      "actual_mask": 0,
+      "expected_mask": 0,
+      "shape_valid": true,
+      "matches_expected": true
+    },
+    {
+      "role": "output",
+      "scope": 1768845428,
+      "status": 0,
+      "returned_bytes": 16,
+      "expected_bytes": 16,
+      "IOProc_identity_match": true,
+      "number_streams": 1,
+      "actual_mask": 0,
+      "expected_mask": 0,
+      "shape_valid": true,
+      "matches_expected": true
+    },
+    {
+      "role": "output",
+      "scope": 1869968496,
+      "status": 0,
+      "returned_bytes": 16,
+      "expected_bytes": 16,
+      "IOProc_identity_match": true,
+      "number_streams": 1,
+      "actual_mask": 1,
+      "expected_mask": 1,
+      "shape_valid": true,
+      "matches_expected": true
+    }
+  ],
+  "API_call_rows_all_zero": 15,
+  "first_rejections": [
+    {
+      "context": "input",
+      "state": 2,
+      "reason": "output_geometry",
+      "input": {
+        "present": true,
+        "number_buffers": 1,
+        "first_channels": 2,
+        "first_bytes": 1024,
+        "first_data_present": true
+      },
+      "output": {
+        "present": true,
+        "number_buffers": 1,
+        "first_channels": 2,
+        "first_bytes": 1024,
+        "first_data_present": true
+      },
+      "current_timestamp": {
+        "present": true,
+        "flags": 7,
+        "sample_finite": true,
+        "sample": 16648,
+        "host": 4900547014594
+      },
+      "input_timestamp": {
+        "present": true,
+        "flags": 7,
+        "sample_finite": true,
+        "sample": 16384,
+        "host": 4900546882702
+      },
+      "output_timestamp": {
+        "present": true,
+        "flags": 7,
+        "sample_finite": true,
+        "sample": 16912,
+        "host": 4900547146581
+      },
+      "input_geometry_ok": true,
+      "output_geometry_ok": false,
+      "selected_timestamp_ok": true,
+      "PCM_scan_executed": false,
+      "PCM_finite": false
+    },
+    {
+      "context": "output",
+      "state": 0
+    }
+  ],
+  "footer": {
+    "outcome": "FAIL_CALLBACK_VALIDATION",
+    "cycles_completed": 0,
+    "cleanup_clean": true,
+    "input_calls": 39,
+    "output_calls": 0,
+    "input_frames": 0,
+    "output_frames": 0,
+    "input_bad": true,
+    "output_bad": false,
+    "nonzero_PCM_replay_proven_absent": false
+  },
+  "native_health": [
+    {
+      "status": 0,
+      "flags": 1,
+      "generation": 3,
+      "error": 0,
+      "native_rate": 48000,
+      "rate": 48000,
+      "valid": true
+    },
+    {
+      "status": 0,
+      "flags": 3,
+      "generation": 3,
+      "error": 0,
+      "native_rate": 48000,
+      "rate": 48000,
+      "valid": true
+    },
+    {
+      "status": 0,
+      "flags": 3,
+      "generation": 3,
+      "error": 0,
+      "native_rate": 48000,
+      "rate": 48000,
+      "valid": true
+    },
+    {
+      "status": 0,
+      "flags": 1,
+      "generation": 3,
+      "error": 0,
+      "native_rate": 48000,
+      "rate": 48000,
+      "valid": true
+    }
+  ],
+  "limits": [
+    "NI last-output stop/restart behavior is still UNPROVEN: outputneverstarted/zerooutputcycles. No assertion was weakened.",
+    "mIOProc match is propertyfield readback, not proof that CoreAudio dispatch obeys it or fullcausalbinding proof. Four sequential read points are not a continuous timeline or simultaneous atomicsnapshot.",
+    "Input and selectedtimestamp passed; disabledoutputnonnull remains onlyfirstcallbackrejection. PCM_finitefalse is UNTESTED because scan didnotexecute.",
+    "Oneinitialvalidclockrow is not advancingclock/stability proof; no new waveform/audibleaudio/MIDI/recovery qualification.",
+    "One actualsilenthelper invocation; original buffer128 andbeforeStartperIOProcusage writes only. No rate/globalIsActive/pedalsetting/calibration/feedback/security changes."
+  ],
+  "next_boundary": "Remaining question is publicIOProc stream-use identity/binding versus observed callback delivery; plan narrow existingcontract/nativeHAL seam comparison before choosing another probe orproductionchange. No startup-reset fix is justified by this result.",
+  "restoration": {
+    "GR6": "normalGUIreopen aftercaptureterminal; visible RK3 Build12 Physical Test/CryWah, no remap/presetsave/settingscheckboxchange",
+    "settings_show_exit": 0,
+    "settings_contract": "showinitialsnapshotthenwait_applied exit0 confirms samecohortstatus0; see log",
+    "installed12_match": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": true,
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": true,
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": true,
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": true
+    },
+    "SIP": "System Integrity Protection status: enabled."
+  },
+  "production_driver_changes": false,
+  "security_changes": false,
+  "file_pins": {
+    ".build/native/build16-output-usage/direction-usage.c": "750443822ba2ff5edd059191a26ae28aa23080d8192bdefef02e3263b2510897",
+    ".build/native/build16-output-usage/direction-usage": "307a06b7d39a059b3224c54af1c0a4dc1cfdc5a24c8649fea72a33f669369b4c",
+    ".build/native/build16-output-usage/direction-usage-sanitized": "667e77677d420412b5c3b7d8d6af9dd76819d885f1a1b48d6183af33bd38c31b",
+    ".build/native/build16-output-usage/offline-result.json": "53326959ed09741ff27cf1140835c694c3c61a5d90c000ba58c41ff54941b0fa",
+    ".build/native/build16-output-usage/strict-selftest.log": "87c671900192fee1cd3e3ad0990af932ad6537addd180f522e79817c7771ab2e",
+    ".build/native/build16-output-usage/sanitizer-selftest.log": "87c671900192fee1cd3e3ad0990af932ad6537addd180f522e79817c7771ab2e",
+    ".build/native/build16-output-usage/run-once.py": "7410ef71fcb095233eea836fdd2a77137dfd6a2a15ef67bdab6096525af73f65",
+    ".build/native/build16-output-usage/wrapper-offline.json": "f0b5f61fa06a54de29c0398816fe388923204e5792114c0f23f00f2e15a0f42d",
+    ".build/native/build16-output-usage/settings-after-restoration.log": "86e730ae1d139555b9027c3fdc7afd133bc21f2bdbddd0bc176e88537143896e",
+    ".build/native/build16-output-usage/live-1/result.json": "8b360f1bbd75085d5621806eecd65789bbeed47e8fc96a9a9c9ab4dd797e9ab3",
+    ".build/native/build16-output-usage/live-1/stdout.log": "43ca84314a62937166144acc274095bff6a4e00352ab36e639411e14e231b76a",
+    ".build/native/build16-output-usage/live-1/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-output-usage/live-1/settings-before.log": "069b76a2fb6397e9a9dc92c7ec0d4dd5cca3094e0872a3d4471d5a2569bee53f",
+    "ReverseEngineering/Evidence/Build16OutputDiagnosticValidation.json": "c0a4174e227524f94a3a070ffd77dfc2f01a5360e0a6b06c5e478ad579235c6a"
+  }
+}

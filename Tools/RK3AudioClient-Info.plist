@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>org.rigkontrol3.ni-arm.audio-test</string>
+	<key>CFBundleName</key>
+	<string>RK3 Driver Audio Test</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Verify guitar input through the Rig Kontrol 3 native audio driver.</string>
+</dict>
+</plist>

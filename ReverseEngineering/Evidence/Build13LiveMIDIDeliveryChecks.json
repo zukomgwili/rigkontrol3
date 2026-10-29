@@ -1,0 +1,988 @@
+{
+  "schema": 1,
+  "issue": "rigkontrol3-40h.2",
+  "date": "2026-10-27",
+  "status": "NATIVE_ROUTE_RED_BEFORE_AND_GREEN_AFTER_USER_APP_AND_SERVER_RESTART",
+  "root_cause": "UNPROVEN_prior_native_delivery_or_subscriber_lifecycle_state",
+  "installed": "0.2.8/build13 sourcee61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "repository_base": "6dd7bca066dfcd813f1fc67808e198394e506afb",
+  "production_changes": false,
+  "scope": {
+    "NI_timing_ring_calendar_recovery_QoS": "unchanged",
+    "mappings_calibration_LED_policy": "unchanged_by_assistant",
+    "SIP": "enabled_before_and_after",
+    "native_MIDI_output_commands_by_diagnostics": 0,
+    "assistant_app_MIDIserver_USB_restart": false,
+    "user_initiated_GR6_restart": true,
+    "new_sleep": false,
+    "native_subscriber_captures": 2,
+    "private_positive_control_executions": 1,
+    "new_planning_beads": 0
+  },
+  "plan_record": "Initial bounded plan in existing .2 before private code. One attempted SDK timestamp amendment comment failed shell quoting; private code used correct current Mach timestamp and file-based correction was recorded before live execution. No such helper change was installed. All subsequent paired, metadata and post-restart plans/admissions were recorded before their associated actions.",
+  "private_route_positive_control": {
+    "execution": {
+      "start_utc": "2026-10-27T20:02:35.621506+00:00",
+      "hard_cap_seconds": 10,
+      "argv": [
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/live-midi-delivery/private-control"
+      ],
+      "pid": 32530,
+      "exit": 0,
+      "result": "EXITED",
+      "reaped": true,
+      "owned_group_empty": true,
+      "elapsed_seconds": 0.3597483749908861,
+      "end_utc": "2026-10-27T20:02:35.981261+00:00",
+      "files": {
+        "stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout.ndjson": "c89f151238126a88d5ab9954b1cef27bb222b200dc0118575c063b176eb8a00d"
+      }
+    },
+    "statuses": [
+      {
+        "event": "status",
+        "operation": "client_create",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "input_port_create",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "own_source_create",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "own_source_set_private",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "own_source_get_private",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "own_source_connect",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "own_source_MIDIReceived",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "own_source_disconnect",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "own_source_dispose",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "input_port_dispose",
+        "status": 0
+      },
+      {
+        "event": "status",
+        "operation": "client_dispose",
+        "status": 0
+      }
+    ],
+    "result": {
+      "event": "result",
+      "verdict": "PASS_PRIVATE_ROUTE",
+      "sent": true,
+      "callbacks": 1,
+      "packets": 1,
+      "exact_markers": 1,
+      "cleanup_ok": true,
+      "stopped": false,
+      "hardware_commands": 0
+    },
+    "packet": {
+      "event": "packet",
+      "length": 7,
+      "timestamp": 4174664839190,
+      "absolute_now": 4174664840616,
+      "raw_hex": "f07d524b337ff7",
+      "exact_marker": true
+    },
+    "limits": [
+      "Only owned hidden virtual-source route; no evidence of RK3 plugin invocation or old subscription recovery"
+    ]
+  },
+  "paired_cases": [
+    {
+      "case": 1,
+      "scope": "before_user_restart_failed_native_route",
+      "execution": {
+        "started_utc": "2026-10-27T20:12:29.529026+00:00",
+        "hard_cap_seconds": 315,
+        "scope": "fresh subscriber plus nondestructive raw history; no sleep/reset",
+        "wrapper_pid": 34064,
+        "exit": 0,
+        "result": "EXITED",
+        "process_group_empty": true,
+        "elapsed_seconds": 25.298272417014232,
+        "ended_utc": "2026-10-27T20:12:54.827293+00:00",
+        "wrapper_reaped": true,
+        "files": {
+          "midi-baseline.log": "cd2ba8960a73ecb9345244836fd87e9f25153cabd639ac48c0deabf2d56de01b",
+          "midi.log": "acb9d18fd610b7ee34141557f9d73b05a5a8b3cf6884c19247b00f9c0d31ea93",
+          "midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "raw.ndjson": "72292ff6740f551a386f6d29af6f48efd525ef80ac1f2116ecd6e5e967d92039"
+        }
+      },
+      "assessment": {
+        "verdict": "RED_NATIVE_ROUTE_WITH_LIVE_CLIENT_CONTROLS",
+        "controls_valid": true,
+        "paired": {
+          "controlA": true,
+          "controlB": true,
+          "controls_valid": true,
+          "private_callbacks": 2,
+          "private_packets": 2,
+          "native_callbacks": 0,
+          "native_packets": 0,
+          "native_CC": 0,
+          "unknown_callbacks": 0,
+          "cleanup": true,
+          "exit": 1,
+          "native_writes": 0
+        },
+        "raw_and_CC_assessment": {
+          "verdict": "RED_EXPECTED_MAPPED_MIDI_DELIVERY",
+          "raw_witness": true,
+          "observer_valid": true,
+          "footer_valid": true,
+          "observer_exits": {
+            "raw": 0,
+            "midi": 1
+          },
+          "raw_report_count": 204,
+          "raw_digital_values": [
+            16,
+            0,
+            16,
+            0
+          ],
+          "raw_bit4_rises": 2,
+          "raw_axis2_range": [
+            58,
+            811
+          ],
+          "history_overruns": 0,
+          "baseline_counts": {},
+          "final_counts": {},
+          "switch1_CC80_delta": 0,
+          "pedal_CC4_delta": 0,
+          "complete_and_reaped": true,
+          "scope": "Fresh controlled subscription only; GR6 existing-subscription outcome requires human observation; no automatic-recovery claim"
+        },
+        "limits": [
+          "New controlled subscriber, not original post-sleep subscription",
+          "No private driver guard or MIDIReceived return observed from RK3 plugin",
+          "Callback route verified before and after action only when both controls pass"
+        ]
+      },
+      "api_statuses": [
+        {
+          "event": "status",
+          "operation": "client_create",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "input_port_create",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_create",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_set_private",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_get_private",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_connect",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "native_source_connect",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_controlA_MIDIReceived",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_controlB_MIDIReceived",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "native_source_disconnect",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_disconnect",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_dispose",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "input_port_dispose",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "client_dispose",
+          "status": 0
+        }
+      ],
+      "native_metadata": [
+        {
+          "event": "native_source_inventory",
+          "source_count": 2,
+          "limit": 64
+        },
+        {
+          "event": "native_identity_selection",
+          "matches": 1,
+          "source": 3534891,
+          "entity": 3534890,
+          "device": 3534889
+        },
+        {
+          "event": "native_metadata",
+          "kind": "source",
+          "ref": 3534891,
+          "unique_status": 0,
+          "unique_id": -1923072596,
+          "offline_status": 0,
+          "offline": 0,
+          "private_status": -10835,
+          "private": 0,
+          "protocol_status": 0,
+          "protocol": 1
+        },
+        {
+          "event": "native_unique_lookup",
+          "status": 0,
+          "ref": 3534891,
+          "type": 2,
+          "same_ref": true
+        },
+        {
+          "event": "native_metadata",
+          "kind": "entity",
+          "ref": 3534890,
+          "unique_status": 0,
+          "unique_id": -1046341785,
+          "offline_status": 0,
+          "offline": 0,
+          "private_status": -10835,
+          "private": 0,
+          "protocol_status": 0,
+          "protocol": 1
+        },
+        {
+          "event": "native_metadata",
+          "kind": "device",
+          "ref": 3534889,
+          "unique_status": 0,
+          "unique_id": -1483967809,
+          "offline_status": 0,
+          "offline": 0,
+          "private_status": -10835,
+          "private": 0,
+          "protocol_status": -10835,
+          "protocol": 0
+        }
+      ],
+      "control_events": [
+        {
+          "event": "control",
+          "phase": "A",
+          "sent_timestamp": 4188916851211,
+          "exact_matches": 1,
+          "valid": true
+        },
+        {
+          "event": "control",
+          "phase": "B",
+          "sent_timestamp": 4189517107693,
+          "exact_matches": 1,
+          "valid": true
+        }
+      ],
+      "private_packets": [
+        {
+          "event": "packet",
+          "route": "private",
+          "length": 7,
+          "timestamp": 4188916851211,
+          "absolute_now": 4188916852234,
+          "prefix_bytes": 7,
+          "raw_hex": "f07d524b337ff7"
+        },
+        {
+          "event": "packet",
+          "route": "private",
+          "length": 7,
+          "timestamp": 4189517107693,
+          "absolute_now": 4189517109622,
+          "prefix_bytes": 7,
+          "raw_hex": "f07d524b337ef7"
+        }
+      ],
+      "raw_summary": {
+        "count": 204,
+        "sequence_range": [
+          100163,
+          100366
+        ],
+        "types": {
+          "03": 198,
+          "04": 4,
+          "05": 2
+        },
+        "native_states_flags_generation_error_rate_digital": [
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483648
+          ],
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483664
+          ]
+        ],
+        "raw_digital_values": [
+          16,
+          0,
+          16,
+          0
+        ],
+        "axis2_range": [
+          58,
+          811
+        ],
+        "history_overruns": 0
+      },
+      "human": {
+        "reply": "Finished \u2014 LED and Guitar Rig respond",
+        "initial_response_later_retracted": true,
+        "source": "human asynchronous action-completion reply"
+      }
+    },
+    {
+      "case": 2,
+      "scope": "after_user_GR6_restart_and_observed_MIDIServer_replacement",
+      "execution": {
+        "started_utc": "2026-10-27T20:21:43.876138+00:00",
+        "hard_cap_seconds": 315,
+        "scope": "fresh subscriber plus nondestructive raw history; no sleep/reset",
+        "wrapper_pid": 35534,
+        "exit": 0,
+        "result": "EXITED",
+        "process_group_empty": true,
+        "elapsed_seconds": 99.13066270801937,
+        "ended_utc": "2026-10-27T20:23:23.006763+00:00",
+        "wrapper_reaped": true,
+        "files": {
+          "midi-baseline.log": "ea35fe6aec8e0171549efbfe6b8c1f0e995f4c11510033cd621ad510195c8ecc",
+          "midi.log": "6dbed91fbf66074dbb6b02afc4e6aba8709414f2bc974145951a900c39a2fcbd",
+          "midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "midi.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "raw.ndjson": "b81bb17071e8df768bcde8793bd54362d5db0e03ab311669c50a505bc58d1003"
+        }
+      },
+      "assessment": {
+        "verdict": "GREEN_FRESH_NATIVE_WITH_LIVE_CLIENT_CONTROLS",
+        "controls_valid": true,
+        "paired": {
+          "controlA": true,
+          "controlB": true,
+          "controls_valid": true,
+          "private_callbacks": 2,
+          "private_packets": 2,
+          "native_callbacks": 533,
+          "native_packets": 533,
+          "native_CC": 533,
+          "unknown_callbacks": 0,
+          "cleanup": true,
+          "exit": 0,
+          "native_writes": 0
+        },
+        "raw_and_CC_assessment": {
+          "verdict": "GREEN_FRESH_SUBSCRIBER_ONLY",
+          "raw_witness": true,
+          "observer_valid": true,
+          "footer_valid": true,
+          "observer_exits": {
+            "raw": 0,
+            "midi": 0
+          },
+          "raw_report_count": 1103,
+          "raw_digital_values": [
+            16,
+            0,
+            16,
+            0
+          ],
+          "raw_bit4_rises": 2,
+          "raw_axis2_range": [
+            65,
+            763
+          ],
+          "history_overruns": 0,
+          "baseline_counts": {},
+          "final_counts": {
+            "4": 531,
+            "80": 2
+          },
+          "switch1_CC80_delta": 2,
+          "pedal_CC4_delta": 531,
+          "complete_and_reaped": true,
+          "scope": "Fresh controlled subscription only; GR6 existing-subscription outcome requires human observation; no automatic-recovery claim"
+        },
+        "limits": [
+          "New controlled subscriber, not original post-sleep subscription",
+          "No private driver guard or MIDIReceived return observed from RK3 plugin",
+          "Callback route verified before and after action only when both controls pass"
+        ]
+      },
+      "api_statuses": [
+        {
+          "event": "status",
+          "operation": "client_create",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "input_port_create",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_create",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_set_private",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_get_private",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_connect",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "native_source_connect",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_controlA_MIDIReceived",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_controlB_MIDIReceived",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "native_source_disconnect",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_disconnect",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "own_source_dispose",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "input_port_dispose",
+          "status": 0
+        },
+        {
+          "event": "status",
+          "operation": "client_dispose",
+          "status": 0
+        }
+      ],
+      "native_metadata": [
+        {
+          "event": "native_source_inventory",
+          "source_count": 2,
+          "limit": 64
+        },
+        {
+          "event": "native_identity_selection",
+          "matches": 1,
+          "source": 144150571,
+          "entity": 144150570,
+          "device": 144150569
+        },
+        {
+          "event": "native_metadata",
+          "kind": "source",
+          "ref": 144150571,
+          "unique_status": 0,
+          "unique_id": -1923072596,
+          "offline_status": 0,
+          "offline": 0,
+          "private_status": -10835,
+          "private": 0,
+          "protocol_status": 0,
+          "protocol": 1
+        },
+        {
+          "event": "native_unique_lookup",
+          "status": 0,
+          "ref": 144150571,
+          "type": 2,
+          "same_ref": true
+        },
+        {
+          "event": "native_metadata",
+          "kind": "entity",
+          "ref": 144150570,
+          "unique_status": 0,
+          "unique_id": -1046341785,
+          "offline_status": 0,
+          "offline": 0,
+          "private_status": -10835,
+          "private": 0,
+          "protocol_status": 0,
+          "protocol": 1
+        },
+        {
+          "event": "native_metadata",
+          "kind": "device",
+          "ref": 144150569,
+          "unique_status": 0,
+          "unique_id": -1483967809,
+          "offline_status": 0,
+          "offline": 0,
+          "private_status": -10835,
+          "private": 0,
+          "protocol_status": -10835,
+          "protocol": 0
+        }
+      ],
+      "control_events": [
+        {
+          "event": "control",
+          "phase": "A",
+          "sent_timestamp": 4202216290431,
+          "exact_matches": 1,
+          "valid": true
+        },
+        {
+          "event": "control",
+          "phase": "B",
+          "sent_timestamp": 4204593342949,
+          "exact_matches": 1,
+          "valid": true
+        }
+      ],
+      "private_packets": [
+        {
+          "event": "packet",
+          "route": "private",
+          "length": 7,
+          "timestamp": 4202216290431,
+          "absolute_now": 4202216291536,
+          "prefix_bytes": 7,
+          "raw_hex": "f07d524b337ff7"
+        }
+      ],
+      "raw_summary": {
+        "count": 1103,
+        "sequence_range": [
+          112260,
+          113362
+        ],
+        "types": {
+          "03": 1097,
+          "04": 4,
+          "05": 2
+        },
+        "native_states_flags_generation_error_rate_digital": [
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483648
+          ],
+          [
+            3,
+            1,
+            0,
+            48000,
+            2147483664
+          ]
+        ],
+        "raw_digital_values": [
+          16,
+          0,
+          16,
+          0
+        ],
+        "axis2_range": [
+          65,
+          763
+        ],
+        "history_overruns": 0
+      },
+      "human": {
+        "reply": "Finished \u2014 both Cry Wah controls work",
+        "initial_response_later_retracted": false,
+        "source": "human asynchronous action-completion reply"
+      }
+    }
+  ],
+  "user_corrections": [
+    {
+      "order": 1,
+      "message": "I was wrong Guitar Rig aapears go have lost its rig kontrol mappings",
+      "interpretation": "Earlier human working-GR6 claims are retracted/unreliable, including paired1 initial completion reply; possible mapping loss not independently verified."
+    },
+    {
+      "order": 2,
+      "message": "The LED still lights up as expected, but the Cry Wah is not responding to on/off switch 1 control",
+      "interpretation": "Local LED behavior is not evidence of MIDI or effect response."
+    },
+    {
+      "order": 3,
+      "message": "The wah has also lost it's wah level control",
+      "interpretation": "Both GR6 controls reported unresponsive."
+    },
+    {
+      "order": 4,
+      "message": "Right clicking and selection Learn Midi control has no effect",
+      "interpretation": "No successful assignment change established; native-route failure independently observed."
+    },
+    {
+      "order": 5,
+      "message": "It's now back...I just needed to restart Guitar RIg 6",
+      "interpretation": "User intervention; process check also observes a different MIDIServer. Do not claim a mapping-only repair."
+    },
+    {
+      "order": 6,
+      "message": "Finished \u2014 both Cry Wah controls work",
+      "interpretation": "Post-restart human functional check agrees with paired2 native MIDI data."
+    }
+  ],
+  "runtime_provenance_before_restart": {
+    "utc": "2026-10-27T20:17:21.475778+00:00",
+    "servers": [
+      {
+        "pid": 863,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      }
+    ],
+    "selected_current_uid": [
+      {
+        "pid": 863,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      }
+    ],
+    "installed": {
+      "path": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver",
+      "inode": 239790573,
+      "device": 16777230
+    },
+    "checks": [
+      {
+        "pid": 863,
+        "argv": [
+          "/usr/sbin/lsof",
+          "-a",
+          "-p",
+          "863",
+          "-d",
+          "txt",
+          "-FpfinD"
+        ],
+        "exit": 0,
+        "result": "EXITED",
+        "matches": [
+          {
+            "fd": "txt",
+            "D": "0x100000e",
+            "i": "239790573",
+            "n": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver"
+          }
+        ],
+        "installed_inode_in_matches": true,
+        "stderr": "",
+        "limits": "Mapped text metadata, not code/UUID/private state; absence or denial is inconclusive"
+      }
+    ]
+  },
+  "existing_paired_window_server_log": {
+    "utc": "2026-10-27T20:17:23.023338+00:00",
+    "argv": [
+      "/usr/bin/log",
+      "show",
+      "--style",
+      "ndjson",
+      "--info",
+      "--start",
+      "2026-10-27 20:12:20+0000",
+      "--end",
+      "2026-10-27 20:13:00+0000",
+      "--predicate",
+      "process == \"MIDIServer\" AND (eventMessage CONTAINS[c] \"rigkontrol\" OR eventMessage CONTAINS[c] \"rk3\" OR eventMessage CONTAINS \"MIDIReceived\")"
+    ],
+    "exit": 0,
+    "result": "EXITED",
+    "bytes": 25,
+    "lines": 1,
+    "bounded": true,
+    "stderr": "",
+    "log_configuration_changed": false,
+    "limits": "Existing matching messages only; empty output does not prove successful native delivery"
+  },
+  "restart_lifecycle": {
+    "argv": [
+      "/usr/bin/log",
+      "show",
+      "--style",
+      "ndjson",
+      "--info",
+      "--start",
+      "2026-10-27 20:17:00+0000",
+      "--end",
+      "2026-10-27 20:21:50+0000",
+      "--predicate",
+      "process == \"MIDIServer\" OR ((process == \"launchd\" OR process == \"runningboardd\") AND eventMessage CONTAINS[c] \"MIDIServer\")"
+    ],
+    "exit": 0,
+    "result": "EXITED",
+    "bytes": 143177,
+    "line_count": 99,
+    "bounded": true,
+    "stderr": "",
+    "no_configuration_change": true,
+    "report_projection": [
+      {
+        "timestamp": "2026-10-27 20:19:29.436042+0000",
+        "processID": 863,
+        "processImagePath": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer",
+        "eventMessage": "[0x765507c780] invalidated because the client process (pid 10580) either cancelled the connection or exited"
+      },
+      {
+        "timestamp": "2026-10-27 20:19:34.178911+0000",
+        "processID": 863,
+        "processImagePath": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer",
+        "eventMessage": "            MIDIServer.mm:432   MIDIServer [863] exiting"
+      },
+      {
+        "timestamp": "2026-10-27 20:19:34.191176+0000",
+        "processID": 448,
+        "processImagePath": "/usr/libexec/runningboardd",
+        "eventMessage": "[osservice<com.apple.midiserver(501)>:863] termination reported by launchd (0, 0, 0)"
+      },
+      {
+        "timestamp": "2026-10-27 20:19:39.999446+0000",
+        "processID": 35193,
+        "processImagePath": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer",
+        "eventMessage": "            MIDIServer.mm:286   FullInit(/System/Library/Frameworks/CoreMIDI.framework/MIDIServer) - MIDIServer [35193] starting"
+      },
+      {
+        "timestamp": "2026-10-27 20:19:40.605555+0000",
+        "processID": 35193,
+        "processImagePath": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer",
+        "eventMessage": "            MIDIServer.mm:373   FullInit() - MIDIServer [35193] started"
+      }
+    ],
+    "projection_limit": "Only single-line relevant client/old-exit/new-start/termination messages; aggregate assertion dumps omitted from report."
+  },
+  "restart_crash_metadata": {
+    "targeted_pattern": "MIDIServer*.ips",
+    "max_files": 3,
+    "files": [],
+    "limit": "Targeted report metadata only; no report/empty inventory does not prove normal exit"
+  },
+  "process_transition": {
+    "GR6_before": 10580,
+    "GR6_after": 35183,
+    "MIDIServer_before": 863,
+    "MIDIServer_after": 35193,
+    "audio_USB_owner_before_and_after": 72936,
+    "native_Controller_source_UniqueID_before_and_after": -1923072596,
+    "native_endpoint_ref_before": 3534891,
+    "native_endpoint_ref_after": 144150571,
+    "limit": "Endpoint refs changed with server replacement; that numeric change alone does not prove a stale-reference bug."
+  },
+  "findings": [
+    "The own private source successfully delivered an exact marker through a legacy CoreMIDI input callback; general callback support works in this environment.",
+    "Before restart, the same client/port received exact private markers before and after witnessed RK3 actions but received zero native callbacks. General observer failure and its CC filter do not explain this native-route result.",
+    "Current native plugin was mapped in the failing MIDIServer: lsof mapped text path/inode/device match installed bundle executable. No stale-image cause is established.",
+    "User later corrected initial GR6 response claims. Current effect response is established only by the post-restart check, not the retracted before-state reports.",
+    "The user restarted GR6; logs show old client10580 disconnected, MIDIServer863 logged exiting, and35193 started. No assistant service restart was issued. The audio USB owner and installed bundles stayed unchanged.",
+    "After this app/server lifecycle change, the same paired binary/port pattern received two CC80 changes and531 CC4 messages, range0..127,last0; both private controls and cleanup passed, and user confirmed both CryWah controls.",
+    "This proves recovery with the observed app/server restart, not automatic post-sleep recovery or a permanent driver fix. Actual EnableSource/private guard values and native MIDIReceived invocation/return remain unobserved."
+  ],
+  "next_bounded_step": {
+    "location": "existing rigkontrol3-40h.2 only",
+    "question": "Does one actual sleep/wake reproduce the native route failure in the freshly working MIDIServer without app or server restart?",
+    "minimum_check": "Reuse the same paired-consumer/raw-watcher binaries. Establish genuine fresh native CC before sleep, then one postwake switch/pedal action with private controls and source UniqueID/server PID before/after. Keep the observer connected; do not re-learn or reset inputs to obtain a pass.",
+    "limits": "Raw G/property/schema changes halt the existing observer and are recorded as transitions/measurement limits, not missing MIDI proof. Private control B failure makes native attribution inconclusive. A green test establishes one fresh post-sleep attempt, not a permanent fix.",
+    "instrumentation_gate": "Only if that bounded comparison reproduces the native-route RED with valid raw and private controls should a minimum actual Start/Stop/EnableSource/delivery-guard/MIDIReceived measurement be planned here before code. No new driver build or planning-only bead now.",
+    "constraint": "No further physical action or sleep was admitted/performed in the present live checks. Preserve NI timing/recovery and SIP."
+  },
+  "reviews": {
+    "private_control_source": "PASS_root_and_independent_before_execution",
+    "paired_consumer_source": "PASS_root_and_independent_before_execution",
+    "postrestart_delta": "root_verified_ONLY_capture_label_changed_and_all_C_binary_raw_assessor_hashes_identical",
+    "result_record": "PASS_independent_65_pin_capture_facts_and_limits_review",
+    "causal_scope_and_next_step": "PASS_independent; wording qualified and existing-tools sleep comparison precedes new instrumentation"
+  },
+  "verification_final": {
+    "utc": "2026-10-27T20:30:06.092143+00:00",
+    "all12_installed_build13_hashes_unchanged": true,
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "processes": "35183   501 /Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6\n35193   501 /System/Library/Frameworks/CoreMIDI.framework/MIDIServer\n72936   202 Core Audio Driver (RigKontrol3Audio.driver)\n",
+    "owned_control_observers_absent": true,
+    "production_diff": ""
+  },
+  "prior_evidence": {
+    "path": "ReverseEngineering/Evidence/Build13PostSleepMIDIInvestigation.json",
+    "sha256": "a874045f3f869febc16f02fecb649cd1f2bb01c17076ec5580cb34bc50b56f31",
+    "correction": "Retain historical assertions, but its working-GR6 human claims were later retracted in this record."
+  },
+  "limits": [
+    "No private RK3 driver MIDIReceived return or guard state observed.",
+    "All new native subscriptions are controlled new consumers, not original subscriber recovery proofs.",
+    "No new sleep transition tested; no USB or held-switch recovery qualification.",
+    "Raw host times are not wire times; digital_snapshot is cached momentary input, not effect or LED latch.",
+    "Native packet hex logging is bounded to first64 packets; counters cover all callbacks and CC values.",
+    "Unsupported native Private property status-10835 is retained; its initialized zero is not a successful private0 read.",
+    "The log summary projects only relevant single-line lifecycle entries; unrelated aggregate assertion dumps remain only in ignored original capture, not report content.",
+    "Empty matching delivery logs and empty targeted crash-report inventory do not prove a successful call or a universal normal-exit claim.",
+    "Preflight file pins captured an unexecuted private source revision before ownership guards; final admission/build pins identify the actual executed source/binary."
+  ],
+  "private_artifact_sha256": {
+    ".build/native/live-midi-delivery/assess-paired.py": "f2c83006763927b8ae855c2aab3d584bbe3e5f964e63bdf1069e3f519e8db3f4",
+    ".build/native/live-midi-delivery/control-admission.json": "4b5a30a5042be277b2a30400f8767c3414854db3ac752faae419b95f23000bb4",
+    ".build/native/live-midi-delivery/existing-server-log/result.json": "d4ff14de87c9b39978ca2c6da36e9988de4c910a8aa163e5235f8c25c241a197",
+    ".build/native/live-midi-delivery/existing-server-log/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/existing-server-log/stdout.ndjson": "6a105b91d25933f6c54289af691d9c991a86c63c340ca13a472b5a44aa88c346",
+    ".build/native/live-midi-delivery/native-paired-1/assessment.json": "a03f76e50ed971fc8f696f46dd16206091b8d4e604bafeab7cd20ec795eb691f",
+    ".build/native/live-midi-delivery/native-paired-1/execution.json": "2f37453042bcc63fcd0531b81e2eef9bfa32c2dd975c4e56dc788684cd8a64d2",
+    ".build/native/live-midi-delivery/native-paired-1/frozen-tools/paired-action.sh": "93112b020a429685b59fd33dcdbd4d95159fd7b7b763cc8dfb65650f7f1cb868",
+    ".build/native/live-midi-delivery/native-paired-1/frozen-tools/run-paired-action.py": "2eae9b0377f0c941424638055a9b5240f28aaf819c6b0fadf2718ae31cb76e66",
+    ".build/native/live-midi-delivery/native-paired-1/human.json": "88b3925e1af9233ffe41d3d69b0af007467cdf2e55260bb4beb2e753709f06fb",
+    ".build/native/live-midi-delivery/native-paired-1/midi-baseline.log": "cd2ba8960a73ecb9345244836fd87e9f25153cabd639ac48c0deabf2d56de01b",
+    ".build/native/live-midi-delivery/native-paired-1/midi.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    ".build/native/live-midi-delivery/native-paired-1/midi.log": "acb9d18fd610b7ee34141557f9d73b05a5a8b3cf6884c19247b00f9c0d31ea93",
+    ".build/native/live-midi-delivery/native-paired-1/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/native-paired-1/raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    ".build/native/live-midi-delivery/native-paired-1/raw.ndjson": "72292ff6740f551a386f6d29af6f48efd525ef80ac1f2116ecd6e5e967d92039",
+    ".build/native/live-midi-delivery/native-paired-1/raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/native-paired-2/assessment.json": "be4fcd672da79608dcea15e3b9f5e8770044e86c078a96024cc95f150eb740f2",
+    ".build/native/live-midi-delivery/native-paired-2/execution.json": "370221dad04434ed3c3650ed1a0df0973675d106c4a4eaffddc8c035ebef4f63",
+    ".build/native/live-midi-delivery/native-paired-2/human.json": "5a7a6327676e4049a252e080bb34277ea66d044f39fe92499e534dab96cbc262",
+    ".build/native/live-midi-delivery/native-paired-2/midi-baseline.log": "ea35fe6aec8e0171549efbfe6b8c1f0e995f4c11510033cd621ad510195c8ecc",
+    ".build/native/live-midi-delivery/native-paired-2/midi.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    ".build/native/live-midi-delivery/native-paired-2/midi.log": "6dbed91fbf66074dbb6b02afc4e6aba8709414f2bc974145951a900c39a2fcbd",
+    ".build/native/live-midi-delivery/native-paired-2/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/native-paired-2/raw.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    ".build/native/live-midi-delivery/native-paired-2/raw.ndjson": "b81bb17071e8df768bcde8793bd54362d5db0e03ab311669c50a505bc58d1003",
+    ".build/native/live-midi-delivery/native-paired-2/raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/paired-action.sh": "cc2d21bea49684792e720f3c6ff09e6f23fb1d515a7ea78b914a0f26b86ba821",
+    ".build/native/live-midi-delivery/paired-admission.json": "dfd15318e5fbfaf76959bdddb5a52fc36c9a8083b0e8056d941df08ee29e1f17",
+    ".build/native/live-midi-delivery/paired-consumer": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+    ".build/native/live-midi-delivery/paired-consumer.c": "cdd2013158c9b2302f6bda8286e303a8def9bf52aaa65b5a9d0676e00aa2820b",
+    ".build/native/live-midi-delivery/paired-offline-1793131741496031000/architecture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/paired-offline-1793131741496031000/architecture.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/paired-offline-1793131741496031000/compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/paired-offline-1793131741496031000/compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/paired-offline-1793131741496031000/result.json": "dc30a1d822bad33d8600c804f6234382020b8015ba4f8f2fb6789f75f0f6fa80",
+    ".build/native/live-midi-delivery/post-restart-admission.json": "fd26487f423ef4b494295024847d676355298127fac9825b1e773243c9c64c7d",
+    ".build/native/live-midi-delivery/preflight.json": "5ff4f8c0631f19d0ce270db4348c38dc3e5f59f10a825cc88beda22b7139684d",
+    ".build/native/live-midi-delivery/private-control": "8bf7229933359c2c15d88c56efb236b19542223d51f68b29fb8162d044845a5e",
+    ".build/native/live-midi-delivery/private-control-1/execution.json": "3f88b35347cd387327c31931f0236e13b2520cb160a2ca70f680506baf3057b3",
+    ".build/native/live-midi-delivery/private-control-1/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/private-control-1/stdout.ndjson": "c89f151238126a88d5ab9954b1cef27bb222b200dc0118575c063b176eb8a00d",
+    ".build/native/live-midi-delivery/private-control-summary.json": "4cb6cedf57fd2a73c509589aa80c892762a9517fd4432e8924312517dd75797b",
+    ".build/native/live-midi-delivery/private-control.c": "67f66a45e572dde3a8696aab361861348e217d549c61229382e8192d25ebe85b",
+    ".build/native/live-midi-delivery/restart-crash-metadata.json": "9a8b239c407564d0f66fc38ec13d1b7d49ac99fccb95e2045238cb456bb1fe44",
+    ".build/native/live-midi-delivery/restart-lifecycle/report-summary.json": "a2c997a39ebbb8ccee8b298fd8804e2f3c105f9899251b2dba38a395a647069b",
+    ".build/native/live-midi-delivery/restart-lifecycle/result.json": "ffe49141d94c985c372f92dfe912043507147527c3f227bb3fca71788a5b8073",
+    ".build/native/live-midi-delivery/restart-lifecycle/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/restart-lifecycle/stdout.ndjson": "239521c2b5f0877433579fbf717a7b65d804d664e6bb41405fa444fb8b94325e",
+    ".build/native/live-midi-delivery/run-paired-action.py": "8bc432df0f34dc1f674e97654040fd47ceca8e2edcda7aecdfbccd3d9665912e",
+    ".build/native/live-midi-delivery/runtime-provenance/lsof-863.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/live-midi-delivery/runtime-provenance/lsof-863.stdout": "9aa74920bcd13cb3166c3f58be7242389ceb877afd46fafd042253c66d978ddc",
+    ".build/native/live-midi-delivery/runtime-provenance/result.json": "a6d5e08425defdbdc55b4d39c9e1c8856698d58a658562f6357f39305c7b1be3",
+    ".build/native/live-midi-delivery/verification-final.json": "cfb112bf33ca9b28f4bf32ebfc46e381ed4226bef996bfff1e4c672eb414c24f",
+    ".build/native/live-midi-delivery/wrapper-offline.json": "c1c5f6e7d5d125028674d292eb5225cca82b8699959ef8c713173cd74266ee4a",
+    "/private/tmp/rk3-live-midi-delivery-plan.txt": "a17185fda364d2e91af484439633dc10b7ca842c4b782ad45f99eae57591437e",
+    "/private/tmp/rk3-live-midi-sdk-amendment.txt": "57f86db5c2fa113e5cc3bf98a41238194ab25cb9147fb7e445e611b085267f44",
+    "/private/tmp/rk3-live-midi-paired-plan.txt": "650a91ed25d581e405d58b38711e9b28db6fab715f92d969577e312afb3580dc",
+    "/private/tmp/rk3-live-midi-control-admission.txt": "807d516f9d88e99afe867736bf4dfc8f3e3f42cf4af9b8741f66194651245cb4",
+    "/private/tmp/rk3-live-midi-paired-admission.txt": "279f7756268ea0bf52dd2ffd7359a2de2bdbcac76c68a48ba48cbc8d5dee64b6",
+    "/private/tmp/rk3-live-midi-paired-result-and-metadata-plan.txt": "07bc6010f259f0c0bd7668265475d1ae89c090a765f5358d030084ceebc85798",
+    "/private/tmp/rk3-live-midi-postrestart-plan.txt": "b86283fee6cd7a0671e76341a0cceb2b4dc6b91ef4f5dbab01d8ec25ba3f6bb1",
+    "/private/tmp/rk3-live-midi-postrestart-result.txt": "17419408c87dd7d7f22a1dd1a1471183f4aa0313045f36e81b94596720d1515b",
+    ".build/native/postsleep-investigation/tools/rawwatch": "3899b149b230f352edcf198f41321b24fe85adfc639a774d787252a06d1ce21e",
+    ".build/native/postsleep-investigation/tools/assess-fresh.py": "8f10eb5fd4e0621b48d4ca4fca873b1e97cc38ac1780beecdab87b272dd0f760"
+  }
+}

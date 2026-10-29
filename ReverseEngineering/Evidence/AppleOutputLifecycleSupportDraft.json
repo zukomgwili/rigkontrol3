@@ -1,0 +1,91 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "status": "DRAFT_ONLY_NOT_SENT",
+  "draft": "ReverseEngineering/AppleOutputLifecycleSupportRequest.md",
+  "subject": "AudioServerPlugIn: guaranteed last output-buffer detachment event while input continues",
+  "copy_body_words_whitespace_count": 547,
+  "external_messages_or_submissions": 0,
+  "new_beads": 0,
+  "existing_trace_only": true,
+  "new_live_capture_or_driver_query": false,
+  "current_metadata_only_commands": [
+    "sw_vers",
+    "sysctl -n hw.model machdep.cpu.brand_string",
+    "xcrun --sdk macosx --show-sdk-version",
+    "xcodebuild -version"
+  ],
+  "metadata_recorded_utc": "2026-10-28 21:50:12 UTC",
+  "current_environment": {
+    "macOS": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac14,2 / Apple M2",
+    "Xcode": "27.1 / 27A9275",
+    "macOS_SDK": "27.0"
+  },
+  "capture_OS_or_Xcode_build_independently_recorded": false,
+  "saved_capture": {
+    "capture_date_UTC": "2026-10-28",
+    "sample_rate": 44100,
+    "buffer_frames_verified_by_collector_preflight": 128,
+    "distinct_public_IOProcIDs": 2,
+    "requested_usage_masks_input_output": [
+      [
+        1,
+        0
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "native_client_ID_for_owned_cohort": 885,
+    "native_client_not_PID_or_IOProcID": true,
+    "native_IO_increase_during_output_stopped_window": {
+      "ReadInput": 362,
+      "WriteMix": 362
+    },
+    "output_IsActive_samples": 18,
+    "sampled_output_IsActive_all": 1,
+    "final_native_ReadInput": 370,
+    "final_native_WriteMix": 370,
+    "final_public_A_callbacks": 370,
+    "final_public_B_callbacks": 4,
+    "native_StartIO_calls": 1,
+    "native_StopIO_calls": 1,
+    "public_B_callback_counter_constant_during_window": 1,
+    "public_B_callback_counter_delta_during_window": 0,
+    "public_callbacks_audio_PCM_buffer_or_timestamp_inspection": false
+  },
+  "collector_is_standalone": false,
+  "collector_dependencies": [
+    "project NativeClient and trace-schema headers/functions",
+    "custom natr property in temporary instrumented audio build17",
+    "RK3 hardware"
+  ],
+  "measurement17_currently_installed_claimed": false,
+  "attachments_assembled": false,
+  "scope": {
+    "functional_code_changed": false,
+    "NI_ring_timing_recovery_changed": false,
+    "mappings_calibration_LED_policy_changed": false,
+    "SIP_or_security_settings_changed": false,
+    "driver_build_install_or_service_restart": false
+  },
+  "file_sha256": {
+    "ReverseEngineering/AppleOutputLifecycleSupportRequest.md": "437ec53f7cd094b161b250fc9188f1c8aebeb7717ac176673c7269c6933f47d8",
+    "ReverseEngineering/Evidence/Build17HostClientLifecycleValidation.json": "8db66c371ee092632d535674e28c9c3dec581138d526c79ac4c73803e0cff625",
+    "ReverseEngineering/NIOutputBindingResolution.md": "abf4518d8ffd6a2763ea9563c0dcb219e40250db58ae62e6a4e14c0cf1897b7c",
+    "ReverseEngineering/Evidence/NIOutputBindingResolution.json": "2e0c3de582046e68c3eaab1433c2959b52e0f64bcdc113edfda2c0cf4eb428db",
+    ".build/native/build17-audio-lifecycle/trace-client.c": "3546bbe9e3a62a3ab86b0c943ca7b9083835152225d1aabf90c4740a926eec09",
+    ".build/native/build17-audio-lifecycle/live-1/main.stdout.log": "576c2375c56ce620ad56d3eb5c696ab38ae3409a08dcb3bb3de58bedf1981d4b",
+    ".build/native/build17-audio-lifecycle/decoded-trace.json": "11e44fe8a30937d068d85bf1748b47561cdcb49c2e73076791374cffe577ad9a",
+    "Driver/AudioLifecycleTrace.h": "a941bc53a70b2fd279659ba5601e30e8a74da52567b5732674066de8b6228396",
+    ".build/ni/apple-support-draft/environment.json": "d8f6995439b5217858ff0ee2f65941e9a0cb21bed954cef4b4adba8f0090b9d3"
+  },
+  "validation": {
+    "source_hashes_and_numerical_claims": "PASS_root_saved_trace_source_log_and_decoded_matrix",
+    "body_has_no_private_local_paths": true,
+    "independent_review": "PASS_saved_trace_fact_review_and_root_verification_after_counter_label_precision_fix",
+    "cleanup_requirement_or_public_NULL_gate_waived": false
+  }
+}

@@ -1,0 +1,1090 @@
+{
+  "schema": 1,
+  "bead": "rigkontrol3-40h.3",
+  "related_delivery_beads": [
+    "rigkontrol3-40h.2",
+    "rigkontrol3-40h.1"
+  ],
+  "recorded_utc": "2026-10-27T18:15:54.590096+00:00",
+  "version": "0.2.8/build13",
+  "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "repository_head_before_tests": "70e7277c12be316ff77317f89eaae94bc3d159ef",
+  "candidate_manifest_sha256": "1f1ca4e62c723c9136049809fdedc61fd3957c4f77736d5e929b8d8ef7667660",
+  "SESSION": "/Library/Application Support/RigKontrol3/NativeDriverBackups/20261027T141749Z-e61d2f53",
+  "result": "INCOMPLETE_recovery_sequence_stopped_at_post_sleep_fresh_control_failure",
+  "M1_complete": false,
+  "M2_complete": false,
+  "M3_complete": false,
+  "lift_and_shift_complete": false,
+  "gates": {
+    "initial_awake_attempt": "INCOMPLETE_execution_coordination_not_counted_as_driverfailure_or_validgate",
+    "valid_awake_A2": "PASS_actual_stop_start_quiet_and_fresh_controls",
+    "first_sleep_attempt": "NOT_SLEEP_user_locked_or_display_off",
+    "actual_B2_power_transition": "PASS_OS_Sleep18:06:00_to_Wake18:06:42_42seconds",
+    "B2_retained_state_and_quiet": "USER_RETAINED_WAH_LED_PASS_RECORDED_CC_UNCHANGED_PHANTOM_EXCLUSION_UNPROVEN",
+    "B2_fresh_controls": "FAIL_postwake_OFF_and_pedal_not_observed_GUI_wah_still_on",
+    "released_switch_USB": "NOT_RUN_stopped_at_B2_failure",
+    "held_switch_USB": "NOT_RUN_stopped_at_B2_failure",
+    "last_output_three_cycles": "NOT_RUN_direction_helper_only_offline_prepared",
+    "nonzero_PCM_stale_replay": "UNVALIDATED_no_output_waveform_or_audible_replay_test"
+  },
+  "plan": {
+    "text": "FROZEN BUILD13 RECOVERY EXECUTION / PRIVATE TEST-TOOL PLAN \u20142026-10-27\n\nExisting .3 only; no new issue, driver implementation, install, original-source decompile, transport/ring/calendar/clock/recovery/QoS change, mapping/calibration/LED-policy change or security setting. Same signed0.2.8/build13 sourcee61aa5ab. Fresh12hashes/signatures/SIP and soleowner72936/device128/G1/running48k verified. User ready with guitar/headphones, low level, all controls released/heel. GR6 currently running known wah test48k128.\n\nOrder: A) one actual awake audio Stop/Start by quitting Guitar Rig (not rack bypass/mute), waiting10s and reopening the same preset, while persistent nativeMIDI and raw-native/status/log observers continue. Require actual connected-idle interval flags1/running0 then runningflags3/48k, same generation/owner, no unexpected errors or switchCCs while untouched. Then fresh switch1on/sweep/off and user clear audio/LED/pedal confirmation, exact2CC80 and freshCC4. B) sleep/wake with audio+MIDI and wah/LED1on: user presses onceon, sleeps normally/wakes, waits10s untouched; record physicalLED/wah state, then one freshpress off+pedalsweep. Sleep may retain or replace USBcohort; no phantom switchCC in quiet transition, no MIDI port refresh/GR6 relaunch/LED reset workaround. C) released-switch USB: fromoff pressonceon/release, unplug5s/reconnect, wait10s untouched, confirm retainedwah/LED1on; then freshpress off+pedalsweep. D) held-switch USB: fromoff pressonceon and hold through unplug5s/reconnect10s; confirmstillheld/retainedon, then release (noevent) and one freshpress off+pedalsweep. SameMIDI monitor throughout humanreplies; cumulative snapshots before/after each transition/action. Expected switchCC1=80 and other7=81,82,83,76,77,78,79. Quiet transition phantom criteria concern switchCCs, not analogCC4 noise. Exact history/cachedsnapshot not substituted for freshphysicalactions. Keep allLEDs off at end by ordinary physicalaction; no correctivefeedback during automatic-recovery judgement.\n\nRaw transition observer: a new ignored .build/native/build13-recovery/tools/native-state-watch.c, minimal derivative of the previously reviewed rate-watch: DEVICE argument only; read-only rk3_native_copy_info and publicnominalrate each100ms, print raw tick+walltime/status/flags/G/version/error/native/publicrate; report failed/disconnected states instead of exiting, no automatic success verdict, no setter/start/reset/retry/USB/MIDI writes. SIGINT/SIGTERM terminatecleanly. Offline strictARM compile and pure argument/finite serialization fixtures +independentreview before liveuse. Root classifies every row by explicit phase. Steady/awake require version1/status0/flags1or3 asphase/rate48000/error0/sameG. Planned sleep/USB windows may contain no-device/not-open/aborted/not-ready or unavailableproperty states, recorded literally; never suppress IsoTooOld, unrelatedfaults or postrecovery errors. SDK IOReturn constants only if needed to classify literal observed values, no broadnewanalysis. User wait10s recovery is checked against actual healthy rows; root allows atmost30s after reported reconnection/wake for healthy stable state (no reconnect/retry). If no recovery, retainfailure andstopaffectedtest. USB sameowner requiresnewconnectedgeneration>previous, not exact+1. SleepmayretainoradvanceG; anyownerchange mustberecorded andno duplicateowner permitted; do not silently reuseoldlogPID. Observe one stable10s healthy posttransition before freshactions where data permits.\n\nPersistent observers: reused frozen native MIDI monitor; new rawstatewatch; existing owner error/fault/timing logstream. Pin sources/binaries/argv/PIDs, rootsnapshots/events/time, eachhumananswer. No secondUSBowner or standaloneaudiblemonitor whileGR6runs. Stop at first unexpected transport/process/useraudio/control fault; preserveevidence, no repair/retry/diagnosticexpansion. Expected disconnect observations remain inlogs; classify individually, not blanketignored. User actions maytake time, so no45s recorder expiry. Lowheadphones before anynewaudibleclient. No hiddenpower/sleep/security commands: user performs sleep/USB, and normalappquit/reopen. Native audio test that directly claimsUSB is excluded.\n\nE) smallest private standardCoreAudio direction-helper, OFFLINE prepared/reviewed in parallel, only then one bounded silent run after GR6 quits and cleanidle established. .build/native/build13-recovery/tools/direction-recovery.c, no productioncode. Reuse existing public UID/nativeinfo lookup/health and128buffer patterns. Two actual AudioDeviceIOProcIDs configured/readback using SDK kAudioDevicePropertyIOProcStreamUsage per complete one-stream direction, selected returnedID in mIOProc: input(1,0), output(0,1). Null disabled direction buffers mustbeverified in actual callbacks, stereoFloat32/128 geometry/finite timestamps/counters; output allzeros, no tones/gain/monitor/testring. Keep inputID running, startoutput then stop/restart outputID atmost3times, while inputcount/currentclock advances and stoppedoutput count quiescent. At each naturalstop read OUTPUT stream kAudioStreamPropertyIsActive WITHOUT setting it. Require actualglobalinactive if claiming NI last-output ring-clear boundary. If outputremainsactive, finishsafe cleanup and record CLIENT_DIRECTION_ONLY / NI_LAST_OUTPUT_UNPROVEN, notPASS, no forcingglobalstreamproperty ordriverfix. No nonzeroPCM stale-replay proof fromsilence; recordexplicitlimitation. If helper admission/offline or publicboundary fails, reportexactgap; do notinventbackend/API. No separate fullawakecycle inhelper (gateAalreadydoesactualGR6StopStart), noextra diagnostic run or retries. Bound eachphase<=5s (total<=60s), cleanup output theninput and destroyIDs; failuresstopsequence, recordallnative/clock/count/IsActive/callstatuses. Allappclients mustbeclosed/idle before claimlastoutput; preserve128hosttestsetting; no sample-rate setter. Sourceofflinefixtures+strictcompile+independentreview beforeliverun. Rootprivateplan sets this exact scope before coding; implementation agent must not widen.\n\nFinish requested recovery subset with exact PASS/FAIL/unvalidated per gate and proof limits, not wholeM1/M2/M3. No DIN/toe/external/latency/gain/reinstall/extra stability inthis task. Compact Build13RecoveryValidation record, independent rawrecordreview, update existing Beads +terminalhandoff, passiveexportactiveonly/preserveprimaryindex113d42992a0ee90acfb640fc694b469abba536a6, Gitpullrebase/push and separateDoltpush. GuitarRig mayremainavailable at end after judgement; any manualreopen needed for testhelper setup isnotautomaticUSBrecovery evidence.\n",
+    "sha256": "1b2639de7c9b789341f5c16882f81fa5a77000217336000ee338be86f768a9cc",
+    "inline_beads_refinements_before_changes": "Ownership/cleanup/readiness/stickyfault privatehelperguards; rootexecutioncoordinationcorrection/newbaseline; exactpowerlogreads for actualsleep vslock. No newBead."
+  },
+  "installed_before": {
+    "recorded_utc": "2026-10-27T17:22:48.912670+00:00",
+    "installed_files": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143"
+    },
+    "signatures": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      },
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      }
+    },
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "readback_exit": 0,
+    "live": {
+      "device": 128,
+      "nominal_rate": 48000,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 48000,
+      "available_rates": [
+        [
+          44100,
+          44100
+        ],
+        [
+          48000,
+          48000
+        ],
+        [
+          88200,
+          88200
+        ],
+        [
+          96000,
+          96000
+        ],
+        [
+          192000,
+          192000
+        ]
+      ]
+    },
+    "owners": [
+      "72936 Core Audio Driver (RigKontrol3Audio.driver)"
+    ],
+    "GR6": [
+      "862 /Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+    ]
+  },
+  "installed_after": {
+    "recorded_utc": "2026-10-27T18:13:13.838377+00:00",
+    "installed_files": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143"
+    },
+    "signatures": {
+      "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      },
+      "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin": {
+        "exit": 0,
+        "detail": "",
+        "version": "0.2.8",
+        "build": "13"
+      }
+    },
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "readback_exit": 0,
+    "live": {
+      "device": 126,
+      "nominal_rate": 48000,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 48000,
+      "available_rates": [
+        [
+          44100,
+          44100
+        ],
+        [
+          48000,
+          48000
+        ],
+        [
+          88200,
+          88200
+        ],
+        [
+          96000,
+          96000
+        ],
+        [
+          192000,
+          192000
+        ]
+      ]
+    },
+    "owned_observers_absent": {
+      "6716": true,
+      "6873": true,
+      "6715": true,
+      "9644": true,
+      "9645": true,
+      "9646": true
+    },
+    "owners": [
+      "72936 Core Audio Driver (RigKontrol3Audio.driver)"
+    ],
+    "GR6": [
+      "10580 /Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+    ]
+  },
+  "session_state": {
+    "result": "STOPPED_B2_POST_SLEEP_CONTROL_FAILURE",
+    "started_utc": "2026-10-27T17:30:14.724431+00:00",
+    "source_commit": "e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+    "directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/session-1",
+    "driver_pid": 72936,
+    "device": 128,
+    "initial_generation": 1,
+    "rate": 48000,
+    "host": "Guitar Rig 6",
+    "host_initial_UI": "Existing RK3 Build12 Physical Test* wah rack, wahgrey/off, pedalheel; actualGR6running; no settings changed.",
+    "user_readiness": "Ready \u2014 level low and controls released",
+    "switch_ccs": [
+      80,
+      81,
+      82,
+      83,
+      76,
+      77,
+      78,
+      79
+    ],
+    "expression_cc": 4,
+    "pins": {
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor": "ad5adb79c04b93e9d17bdbe7dac6e017e67437d41947c319a8154f1484195364",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-feedback": "7d88388a6bc8835c8a06dded7ae34ab87bf3a348627449041ff2b166ad18b9fc",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/tools/native-state-watch.c": "a270cd90253054f40390a0f20b77a4939c69025b1318f7f0fbee317e71003cdb",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/tools/native-state-watch": "408b8bb43f87ab2ecc79b25a1f5f312797dbd85057dcfd5de0d9e455d24768ab"
+    },
+    "phases": [
+      {
+        "name": "A_awake_StopStart_quiet",
+        "started_utc": "2026-10-27T17:33:05.372605+00:00",
+        "before_midi": "Native Controller monitor connected; recording until stopped. PID=6716\nTotal controller CC messages: 0\n",
+        "before_native": {
+          "tick": 3960318248860,
+          "walltime": "2026-10-27T17:33:05.184145000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "expected_generation": 1,
+        "result": "AUDIO_STATE_PASS_MIDI_QUIET_UNQUALIFIED",
+        "ended_utc": "2026-10-27T17:41:25.994164+00:00",
+        "idle_observed_seconds": 119.395848,
+        "idle_first": {
+          "tick": 3968618001272,
+          "walltime": "2026-10-27T17:38:51.007002000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 1,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "idle_last": {
+          "tick": 3971483503065,
+          "walltime": "2026-10-27T17:40:50.402850000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 1,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "post_native": {
+          "tick": 3972333186584,
+          "walltime": "2026-10-27T17:41:25.806315000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "after_midi": "Native Controller monitor connected; recording until stopped. PID=6716\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\n",
+        "host_action_note": "User requested quit/wait/reopen. Agent CUA quit attempt overlapped process closure and returned procNotFound; oldPID862 absent and nativeidle proved stop. Agent reopened app using Finder GoToFolder and Open. No restartcount inferred from cachedAX. Pending manual Reopened answer is not needed for actual machine-observed cycle.",
+        "quiet_limit": "Zero recorder events is not phantom-edge proof once recorder did not corroborate later confirmed physical actions; no pre-stop fresh-event baseline was collected."
+      },
+      {
+        "name": "A_fresh_controls_after_StopStart",
+        "started_utc": "2026-10-27T17:41:25.994358+00:00",
+        "before_midi": "Native Controller monitor connected; recording until stopped. PID=6716\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\n",
+        "before_native": {
+          "tick": 3972333186584,
+          "walltime": "2026-10-27T17:41:25.806315000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "expected_CC80_delta": 2,
+        "user_answer": "Yes \u2014 audio and controls work after restart",
+        "manual_reopen_answer": "Reopened \u2014 pedals untouched",
+        "ended_utc": "2026-10-27T17:44:14.502694+00:00",
+        "after_midi": "Native Controller monitor connected; recording until stopped. PID=6716\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\nTotal controller CC messages: 0\n",
+        "midi_summary": {},
+        "awake_idle_intervals": [
+          {
+            "start": "2026-10-27T17:38:51.007002000Z",
+            "end": "2026-10-27T17:40:50.402850000Z",
+            "seconds": 119.395848
+          },
+          {
+            "start": "2026-10-27T17:42:52.753391000Z",
+            "end": "2026-10-27T17:42:55.899174000Z",
+            "seconds": 3.145783
+          },
+          {
+            "start": "2026-10-27T17:42:56.644312000Z",
+            "end": "2026-10-27T17:42:56.644312000Z",
+            "seconds": 0.0
+          }
+        ],
+        "execution_note": "Two stopped intervals observed because agent Finder reopen overlapped the still-pending manual restart. User later completed manual quit/reopen and controls; both intervals preserved, no additional cycles/retry. No phantom-switch claim uses exact2 finalCC80 for2requestedfreshpresses and otherbuttoncounts0.",
+        "result": "INCOMPLETE_cumulative_data_and_human_timing_not_reconciled"
+      },
+      {
+        "name": "segment2_fresh_event_baseline",
+        "started_utc": "2026-10-27T17:49:55.616004+00:00",
+        "before_midi": "Native Controller monitor connected; recording until stopped. PID=9644\n",
+        "user_answer": "Finished \u2014 wah and LED off, pedal at heel",
+        "last_snapshot_utc": "2026-10-27T17:54:47.185871+00:00",
+        "latest_midi": "Native Controller monitor connected; recording until stopped. PID=9644\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\n",
+        "latest_stats": {
+          "4": {
+            "count": 295,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "result": "PASS_fresh_baseline",
+        "physical_state_clarification": "LED 1 is on and/or pedal is away from heel",
+        "return_user_answer": "Finished \u2014 LED and wah off, pedal fully at heel",
+        "ended_utc": "2026-10-27T17:55:09.751648+00:00"
+      },
+      {
+        "name": "A2_root_owned_awake_StopStart_quiet",
+        "started_utc": "2026-10-27T17:55:09.751784+00:00",
+        "before_midi_stats": {
+          "4": {
+            "count": 295,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "before_midi": "Native Controller monitor connected; recording until stopped. PID=9644\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\n",
+        "expected_generation": 1,
+        "instructions": "User leaves pedals still; root quits actualGR6,wait10s,reopensviaFinder. No newmanual appaction question.",
+        "verified_stopped_at": {
+          "tick": 3992723310140,
+          "walltime": "2026-10-27T17:55:35.397814000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 1,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "result": "PASS_actual_audio_StopStart_and_no_new_switchCC",
+        "ended_utc": "2026-10-27T17:56:43.453116+00:00",
+        "idle_observed_seconds": 33.121424,
+        "first_idle": {
+          "tick": 3992195439217,
+          "walltime": "2026-10-27T17:55:13.403195000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 1,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "last_idle": {
+          "tick": 3992990353055,
+          "walltime": "2026-10-27T17:55:46.524619000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 1,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "after_midi_stats": {
+          "4": {
+            "count": 295,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "after_midi": "Native Controller monitor connected; recording until stopped. PID=9644\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\n",
+        "post_native": {
+          "tick": 3994347869079,
+          "walltime": "2026-10-27T17:56:43.087806000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        }
+      },
+      {
+        "name": "A2_fresh_controls_after_valid_StopStart",
+        "started_utc": "2026-10-27T17:56:43.453484+00:00",
+        "before_midi_stats": {
+          "4": {
+            "count": 295,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 2,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "expected_CC80_count": 4,
+        "before_pedal_count": 295,
+        "user_answer": "Finished \u2014 clear audio, wah and LED off, pedal at heel",
+        "latest_stats": {
+          "4": {
+            "count": 341,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 4,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "latest_midi": "Native Controller monitor connected; recording until stopped. PID=9644\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=341 min=0 max=127 last=0\nCC80 count=4 min=0 max=127 last=0\nTotal controller CC messages: 345\n",
+        "last_snapshot_utc": "2026-10-27T17:57:49.650653+00:00",
+        "result": "PASS_user_and_recorded_fresh_controls",
+        "ended_utc": "2026-10-27T17:58:50.052932+00:00"
+      },
+      {
+        "name": "B_sleep_wake_quiet_with_wah_on",
+        "started_utc": "2026-10-27T17:58:50.063874+00:00",
+        "before_midi_stats": {
+          "4": {
+            "count": 341,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 4,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          }
+        },
+        "before_native": {
+          "tick": 3997392793540,
+          "walltime": "2026-10-27T17:58:49.959714000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "expected_CC80_count_after_on": 5,
+        "before_generation": 1,
+        "allowed_transition": "Manual normal sleep/wake only. No corrective app/port/LED action. Humanwait10suntouched; posthealthy48/running/error0 andnativecohortstable10s beforefreshinput.",
+        "user_answer": "Awake \u2014 wah and LED 1 stayed on",
+        "reply_snapshot_utc": "2026-10-27T18:01:24.802610+00:00",
+        "latest_stats": {
+          "4": {
+            "count": 341,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 5,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          }
+        },
+        "latest_midi": "Native Controller monitor connected; recording until stopped. PID=9644\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=341 min=0 max=127 last=0\nCC80 count=4 min=0 max=127 last=0\nTotal controller CC messages: 345\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\n",
+        "power_log_exit": 0,
+        "power_log_filtered": [
+          "2026-10-27 18:00:51 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [krunkit timed out(30000 ms)] [Guitar Rig 6 timed out(30000 ms)]           "
+        ],
+        "native_distinct": [
+          [
+            0,
+            0,
+            1,
+            3,
+            1,
+            0,
+            48000,
+            48000
+          ]
+        ],
+        "post_native": {
+          "tick": 4001044400045,
+          "walltime": "2026-10-27T18:01:22.111284000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "driver_records_at_reply": [],
+        "result": "NOT_SLEEP_user_locked_or_displayoff",
+        "method_answer": "I locked it or turned off the display",
+        "ended_utc": "2026-10-27T18:04:26.298880+00:00"
+      },
+      {
+        "name": "B2_actual_AppleMenu_sleep_wake_quiet",
+        "started_utc": "2026-10-27T18:04:26.601798+00:00",
+        "before_midi_stats": {
+          "4": {
+            "count": 341,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 5,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          }
+        },
+        "before_generation": 1,
+        "expected_CC80_count_after_wake": 5,
+        "instruction": "Wah/LED alreadyon; no pedalaction. AppleMenuSleep>=60s thenwake10suntouched. Need realOSsleeprecord.",
+        "user_answer": "Awake after Sleep \u2014 wah and LED 1 stayed on",
+        "reply_snapshot_utc": "2026-10-27T18:07:15.833195+00:00",
+        "latest_stats": {
+          "4": {
+            "count": 341,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 5,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          }
+        },
+        "latest_midi": "Native Controller monitor connected; recording until stopped. PID=9644\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=341 min=0 max=127 last=0\nCC80 count=4 min=0 max=127 last=0\nTotal controller CC messages: 345\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\n",
+        "power_log_exit": 0,
+        "power_log_filtered": [
+          "2026-10-27 18:06:00 +0000 Sleep               \tEntering Sleep state due to 'Software Sleep pid=447':TCPKeepAlive=active Using Batt (Charge:77%) 42 secs   ",
+          "2026-10-27 18:06:01 +0000 Wake Requests       \t[process=dasd request=SleepService deltaSecs=945 wakeAt=2026-10-27 18:21:47 info=\"com.apple.dasd:501:com.apple.intelligenceflow.toolbox.update.fastpass\"] [process=mDNSResponder request=Maintenance deltaSecs=7198 wakeAt=2026-10-27 20:06:00 info=\"upkeep wake\"] [process=powerd request=TCPKATurnOff deltaSecs=316858 wakeAt=2026-10-31 10:07:00] [process=powerd request=CSPNEvaluation deltaSecs=7228 wakeAt=2026-10-27 20:06:30] [*process=powerd request=UserWake deltaSecs=569 wakeAt=2026-10-27 18:15:31 info=\"com.apple.alarm.user-invisible-com.apple.acmd.alarm,374\"]           ",
+          "2026-10-27 18:06:01 +0000 PM Client Acks      \tDelays to Sleep notifications: [com.apple.bluetooth.sleep is slow(1562 ms)]           ",
+          "2026-10-27 18:06:42 +0000 Wake                \tWake from Deep Idle [CDNVA] : due to MTP.DOCK.CHANNELS.AP0.IRQ RTP.keyboard/UserActivity Assertion Using BATT (Charge:77%)           ",
+          "2026-10-27 18:06:42 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)] ",
+          "2026-10-27 18:06:42 +0000 Kernel Client Acks  \tDelays to Wake notifications: [RTBuddy(ANS2) driver is slow(msg: SetState to 2)(69 ms)] [Codec Output driver is slow(msg: SetState to 1)(74 ms)] [AppleConvergedIPCOLYBTControl driver is slow(msg: SetState to 1)(193 ms)] [AppleMultiFunctionManager driver is slow(msg: SetState to 1)(195 ms)]           "
+        ],
+        "native_distinct_counts": {
+          "(0, 0, 1, 3, 1, 0, 48000, 48000)": 1177,
+          "(0, 0, 1, 1, 1, 0, 48000, 48000)": 20
+        },
+        "post_native": {
+          "tick": 4008517391574,
+          "walltime": "2026-10-27T18:07:13.127424000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "driver_records_at_reply": [],
+        "largest_observer_wall_gaps": [
+          [
+            0.112959,
+            "2026-10-27T18:05:55.290039000Z",
+            "2026-10-27T18:05:55.402998000Z"
+          ],
+          [
+            0.116757,
+            "2026-10-27T18:06:46.154522000Z",
+            "2026-10-27T18:06:46.271279000Z"
+          ],
+          [
+            0.121803,
+            "2026-10-27T18:06:00.283952000Z",
+            "2026-10-27T18:06:00.405755000Z"
+          ],
+          [
+            0.595801,
+            "2026-10-27T18:06:42.103281000Z",
+            "2026-10-27T18:06:42.699082000Z"
+          ],
+          [
+            39.76243,
+            "2026-10-27T18:06:02.137723000Z",
+            "2026-10-27T18:06:41.900153000Z"
+          ]
+        ],
+        "result": "POWER_AND_USER_RETAINED_STATE_PASS_RECORDED_CC_UNCHANGED_PHANTOM_EXCLUSION_UNPROVEN",
+        "ended_utc": "2026-10-27T18:08:05.935474+00:00",
+        "posthealthy_observed_seconds": 10,
+        "OS_sleep_duration_seconds_reported": 42,
+        "OS_warning": "GR6sleepnotificationacktimeout30000ms recorded; actualSleep/Wakecompleted, no nativeAPI/ISO errorobserved. Sourceofwarningnotdiagnosed.",
+        "quiet_proof_limit": "Recorder count5 unchanged only establishes no additional recordedexpectedchannel1CC. Failedpostwakefresh-event witness preventsreliablephantom-eventexclusion; do notcallMIDIquietrecoveryPASS."
+      },
+      {
+        "name": "B2_fresh_controls_after_sleep",
+        "started_utc": "2026-10-27T18:08:05.935675+00:00",
+        "before_midi_stats": {
+          "4": {
+            "count": 341,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 5,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          }
+        },
+        "before_pedal_count": 341,
+        "expected_CC80_count": 6,
+        "expected_generation": 1,
+        "user_answer": "Finished \u2014 clear audio, pedal works, wah and LED off",
+        "latest_stats": {
+          "4": {
+            "count": 341,
+            "min": 0,
+            "max": 127,
+            "last": 0
+          },
+          "80": {
+            "count": 5,
+            "min": 0,
+            "max": 127,
+            "last": 127
+          }
+        },
+        "latest_midi": "Native Controller monitor connected; recording until stopped. PID=9644\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=85 min=0 max=127 last=127\nCC80 count=1 min=127 max=127 last=127\nTotal controller CC messages: 86\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=295 min=0 max=127 last=0\nCC80 count=2 min=0 max=127 last=0\nTotal controller CC messages: 297\nCC4 count=341 min=0 max=127 last=0\nCC80 count=4 min=0 max=127 last=0\nTotal controller CC messages: 345\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\nCC4 count=341 min=0 max=127 last=0\nCC80 count=5 min=0 max=127 last=127\nTotal controller CC messages: 346\n",
+        "last_snapshot_utc": "2026-10-27T18:10:43.698269+00:00",
+        "result": "FAIL_fresh_MIDI_controls_not_recovered_at_checkpoints",
+        "physical_LED_clarification": "It was already off; I did not press it",
+        "postwake_UI_readonly": "Cry Wah power icon orange/on; knob at heel. No control changed by agent.",
+        "failure_basis": "UsercompletedpostwakeonepressOFFandpedalsweep, confirmedphysicalLEDalreadyoff/noextraaction. RepeatedrecordercheckpointsstillCC80count5/last127 andCC4count341(last0 unchangedfrompresleep); GUIwahpoweron. Native48/G1/flags3/error0healthy. No rootapp/port/LEDrefreshperformed.",
+        "ended_utc": "2026-10-27T18:11:47.635282+00:00"
+      }
+    ],
+    "private_tool_admission": "Rawobserver reviewed/offlinePASS/admitted; directionhelper remainsoffline",
+    "observers": {
+      "status": {
+        "pid": 9645,
+        "exec_session": 18496,
+        "exit": 0
+      },
+      "driver": {
+        "pid": 9646,
+        "exec_session": 60865,
+        "exit": 0
+      },
+      "midi": {
+        "pid": 9644,
+        "exec_session": 76224,
+        "exit": 0
+      }
+    },
+    "observer_setup_utc": "2026-10-27T17:32:18.281597+00:00",
+    "A_result": "AUDIO_STATE_PASS_USER_REPORT_PASS_MIDI_QUALIFICATION_INCOMPLETE",
+    "current_generation": 1,
+    "reason": "UsercompletedpostwakeonepressOFFandpedalsweep, confirmedphysicalLEDalreadyoff/noextraaction. RepeatedrecordercheckpointsstillCC80count5/last127 andCC4count341(last0 unchangedfrompresleep); GUIwahpoweron. Native48/G1/flags3/error0healthy. No rootapp/port/LEDrefreshperformed.",
+    "user_clarification": "I performed both switch presses and the pedal sweep",
+    "not_run": [
+      "C_released_switch_USB",
+      "D_held_switch_USB",
+      "E_direction_last_output_helper"
+    ],
+    "stop_requested_utc": "2026-10-27T18:11:47.635449+00:00",
+    "cleanup_escalations": [],
+    "initial_attempt_result": "INCOMPLETE_execution_coordination_not_driver_failure",
+    "initial_attempt_midi_final": {
+      "80": {
+        "count": 1,
+        "min": 127,
+        "max": 127,
+        "last": 127
+      },
+      "4": {
+        "count": 1238,
+        "min": 0,
+        "max": 127,
+        "last": 28
+      },
+      "total": 1239
+    },
+    "initial_interpretation_corrected": "Final dump contains fresh data; zero-event inference premature. Complete2press/off/heel sequence not captured before rootstopped. No drivererror established.",
+    "observer_segments": [
+      {
+        "number": 1,
+        "observers": {
+          "midi": {
+            "pid": 6716,
+            "exec_session": 91184
+          },
+          "driver": {
+            "pid": 6715,
+            "exec_session": 74895
+          },
+          "status": {
+            "pid": 6873,
+            "exec_session": 40939
+          }
+        },
+        "logs": {
+          "midi.log": "869dbcd3a4205abb8fafcfe38e217244e9684b2fa89c81d0db0edbd7a0237ae4",
+          "status.log": "e27a6dd47021703eff3e2b160367c1548eeeef3044972e7d9cae9ba74bfc0db5",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        },
+        "exits": {
+          "midi": 0,
+          "status": 0,
+          "driver": 0
+        },
+        "result": "INCOMPLETE_coordination"
+      },
+      {
+        "number": 2,
+        "observers": {
+          "status": {
+            "pid": 9645,
+            "exec_session": 18496,
+            "exit": 0
+          },
+          "driver": {
+            "pid": 9646,
+            "exec_session": 60865,
+            "exit": 0
+          },
+          "midi": {
+            "pid": 9644,
+            "exec_session": 76224,
+            "exit": 0
+          }
+        },
+        "logs": {
+          "midi.log": "4ba1ed76a74b0441886a9d1373968ee7e91f2839f08da2501487eb0b315d0c0e",
+          "status.log": "e37e5cc1823c681a20317aeebda19aa313d87292e364d3290c5411ce3846ecb7",
+          "driver.log": "28402da87340797f7d6cf299eddb8b6661f1dd1f84e24a8401c5cde3ab0a6b88"
+        },
+        "exits": {
+          "midi": 0,
+          "status": 0,
+          "driver": 0
+        },
+        "result": "STOPPED_B2_postsleep_freshcontrol_failure"
+      }
+    ],
+    "current_log_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/session-1/segment-2",
+    "A2_result": "PASS_user_and_recorded_fresh_controls",
+    "B2_result": "RETAINED_STATE_AND_AUDIO_STATUS_PASS_FRESH_MIDI_CONTROL_RECOVERY_FAIL",
+    "final_segment2_midi_stats": {
+      "4": {
+        "count": 341,
+        "min": 0,
+        "max": 127,
+        "last": 0
+      },
+      "80": {
+        "count": 5,
+        "min": 0,
+        "max": 127,
+        "last": 127
+      }
+    },
+    "final_segment2_midi_total": 346,
+    "ended_utc": "2026-10-27T18:13:14.011126+00:00",
+    "final_UI_observation": "GR6 leftopen; CryWahpowerorange/on/knobheel, whileuserconfirmedphysicalLED1off. No corrective action.",
+    "native_summaries": {
+      "segment1": {
+        "rows": 8102,
+        "flags": [
+          1,
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "errors": 0,
+        "both_rates": 48000,
+        "ticks_strictly_advancing": true,
+        "watched_driver_records": 0,
+        "first": {
+          "tick": 3960115015345,
+          "walltime": "2026-10-27T17:32:56.715495000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "last": {
+          "tick": 3980609849786,
+          "walltime": "2026-10-27T17:47:10.667115000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        }
+      },
+      "segment2": {
+        "rows": 12384,
+        "flags": [
+          1,
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "errors": 0,
+        "both_rates": 48000,
+        "ticks_strictly_advancing": true,
+        "watched_driver_records": 0,
+        "first": {
+          "tick": 3983926593442,
+          "walltime": "2026-10-27T17:49:28.867253000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "last": {
+          "tick": 4015104624498,
+          "walltime": "2026-10-27T18:11:47.595681000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        }
+      }
+    },
+    "MIDI_monitor_scope": "Selectednativecontrollerendpoint; explicit0xB0 channel1CCtriplesonly. Nototherchannels/status/running-status/DIN/hardwareUSBreporttraffic."
+  },
+  "private_state_sha256": "ffc8b5abea88ce25e5a7e255c7f16136dc40b7d45633ba5b5f362588895b8601",
+  "private_test_tools": {
+    "files_sha256": {
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/tools/native-state-watch.c": "a270cd90253054f40390a0f20b77a4939c69025b1318f7f0fbee317e71003cdb",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/tools/native-state-watch": "408b8bb43f87ab2ecc79b25a1f5f312797dbd85057dcfd5de0d9e455d24768ab",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/tools/native-state-watch-build/record.json": "9696038a4ba9bad1e2f5c99533a4baee7beb97a012a1ed9af584efd2397b3f92",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/tools/direction-recovery.c": "5f6e212f89bb0c52e5c18cb5b67eb0887f325d786d88acc60659f95033a38516",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/tools/direction-recovery": "3d466d4685e24a7801b6135de395f8d72d910a8574b119c0bc633b8ec32cb9f0",
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build13-recovery/tools/direction-final-offline-1793122664796955000/result.json": "1b9a44725b7e342a3afe1944563ac89080acf41641ee184fe58c870459cd1004"
+    },
+    "raw_observer_live": true,
+    "direction_helper_live": false,
+    "raw_observer_review": "Independent safety/specPASS beforelive; strictARM/offlinefixturesPASS",
+    "direction_helper_review": "Independent safety/specPASS after4recorded privateerror-path/clock-readiness/latecallbackguards; strictARM/CPU-onlyfixturesPASS. No liveadmission orhardwareexecution occurred.",
+    "reused_frozen_diagnostics": "build12 tools/rk3-midi-monitor observed installedbuild13; no olddriver/resultreuse"
+  },
+  "key_observations": {
+    "valid_awake_idle_seconds": 33.121424,
+    "valid_awake_switch_baseline": 2,
+    "valid_awake_quiet_switch_count": 2,
+    "valid_awake_after_fresh_actions": 4,
+    "valid_awake_expression_count_before_after": [
+      295,
+      341
+    ],
+    "user_awake_result": "Finished \u2014 clear audio, wah and LED off, pedal at heel",
+    "real_sleep_seconds_reported": 42,
+    "sleep_observer_largest_wall_gap_seconds": 39.76243,
+    "generation_observed_before_after_sleep": [
+      1,
+      1
+    ],
+    "sleep_quiet_switch_count_before_after": [
+      5,
+      5
+    ],
+    "postwake_expected_switch_count_after_one_OFF": 6,
+    "postwake_final_switch_count": 5,
+    "postwake_final_switch_value": 127,
+    "expression_count_before_sleep_and_final": [
+      341,
+      341
+    ],
+    "final_segment2_midi_total": 346,
+    "user_afterwake_report": "Finished \u2014 clear audio, pedal works, wah and LED off",
+    "user_physical_LED_clarification": "It was already off; I did not press it",
+    "agent_postwake_readonly_GUI": "CryWahpowerorange/on; knobheel. No agentcontrolchange.",
+    "OS_power_warning": "Guitar Rig6timedout30000ms sleepnotification; actualOSsleep/wakecompleted. Cause and relationship to controller failure not diagnosed.",
+    "native_summaries": {
+      "segment1": {
+        "rows": 8102,
+        "flags": [
+          1,
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "errors": 0,
+        "both_rates": 48000,
+        "ticks_strictly_advancing": true,
+        "watched_driver_records": 0,
+        "first": {
+          "tick": 3960115015345,
+          "walltime": "2026-10-27T17:32:56.715495000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "last": {
+          "tick": 3980609849786,
+          "walltime": "2026-10-27T17:47:10.667115000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        }
+      },
+      "segment2": {
+        "rows": 12384,
+        "flags": [
+          1,
+          3
+        ],
+        "generations": [
+          1
+        ],
+        "errors": 0,
+        "both_rates": 48000,
+        "ticks_strictly_advancing": true,
+        "watched_driver_records": 0,
+        "first": {
+          "tick": 3983926593442,
+          "walltime": "2026-10-27T17:49:28.867253000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        },
+        "last": {
+          "tick": 4015104624498,
+          "walltime": "2026-10-27T18:11:47.595681000Z",
+          "status": 0,
+          "native_status": 0,
+          "rate_status": 0,
+          "flags": 3,
+          "generation": 1,
+          "version": 1,
+          "error": 0,
+          "native_rate": 48000,
+          "rate": 48000
+        }
+      }
+    },
+    "fresh_lookup_object_ID_before_after": [
+      128,
+      126
+    ],
+    "raw_observer_argument_object_ID": 128,
+    "object_ID_note": "Fresh lookup returned126 at final check vs128 initially; rawobserver kept128 and returned valid customnativeproperties. Bothvalues retained. Scope/meaning/cause of IDdifference not established, and no cross-process/stability assumption is used to attribute the control failure.",
+    "MIDI_recorder_scope": "Selectednativecontrollerendpoint; explicit0xB0 channel1CCtriplesonly. Nototherchannels/status/running-status/DIN/hardwareUSBreporttraffic."
+  },
+  "execution_deviations": [
+    "Agent overlapped pending manual quit/reopen with Finder launch ininitialattempt. All stoppedintervals and observations are preserved; initialattempt notcountedasvalidsinglecycle.",
+    "Agent prematurely stopped segment1 on apparentzero-message gap; finaldump containedCC80oneon+1238pedalmessages. This initialgap diagnosis wascorrected, notblamedondriver. Allsegment1 logs/hashes and exits retained.",
+    "A freshsegment2 baseline wasrequiredbeforethevalidroot-controlledA2 cycle. InitialFinished waslaterphysicallyclarifiedasLEDstillon/pedalawayheel; usercompletedreturn and baselinecounts2/off+fullrange/heel wereverified.",
+    "FirstB useractionwaslock/displayoff, explicitlyclarified andnotacceptedassleep. ActualAppleMenuSleepB2 wasthen corroborated byOSrecord+39.76s samplinggap.",
+    "No earlier execution mistake is substituted for the final post-actual-sleep mismatch, which persisted in later checkpoints and final346-message dump afterphysicalLEDoffconfirmation."
+  ],
+  "public_API_sources": [
+    "https://developer.apple.com/documentation/coreaudio/audiohardwareioprocstreamusage",
+    "https://developer.apple.com/documentation/coreaudio/audiodeviceioproc?language=objc",
+    "https://developer.apple.com/documentation/coreaudio/audiodevicestop%28_%3A_%3A%29?language=_4"
+  ],
+  "preserved": [
+    "No production driver source, installed bundle, installer/service or security change; SIPenabled before/after.",
+    "NI ring/calendar/timing/clock/recovery/QoS and controller mapping/calibration/LED policy unchanged.",
+    "No directUSB testclient, secondUSBowner, standaloneaudio monitor, sample-rate setter, correctiveLEDfeedback, MIDIportrefresh or postfailureapprestart.",
+    "Owned observersegments eachcleanly stopped/reaped(exit0); all6PIDs absent. UserGR6 remainsopen withfailurevisible, same soleowner72936.",
+    "No new issue/planningcard or unrelated original-binary/decompilation/backend investigation. Only ignored private diagnostic helpers and portable evidence/Beads records added."
+  ],
+  "limits": [
+    "Fresh postwake control delivery failed the requested check, but the failing layer/cause is not determined. Do not infer a particular USB, CoreMIDI, cached-object, mapper or host fault from this record.",
+    "Audio/native return and userreports are separate from missingMIDI/hostwahoff evidence. Userreportedoff/working is preserved literally; physicalLEDoff and GUIpoweron/recorderlast127 are also preserved, not silently reconciled.",
+    "Raw observer reads nativeinfo and nominalrate sequentially, not an atomic cohort snapshot. Strictadvancing rawticks are observerliveness, not proof of same-active-client audio clock or continuous PCM.",
+    "No new PCM recording, true-loopback latency or nonzero stale-replay proof. Directionhelper neverran; itsstandardAPI masks/naturalIsActive check and proof limits are offlinepreparation only.",
+    "OSpowerackwarnings were recorded, not causallyattributed. Actualsleep42s is thekernelrecord; requested60sundisturbed includednotificationtime andisnotclaimedas60sactualsleep.",
+    "MIDI monitor provides cumulative counts/extrema/latestvalues and SIGUSR1 snapshots, not per-event timestamps. Initialcoordination mistakes andobserversegmentgap are explicit; validA2 uses provenbefore/afterdata inonesegment.",
+    "BaselineCC4range0..127 was captured; freshpost-A2movement iscountdelta46 plususerfullsweep, not isolated postrestart extrema. Post-sleep movementcountdidnotincrease.",
+    "FinalfreshlookupAudioObjectID126 differsfrominitial128/rawobserverargument; IDs andvalidresponsesareobservationsonly, not a provenre-enumeration orcause.",
+    "USB released/held recovery andlastoutputcycles were deferred at firstactualpost-sleepfailure, notpassed or silentlyinferredfrompriorbuilds. Prior13silent/physicalpasses remain separate historical acceptance subsets.",
+    "BroaderM1/M2/M3/fulloriginalNIfunctionality remain incomplete. Nextwork mustbe narrowlyplanned inexistingdeliveryBeads beforecode, preservingNIaudio timing/recovery andSIP.",
+    "The recorder accepts only explicit0xB0 channel1CC triples from the selectednativeController source. No expectedCC80OFF/CC4movement was observed; this does not establish absence of allMIDI, otherchannels/statuses/running-status/DIN orUSBreports.",
+    "B2 recorded count5 unchanged is not reliable phantom-event exclusion afterwake, because subsequent confirmedphysicalactions were not corroborated by freshmessages. Retainedwah/LEDuserstate and actualpowertransition pass separately; overallMIDIrecoverydoesnotpass."
+  ]
+}

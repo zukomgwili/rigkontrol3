@@ -1,0 +1,236 @@
+{
+  "bead": "rigkontrol3-40h.3",
+  "candidate": "unchanged Audio/MIDI0.2.11/build16 source6003e3f1e07e5be587bb98d0d2419ee869f0307a",
+  "result": "MEASURED_USAGE_READBACK_CALLBACK_DISCREPANCY_NI_LAST_OUTPUT_UNPROVEN",
+  "plans": "Existing .3 read/patch/wrapper/admission/preflight-correction/SDK-contract plans recorded before respective reads or code; no new issue",
+  "private_helper": {
+    "original_source_sha256": "5f6e212f89bb0c52e5c18cb5b67eb0887f325d786d88acc60659f95033a38516",
+    "measurement_source_sha256": "ff3f4dead470ba01d5fd877e22edf7c74ebf359f30066a592172b5e2b3746bcd",
+    "scope": "336line ignored private fork, first rejected callback scalars only, no production code change",
+    "RT_publication": "one CAS writer percontext, release publish/acquire snapshot, no allocation/locks/printf/audio payload capture/newAPI in callback",
+    "verdicts_actions": "existing geometry/timestamp predicates, PCM/actions/counters, clock/native/active validation, phase calendar and cleanup unchanged",
+    "offline": "strictARM/Werror and ASan/UBSan existing fixtures plus42realprocess measurement cases PASS;5mockcleanup and8fullmainmock preflight cases PASS, no actualCoreAudio/hardware in fixtures",
+    "independent_review": "source/spec/RTstorage and correctedwrapper admissionPASS; postrun facts/strictSDKclassificationPASS"
+  },
+  "orchestration_correction": {
+    "prelaunch_attempt": "live-1",
+    "measurement_spawned": false,
+    "audio_started": false,
+    "initial_snapshot_status": 36,
+    "CLI_exit": 0,
+    "error": "wrapper incorrectly demanded initial printedstatus0; CLI prints before wait_applied",
+    "proved_contract": "Tools/rk3-pedals.c show returns0 only after matching samegeneration/status0/settings application with fresh generation check",
+    "correction": "allow initial0/EAGAIN/EINPROGRESS only with CLIexit0 and matching printedcohort; unchanged strict helperpreflight",
+    "actual_measurement_invocations": 1,
+    "fixture_setup_limit": "first mock invocation failed before anyprocess because macOS temporary directory alias needed resolution; corrected fixture root.resolve then all8casesPASS, no hardware"
+  },
+  "execution": {
+    "started_utc": "2026-10-28T14:11:52.738353+00:00",
+    "source_sha256": "ff3f4dead470ba01d5fd877e22edf7c74ebf359f30066a592172b5e2b3746bcd",
+    "binary_sha256": "4682b63bede6baae201a8fafc74e413b80c9e592418b9ed473d39b35adace98b",
+    "parent_cap_seconds": 60,
+    "escalations": [],
+    "settings_completion": {
+      "initial_printed_status": 36,
+      "CLI_exit": 0,
+      "final_same_cohort_application_confirmed_by_wait_applied_exit0": true
+    },
+    "argv": [
+      "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build16-output-diagnostic/direction-measurement",
+      "352",
+      "3"
+    ],
+    "pid": 20947,
+    "exit": 1,
+    "elapsed_seconds": 0.8459882079914678,
+    "reaped": true,
+    "cancelled": false,
+    "owned_group_absent": true,
+    "ended_utc": "2026-10-28T14:12:04.742366+00:00",
+    "files": {
+      "stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout.log": "66f729539ead400864fd04c6e4ac7660951369900e98b60b2430044b64d86afb",
+      "settings-before.log": "069b76a2fb6397e9a9dc92c7ec0d4dd5cca3094e0872a3d4471d5a2569bee53f"
+    }
+  },
+  "first_rejections": [
+    {
+      "context": "input",
+      "state": 2,
+      "reason": "output_geometry",
+      "input": {
+        "present": true,
+        "number_buffers": 1,
+        "first_channels": 2,
+        "first_bytes": 1024,
+        "first_data_present": true
+      },
+      "output": {
+        "present": true,
+        "number_buffers": 1,
+        "first_channels": 2,
+        "first_bytes": 1024,
+        "first_data_present": true
+      },
+      "current_timestamp": {
+        "present": true,
+        "flags": 7,
+        "sample_finite": true,
+        "sample": 16648,
+        "host": 4856717123547
+      },
+      "input_timestamp": {
+        "present": true,
+        "flags": 7,
+        "sample_finite": true,
+        "sample": 16384,
+        "host": 4856716992290
+      },
+      "output_timestamp": {
+        "present": true,
+        "flags": 7,
+        "sample_finite": true,
+        "sample": 16912,
+        "host": 4856717254786
+      },
+      "input_geometry_ok": true,
+      "output_geometry_ok": false,
+      "selected_timestamp_ok": true,
+      "PCM_scan_executed": false,
+      "PCM_finite": false
+    },
+    {
+      "context": "output",
+      "state": 0
+    }
+  ],
+  "footer": {
+    "outcome": "FAIL_CALLBACK_VALIDATION",
+    "cycles_completed": 0,
+    "cleanup_clean": true,
+    "input_calls": 39,
+    "output_calls": 0,
+    "input_frames": 0,
+    "output_frames": 0,
+    "input_bad": true,
+    "output_bad": false,
+    "nonzero_PCM_replay_proven_absent": false
+  },
+  "API_statuses_all_zero": 15,
+  "native_health": [
+    {
+      "status": 0,
+      "flags": 1,
+      "generation": 3,
+      "error": 0,
+      "native_rate": 48000,
+      "rate": 48000,
+      "valid": true
+    },
+    {
+      "status": 0,
+      "flags": 3,
+      "generation": 3,
+      "error": 0,
+      "native_rate": 48000,
+      "rate": 48000,
+      "valid": true
+    },
+    {
+      "status": 0,
+      "flags": 3,
+      "generation": 3,
+      "error": 0,
+      "native_rate": 48000,
+      "rate": 48000,
+      "valid": true
+    },
+    {
+      "status": 0,
+      "flags": 1,
+      "generation": 3,
+      "error": 0,
+      "native_rate": 48000,
+      "rate": 48000,
+      "valid": true
+    }
+  ],
+  "conclusion": {
+    "observed": "perIOProc outputusage0 was accepted/readback beforeAudioStart but input-only callback still received a nonnull outputbuffer; inputgeometry and selectedtimestamp passed",
+    "not_tested": "PCMfinite false is untested because scan didnotexecute, not proof ofnonfiniteaudio; outputneverstarted/zero outputcycles; oneinitialvalidclockrow isnotclockadvanceproof",
+    "contract": "CurrentAppleSDK explicitly expects null mData for a disabled stream, preserving byte size. Keep assertionstrict; this is NOT a provedinvalidrequirement and NOT a waivedqualification",
+    "cause": "unknown whether usage binding/reset-on-start/host or other platformseam; no nativefaultcausalattribution",
+    "next_finite_step": "plan same-IOProc usage readback immediatelyafterAudioDeviceStart to distinguish reset-on-start from callbackdispatch mismatch, before code/live; do not relaxassertion or change driver/timing"
+  },
+  "SDK": {
+    "path": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/CoreAudio.framework/Headers/AudioHardware.h",
+    "sha256": "a699437248e079d9ebe47078ef3861492d8253fef1a6007e476031031d3535ca",
+    "actual_read_ranges": [
+      [
+        771,
+        900
+      ],
+      [
+        852,
+        981
+      ],
+      [
+        956,
+        1085
+      ]
+    ],
+    "bounds_note": "local locator produced overlapping declaration ranges; no NI binary reads",
+    "decisive_lines": [
+      773,
+      775,
+      971,
+      979
+    ],
+    "official_API_definition": "https://developer.apple.com/documentation/coreaudio/kaudiodevicepropertyioprocstreamusage",
+    "official_struct_definition": "https://developer.apple.com/documentation/coreaudio/audiohardwareioprocstreamusage",
+    "lookup_limit": "one officialApple search; no broaderbackend orplatforminvestigation"
+  },
+  "restoration": {
+    "GR6": "normallyreopened once after toe captureterminal; original RK3 Build12 Physical Test/CryWah visible; no presetsave/remap/settingscheckboxchange",
+    "pedals_show_exit": 0,
+    "requested_applied": "alltipcontinuous, externals-1/-1, built-inFloat32(88/1023)..Float32(648/1023), provider352/G3; see pinnedshowlog",
+    "installed12file_matches": {
+      "RigKontrol3Audio.driver/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": true,
+      "RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": true,
+      "RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": true,
+      "RigKontrol3MIDI.plugin/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": true,
+      "RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": true,
+      "RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": true
+    },
+    "SIP": "System Integrity Protection status: enabled."
+  },
+  "production_changes": false,
+  "security_changes": false,
+  "file_pins": {
+    ".build/native/build16-output-diagnostic/direction-measurement.c": "ff3f4dead470ba01d5fd877e22edf7c74ebf359f30066a592172b5e2b3746bcd",
+    ".build/native/build16-output-diagnostic/direction-measurement": "4682b63bede6baae201a8fafc74e413b80c9e592418b9ed473d39b35adace98b",
+    ".build/native/build16-output-diagnostic/direction-measurement-sanitized": "d5af1c005ace545faed7829e1a96d9bc7785d1268d530da052f564ef65fe49f4",
+    ".build/native/build16-output-diagnostic/offline-result.json": "29a26bf3580d061ea37e9be7ef6bb3f20c1e40db1074ea7b7e9993b4723beedf",
+    ".build/native/build16-output-diagnostic/strict-selftest.log": "bc45398ef5a6a3b82f013f5a303ef2f37b4900906559bbc96f76d360d8c3fc80",
+    ".build/native/build16-output-diagnostic/sanitizer-selftest.log": "bc45398ef5a6a3b82f013f5a303ef2f37b4900906559bbc96f76d360d8c3fc80",
+    ".build/native/build16-output-diagnostic/run-once.py": "b85714654336c5a396a02098b7c682c05730248bd5c1bc939400f1e09a59cc22",
+    ".build/native/build16-output-diagnostic/run-once-initial.py": "e4a75596bf29ae415489837457568936cb3079e1b930f0bc4ed1c8bdd7156592",
+    ".build/native/build16-output-diagnostic/wrapper-offline.json": "ee8355ec98ac5af70fdfc8c031fc81b10b396134348e1abb6fe828234412fa1e",
+    ".build/native/build16-output-diagnostic/preflight-offline.json": "8a029a7a4d0c8d867210277d4cfb31a87a3f02c9e1b4fc828f80c41eae945152",
+    ".build/native/build16-output-diagnostic/prelaunch-failure.json": "a9c0286481fafb97564a99e2a97a56f706eb35f632cc0c3fb267c7256413bff0",
+    ".build/native/build16-output-diagnostic/live-1/settings-before.log": "069b76a2fb6397e9a9dc92c7ec0d4dd5cca3094e0872a3d4471d5a2569bee53f",
+    ".build/native/build16-output-diagnostic/live-2/settings-before.log": "069b76a2fb6397e9a9dc92c7ec0d4dd5cca3094e0872a3d4471d5a2569bee53f",
+    ".build/native/build16-output-diagnostic/live-2/stdout.log": "66f729539ead400864fd04c6e4ac7660951369900e98b60b2430044b64d86afb",
+    ".build/native/build16-output-diagnostic/live-2/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/build16-output-diagnostic/live-2/result.json": "ea560b35a646d2ff14739f12972e5103d44658a733a6783f6570708ef9b85e16",
+    "Tools/rk3-pedals.c": "89939dcc4444fc62b4a5f7df1808fdddf7302e1def2acaebceddf0e49f3b99d5",
+    ".build/native/build13-recovery/tools/direction-recovery.c": "5f6e212f89bb0c52e5c18cb5b67eb0887f325d786d88acc60659f95033a38516",
+    ".build/native/build16-output-diagnostic/settings-after-restoration.log": "86e730ae1d139555b9027c3fdc7afd133bc21f2bdbddd0bc176e88537143896e"
+  }
+}

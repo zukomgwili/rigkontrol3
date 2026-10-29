@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-28",
+  "bead": "rigkontrol3-40h.3",
+  "result": "BOUNDED_OFFLINE_COMPARISON_COMPLETE_WITH_EXPLICIT_ABI_AND_HOST_BINDING_GAPS",
+  "plan_recorded_in_existing_bead_before_reads": true,
+  "findings_recorded_before_functional_code": true,
+  "scope": {
+    "new_beads": 0,
+    "production_code_changed": false,
+    "test_code_changed": false,
+    "new_build_or_package": false,
+    "live_test_or_device_API": false,
+    "installation_or_service_change": false,
+    "security_settings_changed": false,
+    "NI_ring_timing_recovery_changed": false,
+    "controller_mappings_calibration_LED_policy_changed": false
+  },
+  "NI_reference": {
+    "version": "2.8.0 (R36)",
+    "path": ".build/ni/reference/2.8.0/NIUSBAudioDriver.x86_64",
+    "sha256": "41574699c507896cb3a51b4756143e8c445eb76994871eb13517a642f7adaf08",
+    "SDK": "macosx10.9 / 13C64",
+    "Xcode": "0511 / 5B1008",
+    "build_machine_OS": "13F34",
+    "IOAudioFamily_min_dependency": "1.1d25",
+    "exact_runtime_framework_revision_proven": false
+  },
+  "NI_instruction_findings": {
+    "writeHandler": "0x7ec0",
+    "restart_bypass_excluded_before_gate": true,
+    "eligible_callback_status_hex": [
+      "0x00000000",
+      "0xe00002e7"
+    ],
+    "group_count": "DWORD[engine+0xb9e0] >> 1, loop entered only if count field > 1",
+    "written_latch": "BYTE[engine+0xb995+g] != 0",
+    "object": "QWORD[engine+0xba40+8*(2*g+1)]",
+    "field_test": "DWORD[object+0xa8] == 0",
+    "field_test_instruction": "0x7f78",
+    "named_getNumClients_call": false,
+    "clear_call": "0x7f86 -> clearSampleBufferForStream@0x7510(engine,g)",
+    "latch_reset": "0x7f8b after clear call",
+    "object_provenance": "initCoreAudio direction0/createNewAudioStream return -> oddba40 slots; direction1 -> even slots; successful object IOAudioStream constructor-labelled call0x61d00, R12 returned in RAX0x5229",
+    "field_name_and_absolute_target_ABI_bound": false,
+    "clear_helper_body_redecoded": false
+  },
+  "Apple_source": {
+    "repository": "https://github.com/apple-oss-distributions/IOAudioFamily",
+    "tag": "IOAudioFamily-203.3",
+    "commit": "bbc41d05fd968710c91fa7794c5ed575cf28cb88",
+    "commit_author_date": "2015-06-05T01:04:04Z",
+    "files": [
+      {
+        "file": "IOAudioStream.h",
+        "lines": 307,
+        "sha256": "a0f508d0e507f78cfc7bd689858b938ac39b1ef47cb24cc9076ff00215530833",
+        "url": "https://raw.githubusercontent.com/apple-oss-distributions/IOAudioFamily/bbc41d05fd968710c91fa7794c5ed575cf28cb88/IOAudioStream.h"
+      },
+      {
+        "file": "IOAudioStream.cpp",
+        "lines": 2174,
+        "sha256": "2a83f87f2e5aabb365fd1796c9151db382d3c31d31ff0c9759773757dd45f44b",
+        "url": "https://raw.githubusercontent.com/apple-oss-distributions/IOAudioFamily/bbc41d05fd968710c91fa7794c5ed575cf28cb88/IOAudioStream.cpp"
+      },
+      {
+        "file": "IOAudioEngineUserClient.h",
+        "lines": 284,
+        "sha256": "0d3bc899de39b5436527c6d73f817fffacee7d09a42795177f0d6eda309f4b88",
+        "url": "https://raw.githubusercontent.com/apple-oss-distributions/IOAudioFamily/bbc41d05fd968710c91fa7794c5ed575cf28cb88/IOAudioEngineUserClient.h"
+      },
+      {
+        "file": "IOAudioEngineUserClient.cpp",
+        "lines": 2818,
+        "sha256": "9476eb13021ec7e169273f5ab6bd122fe52c9b69726fe798e12b251b1d01468e",
+        "url": "https://raw.githubusercontent.com/apple-oss-distributions/IOAudioFamily/bbc41d05fd968710c91fa7794c5ed575cf28cb88/IOAudioEngineUserClient.cpp"
+      },
+      {
+        "file": "IOAudioEngine.cpp",
+        "lines": 2673,
+        "sha256": "293a0481858b6d31efe870bf689371ac74b10b17e1e665d0a848da6550f8965f",
+        "url": "https://raw.githubusercontent.com/apple-oss-distributions/IOAudioFamily/bbc41d05fd968710c91fa7794c5ed575cf28cb88/IOAudioEngine.cpp"
+      }
+    ],
+    "exact_NI_runtime_binding": false,
+    "body_read_bounds": {
+      "IOAudioStream.h": [
+        [
+          65,
+          105
+        ],
+        [
+          280,
+          295
+        ]
+      ],
+      "IOAudioStream.cpp": [
+        [
+          365,
+          390
+        ],
+        [
+          1288,
+          1465
+        ]
+      ],
+      "IOAudioEngineUserClient.h": [
+        [
+          140,
+          162
+        ],
+        [
+          238,
+          275
+        ]
+      ],
+      "IOAudioEngineUserClient.cpp": [
+        [
+          880,
+          1070
+        ],
+        [
+          1288,
+          1810
+        ],
+        [
+          2450,
+          2755
+        ]
+      ],
+      "IOAudioEngine.cpp": [
+        [
+          1140,
+          1275
+        ]
+      ]
+    },
+    "unique_body_lines": 1478
+  },
+  "Apple_lifecycle_findings": {
+    "classification": "H3_mixed_attachment_lifecycle",
+    "counted_unit": "IOAudioClientBuffer attached to one IOAudioStream userClientList",
+    "add_increment_line": 1334,
+    "remove_decrement_line": 1408,
+    "getter_lines": [
+      1456,
+      1458
+    ],
+    "online_registration_add_lines": [
+      1656,
+      1659
+    ],
+    "start_attaches_stored_output_and_input_at_lines": [
+      2600,
+      2614
+    ],
+    "stop_detaches_output_and_input_at_lines": [
+      2679,
+      2687
+    ],
+    "stop_retains_buffer_registrations": true,
+    "unregister_and_free_can_remove": true,
+    "engine_numActiveUserClients_is_separate": true,
+    "public_output_IOProc_Stop_mapping_proven": false,
+    "stop_engine_client_call_line": 2698
+  },
+  "bounded_reuse_result": "Existing XNU2422 prefix artifacts prove declaration/vtable contribution model, not IOService object sizeof/field offsets; STOP at ABI gap, no new XNU header recovery/layout code.",
+  "NI_body_read_bounds": {
+    ".build/ni/decompiled/reproduced/audio280-text/00007ec0_de_caiaq_driver_NIUSBAudioEngine__writeHandler.c": [
+      [
+        1,
+        93
+      ]
+    ],
+    ".build/ni/decompiled/reproduced/audio280-text/00007ec0_de_caiaq_driver_NIUSBAudioEngine__writeHandler.asm": [
+      [
+        1,
+        124
+      ]
+    ],
+    ".build/ni/decompiled/reproduced/audio280-text/00004b20_de_caiaq_driver_NIUSBAudioEngine__initCoreAudio.c": [
+      [
+        1,
+        76
+      ]
+    ],
+    ".build/ni/decompiled/reproduced/audio280-text/00004b20_de_caiaq_driver_NIUSBAudioEngine__initCoreAudio.asm": [
+      [
+        1,
+        149
+      ]
+    ],
+    ".build/ni/decompiled/reproduced/audio280-text/00004d60_de_caiaq_driver_NIUSBAudioEngine__createNewAudioStream.c": [
+      [
+        1,
+        119
+      ]
+    ],
+    ".build/ni/decompiled/reproduced/audio280-text/00004d60_de_caiaq_driver_NIUSBAudioEngine__createNewAudioStream.asm": [
+      [
+        1,
+        64
+      ],
+      [
+        261,
+        276
+      ]
+    ]
+  },
+  "NI_unique_body_lines": 641,
+  "NI_metadata_reads": [
+    ".build/ni/reference/2.8.0/SHA256.json",
+    ".build/ni/reference/2.8.0/audio-Info.plist"
+  ],
+  "existing_prefix_artifact_read_bounds": {
+    ".build/ni/usb-identity-contract/absolute-prefix/prefix-disposition.md": [
+      [
+        1,
+        57
+      ]
+    ],
+    ".build/ni/usb-identity-contract/absolute-prefix/prefix-evidence.json": [
+      [
+        1,
+        97
+      ]
+    ]
+  },
+  "prior_native_trace": "ReverseEngineering/Evidence/Build17HostClientLifecycleValidation.json",
+  "prior_trace_interpretation": "Observed public output stop with inputalive did not produce distinct native output lifecycle event; cannot substitute aggregate device client lifetime for original per-output gate.",
+  "decision": {
+    "functional_change_justified": false,
+    "NI_clear_and_no_stale_replay_gate": "UNPROVEN_RETAINED",
+    "public_unused_buffer_NULL_failure": "VALID_SEPARATE_UNRESOLVED",
+    "whole_M3_or_parent_complete": false,
+    "next_required_proof_before_functional_trigger_change": [
+      "target NI direct field identity/ABI",
+      "actual modern per-output ownership lifecycle correspondence"
+    ],
+    "no_repeated_trace_authorized": true,
+    "no_timeout_count_guess_or_forced_global_activity": true
+  },
+  "file_sha256": {
+    ".build/ni/reference/2.8.0/NIUSBAudioDriver.x86_64": "41574699c507896cb3a51b4756143e8c445eb76994871eb13517a642f7adaf08",
+    ".build/ni/reference/2.8.0/audio-Info.plist": "0e6ba261d8d6884bdcd848c940025815a887547a1bc287f37f86ab9080e2fb44",
+    ".build/ni/reference/2.8.0/SHA256.json": "d5c9a64f5a24f197050129a796a82789f3d2b2153fb9b51c8f8184674882b11d",
+    ".build/ni/decompiled/reproduced/audio280-text/00007ec0_de_caiaq_driver_NIUSBAudioEngine__writeHandler.c": "119b7843d34357effccae5d96c42bf1f60fe653ce43e621c02b8837aaa7c7523",
+    ".build/ni/decompiled/reproduced/audio280-text/00007ec0_de_caiaq_driver_NIUSBAudioEngine__writeHandler.asm": "0bcf4519ce33b3e755401918011d0e0a4a165d65add757dbf973dd0929223f07",
+    ".build/ni/decompiled/reproduced/audio280-text/00004b20_de_caiaq_driver_NIUSBAudioEngine__initCoreAudio.c": "1c7d8196f423e0982885b11b5ef2bdb9db68e91c003d14038c8137376874f11a",
+    ".build/ni/decompiled/reproduced/audio280-text/00004b20_de_caiaq_driver_NIUSBAudioEngine__initCoreAudio.asm": "25aa020549ec31eaf79d2e53f2933d5b9f3a288a01b1f77296c016ba56690be2",
+    ".build/ni/decompiled/reproduced/audio280-text/00004d60_de_caiaq_driver_NIUSBAudioEngine__createNewAudioStream.c": "632155d5588fcfdc3ecce0a2e4cfc580d6ed5a48a1d2c7503d98685a9ee4c491",
+    ".build/ni/decompiled/reproduced/audio280-text/00004d60_de_caiaq_driver_NIUSBAudioEngine__createNewAudioStream.asm": "08e4ac07408020690ac777e10a85d4c97831204c6b76262f8e7d29c88364e5a1",
+    ".build/ni/apple-ioaudio/IOAudioFamily-203.3/IOAudioStream.h": "a0f508d0e507f78cfc7bd689858b938ac39b1ef47cb24cc9076ff00215530833",
+    ".build/ni/apple-ioaudio/IOAudioFamily-203.3/IOAudioStream.cpp": "2a83f87f2e5aabb365fd1796c9151db382d3c31d31ff0c9759773757dd45f44b",
+    ".build/ni/apple-ioaudio/IOAudioFamily-203.3/IOAudioEngineUserClient.h": "0d3bc899de39b5436527c6d73f817fffacee7d09a42795177f0d6eda309f4b88",
+    ".build/ni/apple-ioaudio/IOAudioFamily-203.3/IOAudioEngineUserClient.cpp": "9476eb13021ec7e169273f5ab6bd122fe52c9b69726fe798e12b251b1d01468e",
+    ".build/ni/apple-ioaudio/IOAudioFamily-203.3/IOAudioEngine.cpp": "293a0481858b6d31efe870bf689371ac74b10b17e1e665d0a848da6550f8965f",
+    ".build/ni/usb-identity-contract/absolute-prefix/prefix-disposition.md": "442c36c4947e8ed41be45997deb04d306418b85fa0abedfc8bf471125cd84d52",
+    ".build/ni/usb-identity-contract/absolute-prefix/prefix-evidence.json": "d4f033390beb0c8af0d734287c8f1db1cc6efc599f6f40de22c1cb2d770eb49a",
+    "ReverseEngineering/Evidence/Build17HostClientLifecycleValidation.json": "8db66c371ee092632d535674e28c9c3dec581138d526c79ac4c73803e0cff625"
+  },
+  "validation": {
+    "all_17_source_and_prior_evidence_hashes_match": true,
+    "NI_and_Apple_read_bound_counts_match": true,
+    "independent_review": "PASS_two_independent_fidelity_reviews_after_Stop_anchor_correction",
+    "production_source_diff": "PASS_Driver_Tools_Agent_Scripts_Sources_Tests_unchanged_from_8329edb",
+    "checks": "PASS_JSON_parse_all17pins_boundcounts_citation_bounds_whitespace_and_doc_links; no functional suite needed for documentation-only change"
+  },
+  "limits": [
+    "No exact historical loaded IOAudioFamily binary established.",
+    "No +0xa8==numClients proof from member order alone.",
+    "No modern output ownership event proof.",
+    "No physical ring clear, wire silence, no-stale-replay, timing or recovery acceptance from this offline audit.",
+    "Installed build16/SIP were not re-queried in this offline task; prior restored verification is retained."
+  ]
+}

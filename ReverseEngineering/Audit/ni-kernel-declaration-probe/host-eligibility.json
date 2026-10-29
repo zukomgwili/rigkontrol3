@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "authority": "rigkontrol3-40h.17",
+  "required_completion": "original_NI_automatic_recognition",
+  "user_security_constraint": "SIP_enabled",
+  "user_reported_kext_signing_and_MDM_test_access": "neither_available",
+  "os_version": "27.0.1",
+  "os_build": "26A434",
+  "architecture": "arm64",
+  "valid_signing_identity_types": {
+    "Apple Development": 1,
+    "Developer ID": 0
+  },
+  "DEP_enrolled": false,
+  "MDM_enrolled": false,
+  "KDK_directory_present": false,
+  "existing_profiles": {
+    "profile_files": 5,
+    "decoded_profiles": 5,
+    "driverkit_profiles": 0,
+    "audio_driverkit_profiles": 0,
+    "driverkit_usb_profiles": 0,
+    "decode_failures": 0
+  },
+  "driverkit_unchanged_NI_class_discovery": "not_established_by_inspected_supported_contract",
+  "retained_kernel_candidate": "conditional_not_built_signed_or_loaded",
+  "native_extension_checkpoint": "711d76cdf6228186cf44a359950c834d5a758965",
+  "main_driver_baseline": "6cebf37996382ab6b5b40cd14b6ba163b5f7c6a8",
+  "systems_changed": false
+}

@@ -1,0 +1,504 @@
+{
+  "schema": 1,
+  "bead": "rigkontrol3-40h.3",
+  "recorded_utc": "2026-10-27T13:18:20.082968+00:00",
+  "purpose": "Finish the prescribed installed-build12 48k stability count and check original sample-rate availability, without changing the driver.",
+  "installed_version": "0.2.7/build12",
+  "production_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+  "candidate_manifest_sha256": "1ad994554ab45016bfa701a9da62471284a36c8d3f11f3829f393ba0a91021f9",
+  "result": {
+    "remaining_two_48k_untraced_gates": "PASS",
+    "prescribed_48k_600_second_run_count": 3,
+    "count_composition": "One accepted prior traced development run reused per existing M3 plan, plus these two untraced runs. Not three untraced runs.",
+    "all_original_sample_rates_qualified": false,
+    "whole_M3_complete": false
+  },
+  "plan_and_admission": {
+    "recorded_in_beads_before_private_code_and_live_actions": true,
+    "original_target": "Two remaining600s48k/128silent runs plus600s each other original rate if implemented.",
+    "actual_admission": "Loaded/source inventory blocked all other rates before live rate attempts; only two48k runs admitted and performed.",
+    "first_fault_policy": "Stop at first driver/native/clock/liveness fault, skip remaining campaign; neither run recorded a fault.",
+    "output": "Silence from frozen audio-clock-client; persistent native MIDI; no parallel Guitar Rig audio or dry monitor during either gate.",
+    "trace": "No tracing in either new run.",
+    "maximum_active_seconds_per_new_run": 600
+  },
+  "rate_inventory": {
+    "readback": {
+      "device": 112,
+      "nominal_rate": 48000,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 0,
+      "flags": 1,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 48000,
+      "available_rates": [
+        [
+          48000,
+          48000
+        ]
+      ]
+    },
+    "no_rate_setters_called": true,
+    "missing_live_rate_binding": true,
+    "original_rates": [
+      {
+        "rate_Hz": 44100,
+        "result": "BLOCKED_NOT_IMPLEMENTED_NOT_RUN",
+        "new_600s_runs": 0
+      },
+      {
+        "rate_Hz": 48000,
+        "result": "PASS_bounded_stability_gates",
+        "new_600s_runs": 2
+      },
+      {
+        "rate_Hz": 88200,
+        "result": "BLOCKED_NOT_IMPLEMENTED_NOT_RUN",
+        "new_600s_runs": 0
+      },
+      {
+        "rate_Hz": 96000,
+        "result": "BLOCKED_NOT_IMPLEMENTED_NOT_RUN",
+        "new_600s_runs": 0
+      },
+      {
+        "rate_Hz": 192000,
+        "result": "BLOCKED_NOT_IMPLEMENTED_NOT_RUN",
+        "new_600s_runs": 0
+      }
+    ],
+    "source_findings": [
+      {
+        "path": "Driver/Audio/RK3AudioDriver.c",
+        "lines": [
+          18,
+          245,
+          298,
+          299,
+          389
+        ],
+        "fact": "RATE48000; one advertised nominal range[48000,48000]; other nominal requests rejected. The settable flag does not establish other-rate support."
+      },
+      {
+        "path": "Driver/NativeUSB.h",
+        "lines": [
+          97,
+          123
+        ],
+        "fact": "Public audio lifecycle has no rate selection/reconfiguration argument."
+      },
+      {
+        "path": "Driver/NativeAudioISO.c",
+        "lines": [
+          452,
+          462,
+          464
+        ],
+        "fact": "Live startup fixes the mode2 48k audio command{9,1,2,136,0,1}; pure five-rate protocol/capacity helpers do not implement live rate switching."
+      }
+    ],
+    "gap_owner": "rigkontrol3-40h.1; integration of recovered NI rate contracts remains unimplemented, not fixed in this test request."
+  },
+  "reused_prior_run": {
+    "number": 1,
+    "trace_used": true,
+    "evidence": "ReverseEngineering/Evidence/Build12CompletionQueueValidation.json",
+    "sha256": "d7eaeec70e3d45505101383a5041873dbb04c991f8575a47cd64edb6c01d2e7a",
+    "active_seconds": 600.0150822089927,
+    "audio_gate_result": "PASS",
+    "limits": "Prior traced measurement is reused only as the one allowed development gate on the identical candidate; it does not alone qualify full untraced M3 stability."
+  },
+  "new_runs": [
+    {
+      "number": 2,
+      "trace_used": false,
+      "result": "PASS",
+      "reason": "600-second cap reached without watched fault",
+      "active_seconds": 600.069847250008,
+      "cap_seconds": 600.0,
+      "active_started_utc": "2026-10-27T12:54:13.850347+00:00",
+      "stop_requested_utc": "2026-10-27T13:04:13.921512+00:00",
+      "ended_utc": "2026-10-27T13:04:14.063396+00:00",
+      "audio_callbacks": 225068,
+      "input_frames": 28808704,
+      "audio_stop_status": 0,
+      "client_clock_records": 5748,
+      "clock_validation": {
+        "all_status_zero_and_bad_false": true,
+        "flags_observed": [
+          7
+        ],
+        "finite_samples": true,
+        "strictly_advancing_sample_and_host": true
+      },
+      "native_status_rows": 5671,
+      "running_status_rows": 5670,
+      "cleanup_idle_status_rows": 1,
+      "native_generations_observed": [
+        1
+      ],
+      "native_errors_observed": [
+        0
+      ],
+      "native_status_all_healthy": true,
+      "driver_fault_records": 0,
+      "midi_messages": 1,
+      "midi_observation": "CC4 value7 once; repeated cumulative summaries do not add messages. No physical acceptance inferred.",
+      "children": {
+        "driver": {
+          "pid": 56001,
+          "argv": [
+            "/usr/bin/log",
+            "stream",
+            "--style",
+            "compact",
+            "--level",
+            "default",
+            "--predicate",
+            "processIdentifier == 41098 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+          ],
+          "exit": 0
+        },
+        "midi": {
+          "pid": 56002,
+          "argv": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+            "--live"
+          ],
+          "exit": 0
+        },
+        "audio": {
+          "pid": 56004,
+          "argv": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+            "--live",
+            "--buffer-frames",
+            "128"
+          ],
+          "exit": 0
+        },
+        "status": {
+          "pid": 56005,
+          "argv": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/status-watch",
+            "112",
+            "1"
+          ],
+          "exit": 0
+        }
+      },
+      "cleanup_escalations": [],
+      "all_owned_children_reaped": true,
+      "parent_exit": 0,
+      "preflight": {
+        "device": 112,
+        "nominal_rate": 48000,
+        "nominal_settable": true,
+        "buffer_frames": 512,
+        "running_somewhere": 0,
+        "flags": 1,
+        "generation": 1,
+        "error": 0,
+        "native_sample_rate": 48000,
+        "available_rates": [
+          [
+            48000,
+            48000
+          ]
+        ]
+      },
+      "postflight": {
+        "device": 112,
+        "nominal_rate": 48000,
+        "nominal_settable": true,
+        "buffer_frames": 512,
+        "running_somewhere": 0,
+        "flags": 1,
+        "generation": 1,
+        "error": 0,
+        "native_sample_rate": 48000,
+        "available_rates": [
+          [
+            48000,
+            48000
+          ]
+        ]
+      },
+      "postflight_proves_clean_idle": true,
+      "private_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build12-stability/48k-run2-jj64olfe",
+      "state_sha256": "d0d93b269c6ae4868243e9d7a7497c9e0a8b76f10a21d1d87089739d975b45af",
+      "logs_sha256": {
+        "preflight.log": "a11810c5b30fd629d844512931b438767ed92e597f0dfece5384f295855e2cb6",
+        "midi.log": "99bd7e832730c39c679e57b5f09cd73e2724df5da999bfce34ad58abd85f0495",
+        "status.log": "c1b8eaf005fddaf3a239f2c37f601f19e991ae576e75bdb9cac132fc01e39fff",
+        "postflight.log": "a11810c5b30fd629d844512931b438767ed92e597f0dfece5384f295855e2cb6",
+        "audio.log": "f03aa0189bd03b955b8d4792f7f1b3558c93f16419bd872fedca3c1e22e912eb",
+        "driver.log": "07b73974163c926409f5de4bd77168baa0fd66d0b62d1227f3eccb9b3b5fa3a2"
+      },
+      "independent_saved_evidence_review": "PASS"
+    },
+    {
+      "number": 3,
+      "trace_used": false,
+      "result": "PASS",
+      "reason": "600-second cap reached without watched fault",
+      "active_seconds": 600.0280297910213,
+      "cap_seconds": 600.0,
+      "active_started_utc": "2026-10-27T13:05:05.414564+00:00",
+      "stop_requested_utc": "2026-10-27T13:15:05.443281+00:00",
+      "ended_utc": "2026-10-27T13:15:05.582520+00:00",
+      "audio_callbacks": 225054,
+      "input_frames": 28806912,
+      "audio_stop_status": 0,
+      "client_clock_records": 5738,
+      "clock_validation": {
+        "all_status_zero_and_bad_false": true,
+        "flags_observed": [
+          7
+        ],
+        "finite_samples": true,
+        "strictly_advancing_sample_and_host": true
+      },
+      "native_status_rows": 5655,
+      "running_status_rows": 5655,
+      "cleanup_idle_status_rows": 0,
+      "native_generations_observed": [
+        1
+      ],
+      "native_errors_observed": [
+        0
+      ],
+      "native_status_all_healthy": true,
+      "driver_fault_records": 0,
+      "midi_messages": 1,
+      "midi_observation": "CC4 value7 once; repeated cumulative summaries do not add messages. No physical acceptance inferred.",
+      "children": {
+        "driver": {
+          "pid": 57692,
+          "argv": [
+            "/usr/bin/log",
+            "stream",
+            "--style",
+            "compact",
+            "--level",
+            "default",
+            "--predicate",
+            "processIdentifier == 41098 AND (logType == \"error\" OR logType == \"fault\" OR composedMessage CONTAINS \"[DEBUG-rk3-timing]\")"
+          ],
+          "exit": 0
+        },
+        "midi": {
+          "pid": 57693,
+          "argv": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor",
+            "--live"
+          ],
+          "exit": 0
+        },
+        "audio": {
+          "pid": 57695,
+          "argv": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client",
+            "--live",
+            "--buffer-frames",
+            "128"
+          ],
+          "exit": 0
+        },
+        "status": {
+          "pid": 57699,
+          "argv": [
+            "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/status-watch",
+            "112",
+            "1"
+          ],
+          "exit": 0
+        }
+      },
+      "cleanup_escalations": [],
+      "all_owned_children_reaped": true,
+      "parent_exit": 0,
+      "preflight": {
+        "device": 112,
+        "nominal_rate": 48000,
+        "nominal_settable": true,
+        "buffer_frames": 512,
+        "running_somewhere": 0,
+        "flags": 1,
+        "generation": 1,
+        "error": 0,
+        "native_sample_rate": 48000,
+        "available_rates": [
+          [
+            48000,
+            48000
+          ]
+        ]
+      },
+      "postflight": {
+        "device": 112,
+        "nominal_rate": 48000,
+        "nominal_settable": true,
+        "buffer_frames": 512,
+        "running_somewhere": 0,
+        "flags": 1,
+        "generation": 1,
+        "error": 0,
+        "native_sample_rate": 48000,
+        "available_rates": [
+          [
+            48000,
+            48000
+          ]
+        ]
+      },
+      "postflight_proves_clean_idle": true,
+      "private_directory": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build12-stability/48k-run3-q0i5f5lm",
+      "state_sha256": "14ea6609a5716426fc16e1ce2e569002d75c0d76c67e1748a431abddbad3f57b",
+      "logs_sha256": {
+        "preflight.log": "a11810c5b30fd629d844512931b438767ed92e597f0dfece5384f295855e2cb6",
+        "midi.log": "9936155c96ed10b742f536cc8017804469ff5ddad6ae006b57d64f96541810df",
+        "status.log": "f11e3b32eee2cff2dc02b067e66a4e99c1d610c85e4f235e51803e269a2b4996",
+        "postflight.log": "a11810c5b30fd629d844512931b438767ed92e597f0dfece5384f295855e2cb6",
+        "audio.log": "9985485ce463ab69539a2ea2196196bc2c737647d7c0fabdd9fe4fde1261f822",
+        "driver.log": "07b73974163c926409f5de4bd77168baa0fd66d0b62d1227f3eccb9b3b5fa3a2"
+      },
+      "independent_saved_evidence_review": "PASS"
+    }
+  ],
+  "verification": {
+    "before": {
+      "file_hashes": {
+        "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist": "f3530f2ae18612e49b097c8d99871d1bfdf9299676f2b46ea11c916646786531",
+        "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver": "d169ca22fa962533f32cedab6f30a40926edc9053190770488e4b29789f7623b",
+        "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist": "b779f87a44ff75b32c885bf46f2caa0cd0d52ff400c5599cc05ec6672de6dcf5",
+        "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver": "37a7bf88adf87f04d029f3741b6aca9e0db73ba5142a8e762c00a4dd2741dfb3",
+        "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml": "1b7991250298a10071f43301efe9de817a9f953f9039f2547e09feb0f8eef6f7",
+        "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources": "f9331c848241f16381f610566a26f7cabc8f67eaba49457e9b853cec7fbc9ced",
+        "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist": "a0255a5671d7238482a7d9b6e570451ab79ca1683d60c252931305c04b79ac5f",
+        "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver": "d629f4dd74ca2d5092a261f6c0ac40bddfecb1c7c315c4eec8c383d8adb43e98",
+        "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist": "2735252344411b672fab8f1ea722665306bae71d2ed2af913513d48acb4533b1",
+        "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver": "60dc0b904388d0c5954c34fcb93b75f8ac81937b5279efc8cb07453af416ac40",
+        "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml": "49e939398baca0b13c5921cce9e6302389b6324607accd158ea12b481c83befb",
+        "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources": "d3fd84a187b22885093f47ee84cb866ca4d95d861efc61cb226fc4ef9e9c73c3"
+      },
+      "signatures": {
+        "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver": {
+          "exit": 0,
+          "stderr": ""
+        },
+        "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin": {
+          "exit": 0,
+          "stderr": ""
+        }
+      },
+      "sip": "System Integrity Protection status: enabled.\n",
+      "manifest_sha256": "1ad994554ab45016bfa701a9da62471284a36c8d3f11f3829f393ba0a91021f9",
+      "readback_source_sha256": "618524c88ee2cd26371eaed80e9aff5c665dd9f58d18f400248ab9dd2d767bfd",
+      "readback_binary_sha256": "fc6aae643efd8e44074cbc6c5e2f09588bac7d2881948f00081a9a0f1e842e10"
+    },
+    "after": {
+      "installed12hashes_unchanged": true,
+      "sip": "System Integrity Protection status: enabled.\n",
+      "restored_host": {
+        "device": 112,
+        "nominal_rate": 48000,
+        "nominal_settable": true,
+        "buffer_frames": 512,
+        "running_somewhere": 1,
+        "flags": 3,
+        "generation": 1,
+        "error": 0,
+        "native_sample_rate": 48000,
+        "available_rates": [
+          [
+            48000,
+            48000
+          ]
+        ]
+      },
+      "saved_preset_sha256": "cefec2ef4f58568a5fbc90f856f9f5f4ac14fb0aef8e050f93d15b34d41c1811"
+    },
+    "input_pins": {
+      "source_commit": "bd1cbf35df74fc085d409ee4716b0781d053e378",
+      "files_sha256": {
+        ".build/native/build12-stability/gate.py": "8f6dab6277e23a7ce9971de58fe596c44140f8934e97616783308e837f479422",
+        ".build/native/build12-stability/rate-readback.c": "538e0a4c9485362f68955a190e7d9bb9eaa04a15b6c1c622f7713657b10b57b8",
+        ".build/native/build12-stability/rate-readback": "5f02b05df931b3fbd9c99ed2ce14565732f2fc99f6adea11fe4a521df098998d",
+        ".build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/drivers/manifest.json": "1ad994554ab45016bfa701a9da62471284a36c8d3f11f3829f393ba0a91021f9",
+        ".build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/audio-clock-client": "6d027c389193c456ad6e63172258ab97fc36cc0488fd1cc6dc588e2ded3b70de",
+        ".build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/rk3-midi-monitor": "ad5adb79c04b93e9d17bdbe7dac6e017e67437d41947c319a8154f1484195364",
+        ".build/native/candidates/build12-bd1cbf35df74fc085d409ee4716b0781d053e378/tools/status-watch": "e321ba03985755f5b9723f41ec243d845a25485588b376ab757bcfa93c01f725"
+      },
+      "scope": "two600s48k128 untraced only; other4rates unsupported; no production edits"
+    },
+    "NI_timing_ring_clock_calendar_recovery_changed": false,
+    "installed_driver_bundles_changed": false,
+    "calibration_mappings_LED_policy_changed": false,
+    "SIP": "enabled before and after",
+    "private_measurement_tools_added": true,
+    "production_source_changed": false
+  },
+  "reviews_and_offline_checks": {
+    "final_gate_sha256": "8f6dab6277e23a7ce9971de58fe596c44140f8934e97616783308e837f479422",
+    "rate_readback_source_sha256": "538e0a4c9485362f68955a190e7d9bb9eaa04a15b6c1c622f7713657b10b57b8",
+    "rate_readback_binary_sha256": "5f02b05df931b3fbd9c99ed2ce14565732f2fc99f6adea11fe4a521df098998d",
+    "independent_gate_and_probe_review": "PASS after Float64 precision, successful UID getter ownership, and evidence-write cleanup guard corrections, all private measurement tools only.",
+    "pre_live_checks": "Strict ARM compiler, syntax, argument/health/clock negative fixtures and injected save-failure cleanup guard passed before live admission.",
+    "additional_full_mock_review": {
+      "script_sha256": "0f1056712c964009fbe66119632bd33cce71270bdc95bf18f055376ba4559b95",
+      "report_path": "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/build12-stability/offline-review-oglhlys_/report.json",
+      "report_sha256": "662c0ca2487d272e44ac4900bc3410687446f546e8877c5fc7847a10664ed644",
+      "cases": 8,
+      "result": "All expected; no live calls. Completed alongside run2.",
+      "limits": "Short module-only CAP and synthetic records; clock-stall fixture tests nonadvancing values, not 2s absence. Initial spaced-JSON fixture readiness failure corrected to actual compact CLI output; wrapper unchanged."
+    }
+  },
+  "host_restoration": {
+    "Guitar_Rig_6_reopened": true,
+    "preset": "RK3 Build12 Physical Test",
+    "saved_preset_unchanged_sha256": "cefec2ef4f58568a5fbc90f856f9f5f4ac14fb0aef8e050f93d15b34d41c1811",
+    "audio_UI_verified": "CoreAudio Rig Kontrol3 (NI ARM), Running48000Hz/128frames; same input/output assignment",
+    "MIDI_UI_verified": "Omni; Native Controller Mapping (Controller) enabled; DIN disabled, GR6VirtualInput enabled, unchanged.",
+    "no_new_physical_listening_test": true,
+    "readback_after_restore": {
+      "device": 112,
+      "nominal_rate": 48000,
+      "nominal_settable": true,
+      "buffer_frames": 512,
+      "running_somewhere": 1,
+      "flags": 3,
+      "generation": 1,
+      "error": 0,
+      "native_sample_rate": 48000,
+      "available_rates": [
+        [
+          48000,
+          48000
+        ]
+      ]
+    },
+    "buffer_readback_limit": "Separate readback process returns512; actual test clients and restored GR6 UI each verify128. It is not evidence that GR6 was using512.",
+    "no_preset_save_on_automatic_axis_updates": true
+  },
+  "limits": [
+    "These are finite clock/transport stability checks, not an endurance guarantee, waveform continuity/known-sequence test, true-loopback latency measurement or new physical MIDI/LED acceptance.",
+    "Four other original NI sample rates are blocked by current implementation and were never attempted; no rate pass or full audio parity is claimed.",
+    "Other existing M3 gain/directmonitor/latency, recovery, DIN, toe/external hardware and rollback/reinstall gates remain open.",
+    "No driver version/install, NI timing/recovery or security change; SIP stays enabled."
+  ],
+  "private_evidence_sha256": {
+    "gate.py": "8f6dab6277e23a7ce9971de58fe596c44140f8934e97616783308e837f479422",
+    "inputs.json": "c45496e4808b8c2977ac65c17df9e5d9d3d50d9df477b8a8644ddfa0afae37bb",
+    "installed-verification.json": "9aa56cc3fe82b1f0446519c104739bddc236b2582739bc57c95e4e6f3822a7fd",
+    "offline-mock-review.py": "0f1056712c964009fbe66119632bd33cce71270bdc95bf18f055376ba4559b95",
+    "post-verification.json": "19aca0f923af186bfc54316f5e319a3c04888eeb19f3f59fcc807de4323ffcf1",
+    "rate-readback.c": "538e0a4c9485362f68955a190e7d9bb9eaa04a15b6c1c622f7713657b10b57b8",
+    "rates-before-host-stop.json": "36eafbf39ed045b770398b80a0c6e999e8c9d4256a14af6be219670fea25731c",
+    "rates-host-restored.json": "36eafbf39ed045b770398b80a0c6e999e8c9d4256a14af6be219670fea25731c",
+    "rates-idle-reviewed.json": "a11810c5b30fd629d844512931b438767ed92e597f0dfece5384f295855e2cb6",
+    "rates-idle.json": "a11810c5b30fd629d844512931b438767ed92e597f0dfece5384f295855e2cb6"
+  }
+}

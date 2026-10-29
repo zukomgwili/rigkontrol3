@@ -1,0 +1,11 @@
+// Software-only class-discovery probe; not an RK3 hardware driver.
+#ifndef RK3_DISCOVERY_PROBE_SERVICE_IIG
+#define RK3_DISCOVERY_PROBE_SERVICE_IIG
+#include <DriverKit/IOService.iig>
+class de_caiaq_driver_NIUSBAudioDevice : public IOService
+{
+public:
+    virtual kern_return_t Start(IOService *provider) override;
+    virtual kern_return_t Stop(IOService *provider) override;
+};
+#endif

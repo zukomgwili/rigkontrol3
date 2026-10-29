@@ -1,5 +1,0 @@
-module CLibusb [system] {
-    header "/opt/homebrew/include/libusb-1.0/libusb.h"
-    link "usb-1.0"
-    export *
-}

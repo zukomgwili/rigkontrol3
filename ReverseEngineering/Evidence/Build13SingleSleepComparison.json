@@ -1,0 +1,524 @@
+{
+  "schema": 1,
+  "issue": "rigkontrol3-40h.2",
+  "date": "2026-10-28",
+  "status": "INCONCLUSIVE_SLEEP_TELEMETRY",
+  "separate_functional_status": "DELAYED_HUMAN_GR6_FUNCTIONAL_PASS",
+  "root_cause": "No driver cause established; observer window ended before Sleep",
+  "installed": "0.2.8/build13 sourcee61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "repository_base": "0e9e8c4e278eacdb851e8ecf9cc6e96dec6d27f6",
+  "production_changes": false,
+  "scope": {
+    "user_requested_Sleep_cycles": 1,
+    "assistant_triggered_Sleep": 0,
+    "new_MIDI_subscription_executions": 1,
+    "observer_restart_or_retry": false,
+    "post_functional_metadata_snapshot_no_subscription": 1,
+    "driver_or_service_or_app_restart": false,
+    "native_MIDI_writes_by_diagnostics": 0,
+    "mappings_calibration_LEDpolicy_NItiming_ring_calendar_recovery_QoS": "unchanged",
+    "SIP": "enabled_before_and_after",
+    "new_planning_beads": 0
+  },
+  "plan_record": "Plan in existing .2 before wrapper copying/phase bookkeeping; existing C/raw/snapshot binaries unchanged. Only copied wrapper paths/labels/descriptive prompt/scope changed. Conditional reuse review required phase-aware counters and stop on cap. Once cap was discovered, diagnostic attempt stopped; already authorized postwake GUI action recorded separately without a new collector or Sleep.",
+  "human": {
+    "readiness": "Ready \u2014 setup is at that starting state",
+    "pre_sleep_press": "Done \u2014 Cry Wah and LED 1 are on",
+    "wake_retention": "Awake after Sleep \u2014 both stayed on",
+    "delayed_functional_check": "Finished \u2014 power turned off and knob followed",
+    "functional_limit": "Later human on-screen check, not recorded post-wake callbacks or recovery within10seconds; no new observer/subscriber or secondSleep."
+  },
+  "preflight": {
+    "utc": "2026-10-28T07:05:21.089302+00:00",
+    "git_head": "0e9e8c4e278eacdb851e8ecf9cc6e96dec6d27f6",
+    "all12_installed_build13_hashes_unchanged": true,
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "processes": [
+      {
+        "pid": 35183,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 35193,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      },
+      {
+        "pid": 72936,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ],
+    "no_capture_started": true
+  },
+  "admission": {
+    "logic_delta": "ONLY paths/runlabel, terminal prompt and descriptive scope; no C/binary change",
+    "reuse_review": "independent conditional PASS plus root literal-delta and syntax PASS",
+    "sha256": {
+      ".build/native/live-midi-delivery/paired-consumer": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+      ".build/native/postsleep-investigation/tools/rawwatch": "3899b149b230f352edcf198f41321b24fe85adfc639a774d787252a06d1ce21e",
+      ".build/native/postsleep-investigation/tools/state-snapshot": "d534fac01e3339887249327607a36322c51b5a003cf19ed3b779633fc6a6fcf0",
+      ".build/native/single-sleep-comparison/paired-action.sh": "ace9750b645315ea0cc5b931671a2cf115978653ca655814d0a35f9820adeb43",
+      ".build/native/single-sleep-comparison/run-paired-action.py": "61606a209b9d10387ed75368f703ee1e56613b0cb85c13759ab09dcf779df3b7"
+    }
+  },
+  "execution": {
+    "started_utc": "2026-10-28T07:09:54.916494+00:00",
+    "hard_cap_seconds": 315,
+    "scope": "single planned Sleep/wake; existing paired/raw binaries; no driver or recovery change",
+    "wrapper_pid": 43895,
+    "exit": 1,
+    "result": "EXITED",
+    "process_group_empty": true,
+    "elapsed_seconds": 301.332499000011,
+    "ended_utc": "2026-10-28T07:14:56.247708+00:00",
+    "wrapper_reaped": true,
+    "files": {
+      "midi-baseline.log": "cf09f94b98f693845b59d934073535077a9f340ccd036786593c8efd1b340f3b",
+      "midi.log": "eb45a561932a6781ea9a9bc963ffb98515c4e13003e85d322c1c4cde96a69ea1",
+      "before_sleep.json": "f102bab824452b24712a8105a862491aac513a05833cd14786ffdb0517622fa4",
+      "midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw.exit": "1121cfccd5913f0a63fec40a6ffd44ea64f9dc135c66634ba001d10bcf4302a2",
+      "before_sleep-midi.log": "0bc7a6cda490744ee0331507090483b09cdbff8518cc511a8ea80b2b7fafc9e6",
+      "raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "midi.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "raw.ndjson": "41a9d8eee9227478ac4f1054a91cfd1f0df9616d484d2bf2e839d918d4a23db4"
+    }
+  },
+  "before_sleep": {
+    "phase": "before_sleep",
+    "utc": "2026-10-28T07:12:58.915973+00:00",
+    "fresh_footer": true,
+    "footer_number": 2,
+    "counts": {
+      "80": {
+        "count": 1,
+        "min": 127,
+        "max": 127,
+        "last": 127
+      }
+    },
+    "total_CC": 1,
+    "raw_last_sequence": 118544,
+    "raw_last_query": {
+      "event": "watch_query",
+      "after_sequence": 118543,
+      "status": 0,
+      "returned_size": 8,
+      "shape": true,
+      "bounded_cursor_schema": true,
+      "count": 1,
+      "next_sequence": 118544,
+      "latest_sequence": 118544,
+      "dropped": 0
+    },
+    "raw_last_info": {
+      "event": "watch_info",
+      "object": 126,
+      "status": 0,
+      "shape": true,
+      "schema_identity_valid": true,
+      "version": 1,
+      "flags": 1,
+      "generation": 2,
+      "error": 0,
+      "rate": 48000,
+      "digital_snapshot": 2147483648,
+      "raw_hex": "010000000100000002000000000000000000000080bb00000200000002000000010000000100000002000000000000806f72672e7269676b6f6e74726f6c332e6e692d61726d2e7573622e3137636331393430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000526967204b6f6e74726f6c2033204e61746976652041524d00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "raw_ended": false,
+    "raw_reports_captured": 601,
+    "processes": [
+      {
+        "pid": 35183,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 35193,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      },
+      {
+        "pid": 72936,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ]
+  },
+  "captured_paired_result": {
+    "controlA": true,
+    "controlB": true,
+    "controls_valid": true,
+    "private_callbacks": 2,
+    "private_packets": 2,
+    "native_callbacks": 1,
+    "native_packets": 1,
+    "native_CC": 1,
+    "unknown_callbacks": 0,
+    "cleanup": true,
+    "exit": 0,
+    "native_writes": 0
+  },
+  "captured_private_controls": [
+    {
+      "event": "control",
+      "phase": "A",
+      "sent_timestamp": 4265459516883,
+      "exact_matches": 1,
+      "valid": true
+    },
+    {
+      "event": "control",
+      "phase": "B",
+      "sent_timestamp": 4272690099057,
+      "exact_matches": 1,
+      "valid": true
+    }
+  ],
+  "raw_capture_summary": {
+    "reports": 823,
+    "sequence_range": [
+      117944,
+      118766
+    ],
+    "watch_end": {
+      "event": "watch_end",
+      "reason": "duration_cap",
+      "exit": 3,
+      "cursor": 118766,
+      "fresh_reports": 823,
+      "gap_or_dropped": false,
+      "exact_count_inference_valid": false,
+      "record_budget_used_conservative": 2144,
+      "delivery_verdict": "NOT_TESTED"
+    },
+    "no_postwake_raw_witness": true
+  },
+  "power_log": {
+    "read_exit": 0,
+    "window_start_UTC": "2026-10-28 07:09:54",
+    "window_end_UTC": "2026-10-28 07:24:17",
+    "transitions": [
+      {
+        "time": "2026-10-28 07:16:14",
+        "offset": "+0000",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Software Sleep pid=447':TCPKeepAlive=active Using AC (Charge:34%) 3 secs"
+      },
+      {
+        "time": "2026-10-28 07:16:17",
+        "offset": "+0000",
+        "kind": "DarkWake",
+        "message": "DarkWake from Deep Idle [CDNP] : due to smc.sysState.Wake(0x70070000) wifibt SMC.OutboxNotEmpty/ Using AC (Charge:34%) 10 secs"
+      },
+      {
+        "time": "2026-10-28 07:16:27",
+        "offset": "+0000",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using AC (Charge:35%) 95 secs"
+      },
+      {
+        "time": "2026-10-28 07:18:02",
+        "offset": "+0000",
+        "kind": "Wake",
+        "message": "Wake from Deep Idle [CDNVA] : due to MTP.DOCK.CHANNELS.AP0.IRQ RTP.keyboard/UserActivity Assertion Using AC (Charge:35%)"
+      }
+    ],
+    "parser_correction": "Original local projection required no space before timezone and selected none; corrected against actual existing output before any interpretation. No second pmset execution or sleep."
+  },
+  "relevant_OS_acknowledgement_warnings": [
+    "2026-10-28 07:16:17 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)]",
+    "2026-10-28 07:18:02 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)]"
+  ],
+  "time_relation": {
+    "capture_end_UTC": "2026-10-28T07:14:56.247708+00:00",
+    "first_actual_software_Sleep_UTC": "2026-10-28T07:16:14+00:00",
+    "capture_ended_seconds_before_first_sleep": 77.752292,
+    "final_user_Wake_UTC": "2026-10-28T07:18:02+00:00",
+    "software_sleep_to_final_wake_wall_seconds": 108,
+    "OS_substates": "3s softwareSleep,10sDarkWake,95smaintenanceSleep; not108s uninterrupted sleep",
+    "private_control_B_relation": "Entire observer process and controlB ended before actual Sleep; not a postwake receiver control",
+    "postwake_checkpoint": "Absent; refused expiredPID before signaling",
+    "post_action_numeric_MIDI": "NOT_CAPTURED",
+    "functional_timing": "User performed the later requested GUIcheck after diagnostic-limit investigation; exact response time not separately timestamped. No immediate10second or recovery-latency claim."
+  },
+  "post_sleep_processes": {
+    "utc": "2026-10-28T07:24:15.018239+00:00",
+    "processes": [
+      {
+        "pid": 35183,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 35193,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      },
+      {
+        "pid": 72936,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ],
+    "owned_observer_stopped": true
+  },
+  "post_functional_metadata": {
+    "execution": {
+      "start_utc": "2026-10-28T07:31:35.396508+00:00",
+      "scope": "one read-only metadata snapshot AFTER human functional result; no MIDI subscription",
+      "argv": [
+        "/Users/zukomgwili/.codex/worktrees/ni-arm-driver/rigkontrol3/.build/native/postsleep-investigation/tools/state-snapshot"
+      ],
+      "hard_cap_seconds": 10,
+      "exit": 0,
+      "result": "EXITED",
+      "reaped": true,
+      "elapsed_seconds": 0.4000364580133464,
+      "end_utc": "2026-10-28T07:31:35.796548+00:00"
+    },
+    "native_info": [
+      {
+        "event": "native_info",
+        "snapshot": 1,
+        "edge": "before",
+        "object": 126,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "version": 1,
+        "flags": 3,
+        "generation": 2,
+        "error": 0,
+        "rate": 48000,
+        "digital_snapshot": 2147483648,
+        "uid_match": true,
+        "schema_identity_valid": true
+      },
+      {
+        "event": "native_info",
+        "snapshot": 1,
+        "edge": "after",
+        "object": 126,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "version": 1,
+        "flags": 3,
+        "generation": 2,
+        "error": 0,
+        "rate": 48000,
+        "digital_snapshot": 2147483648,
+        "uid_match": true,
+        "schema_identity_valid": true
+      },
+      {
+        "event": "native_info",
+        "snapshot": 2,
+        "edge": "before",
+        "object": 126,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "version": 1,
+        "flags": 3,
+        "generation": 2,
+        "error": 0,
+        "rate": 48000,
+        "digital_snapshot": 2147483648,
+        "uid_match": true,
+        "schema_identity_valid": true
+      },
+      {
+        "event": "native_info",
+        "snapshot": 2,
+        "edge": "after",
+        "object": 126,
+        "status": 0,
+        "returned_size": 8,
+        "shape": true,
+        "version": 1,
+        "flags": 3,
+        "generation": 2,
+        "error": 0,
+        "rate": 48000,
+        "digital_snapshot": 2147483648,
+        "uid_match": true,
+        "schema_identity_valid": true
+      }
+    ],
+    "midi_identity": [
+      {
+        "event": "midi_identity_matches",
+        "count": 1,
+        "selected_device_ref": 144150569,
+        "identity_query_errors": 8,
+        "identity_shape_errors": 0
+      },
+      {
+        "event": "midi_object",
+        "kind": "device",
+        "ref": 144150569,
+        "entity_ref": 0,
+        "device_ref": 144150569,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": -1483967809,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_object",
+        "kind": "entity",
+        "ref": 144150570,
+        "entity_ref": 144150570,
+        "device_ref": 144150569,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": -1046341785,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_object",
+        "kind": "source",
+        "ref": 144150571,
+        "entity_ref": 144150570,
+        "device_ref": 144150569,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": -1923072596,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_object",
+        "kind": "destination",
+        "ref": 144150572,
+        "entity_ref": 144150570,
+        "device_ref": 144150569,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": 969347294,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_object",
+        "kind": "registered_source",
+        "ref": 144150571,
+        "entity_ref": 144150570,
+        "device_ref": 144150569,
+        "entity_status": 0,
+        "device_status": 0,
+        "unique_status": 0,
+        "unique_id": -1923072596,
+        "offline_status": 0,
+        "offline": 0,
+        "belongs_selected_device": true
+      },
+      {
+        "event": "midi_inventory_end",
+        "matched_registered_sources": 1,
+        "unresolved_global_sources": 0
+      }
+    ],
+    "limits": "Read-only snapshot after human actions, NOT continuous post-wake raw witness or callback proof"
+  },
+  "outcome": {
+    "automated_comparison": "INCONCLUSIVE, not driverRED or telemetryPASS",
+    "human_retained_wah_and_LED_on_after_wake": true,
+    "later_human_power_off_and_knob_follow": true,
+    "same_GR6_PID": 35183,
+    "same_MIDIServer_PID": 35193,
+    "same_audio_USB_owner_PID": 72936,
+    "no_phantom_MIDI_claim": "UNPROVEN; no quiet-wake telemetry/fresh monitored postwake witness",
+    "active_audio_sleep_qualification": "NOT_PERFORMED: pre-sleep ninf flags1 audio inactive; postmetadataflags3 is not audio continuity or listening proof",
+    "whole_M1_M3_complete": false
+  },
+  "findings": [
+    "A fresh presleep native CC80=127 and one physical switch press/release were captured; the baseline was healthy.",
+    "The raw watcher hit its existing300-second duration cap. Its wrapper closed both observers at07:14:56.247708UTC, before actualSoftwareSleep07:16:14.",
+    "The five-minute capture budget was consumed by preparation/coordination before sleep. Phase bookkeeping was prepared while recording was already running. This is an orchestration/coverage limitation, not evidence of a driver failure.",
+    "The power log verifies the requested actualSleep cycle, including OS DarkWake and maintenance substates. It is not a second user test or assistant retry.",
+    "Both private control messages and the sole captured native CC occurred before Sleep; successful controlB cannot validate a postwake receiver in this attempt.",
+    "User confirmed wah/LEDretention and later actualGR6 powerOFF/knobresponse without app/server/USBrestart. This supports delayed functional response in that retained application, separately from missing automated qualification.",
+    "Post-functional read-only snapshot showsG2/flags3/48k/error0 and same sourceUniqueID-1923072596 online. It is metadata, not callback or timing proof."
+  ],
+  "next_bounded_step": {
+    "location": "existing .2 only",
+    "priority": "Correct validation orchestration timing before any driver tracing or fix.",
+    "requirements": "Prepare all phase bookkeeping before timed recording; explicitly budget human coordination and OS suspend/acknowledgement latency. Keep the existing paired consumer continuous across the comparison. Plan bounded raw observation that does not tear down the MIDI consumer solely because its short pre-sleep raw window expires; preserve separate raw cohorts/generation limits honestly if needed.",
+    "authorization_limit": "No further Sleep or observer attempt was executed. Any future single cycle needs an explicit plan/coordination; no silent retry. No new planning-only bead or driver behavior change is justified."
+  },
+  "reviews": {
+    "reuse": "independent conditionalPASS before run",
+    "timeline_and_limits": "independentPASS confirms cap beforeSleep and separate delayed humancheck",
+    "final_evidence": "PASS_independent_37_pin_fact_timeline_and_limit_review_no_corrections"
+  },
+  "verification_final": {
+    "utc": "2026-10-28T07:37:47.810868+00:00",
+    "all12_installed_build13_files_unchanged": true,
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "processes": "35183   501 /Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6\n35193   501 /System/Library/Frameworks/CoreMIDI.framework/MIDIServer\n72936   202 Core Audio Driver (RigKontrol3Audio.driver)\n",
+    "owned_observers_absent": true,
+    "production_diff": ""
+  },
+  "private_artifact_sha256": {
+    ".build/native/single-sleep-comparison/admission.json": "e95b53f5f39d8e018a8c44d99fed4d1bcd4c20a3921c7b778f15d2707e8281f4",
+    ".build/native/single-sleep-comparison/capture-1/before_sleep-midi.log": "0bc7a6cda490744ee0331507090483b09cdbff8518cc511a8ea80b2b7fafc9e6",
+    ".build/native/single-sleep-comparison/capture-1/before_sleep.json": "f102bab824452b24712a8105a862491aac513a05833cd14786ffdb0517622fa4",
+    ".build/native/single-sleep-comparison/capture-1/execution.json": "1128155c27fa7f99fece6365833fa0b57395ab4f791a2999a6d3de88dcb40bb8",
+    ".build/native/single-sleep-comparison/capture-1/midi-baseline.log": "cf09f94b98f693845b59d934073535077a9f340ccd036786593c8efd1b340f3b",
+    ".build/native/single-sleep-comparison/capture-1/midi.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    ".build/native/single-sleep-comparison/capture-1/midi.log": "eb45a561932a6781ea9a9bc963ffb98515c4e13003e85d322c1c4cde96a69ea1",
+    ".build/native/single-sleep-comparison/capture-1/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/single-sleep-comparison/capture-1/raw.exit": "1121cfccd5913f0a63fec40a6ffd44ea64f9dc135c66634ba001d10bcf4302a2",
+    ".build/native/single-sleep-comparison/capture-1/raw.ndjson": "41a9d8eee9227478ac4f1054a91cfd1f0df9616d484d2bf2e839d918d4a23db4",
+    ".build/native/single-sleep-comparison/capture-1/raw.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/single-sleep-comparison/checkpoint.py": "4ca7eeacf2670d49ad2bee9d95a8871fed679ce1ba9a0d658dc6243e87ca6c33",
+    ".build/native/single-sleep-comparison/frozen-input/paired-action.sh": "cc2d21bea49684792e720f3c6ff09e6f23fb1d515a7ea78b914a0f26b86ba821",
+    ".build/native/single-sleep-comparison/frozen-input/run-paired-action.py": "8bc432df0f34dc1f674e97654040fd47ceca8e2edcda7aecdfbccd3d9665912e",
+    ".build/native/single-sleep-comparison/human.json": "01064f8e7ee974a3a1868d9e689770edcc04b2130e4cc465512465effe9d9b00",
+    ".build/native/single-sleep-comparison/live.json": "957a81096be10dccf1d0381dfd1241d706d6e0578103b6c5da95865ab96c7a8d",
+    ".build/native/single-sleep-comparison/paired-action.sh": "ace9750b645315ea0cc5b931671a2cf115978653ca655814d0a35f9820adeb43",
+    ".build/native/single-sleep-comparison/post-functional-snapshot/execution.json": "bd1746fed1d2cb8755d28aef6f89834f694d1b895a5d8ebebfaa9e034afdecfa",
+    ".build/native/single-sleep-comparison/post-functional-snapshot/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/single-sleep-comparison/post-functional-snapshot/stdout.ndjson": "317836c02afc17a8eedecf6f05d704c2bc7fd5be9b9ca2ece803c47c48de4118",
+    ".build/native/single-sleep-comparison/post-functional-snapshot/summary.json": "f74a9685749f32235553060dac365cfd59841869615e1c5b67cbea1ef3ec2e2f",
+    ".build/native/single-sleep-comparison/power-check/corrected-result.json": "0869539833475b5a84e302716665d2a561ad7d7b60af40d1fe4f7069032215f4",
+    ".build/native/single-sleep-comparison/power-check/pmset.log": "e2645070e6c9c3edb6066078d1c317717f78566fb801db2b493f630d03c5124b",
+    ".build/native/single-sleep-comparison/power-check/result.json": "3fd4d2a4469999cecea46676d9ca32e8f5a23cf490367f3f1a7e4fba3e4ce663",
+    ".build/native/single-sleep-comparison/power-check/stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/single-sleep-comparison/preflight.json": "d4b33573df8aa8320379157feda674fea115b6c7628603eb0d481d7fd0cfe604",
+    ".build/native/single-sleep-comparison/run-paired-action.py": "61606a209b9d10387ed75368f703ee1e56613b0cb85c13759ab09dcf779df3b7",
+    ".build/native/single-sleep-comparison/verification-final.json": "8c2b68cf3556ad81d247d99713dd6170a966103a906e1030c17a96ce7b62458a",
+    ".build/native/single-sleep-comparison/wake-checkpoint-refusal.json": "0603b4f52c33fadbaf111ea1c0effbccfc4b239e25b6d418e07533510b645c09",
+    ".build/native/single-sleep-comparison/wake-processes.json": "70cf63a54a80eb6fe258a0f301f53a80398502fa75a61c6388989f1fc6aa0429",
+    ".build/native/live-midi-delivery/paired-consumer": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+    ".build/native/live-midi-delivery/paired-consumer.c": "cdd2013158c9b2302f6bda8286e303a8def9bf52aaa65b5a9d0676e00aa2820b",
+    ".build/native/postsleep-investigation/tools/rawwatch": "3899b149b230f352edcf198f41321b24fe85adfc639a774d787252a06d1ce21e",
+    ".build/native/postsleep-investigation/tools/state-snapshot": "d534fac01e3339887249327607a36322c51b5a003cf19ed3b779633fc6a6fcf0",
+    "/private/tmp/rk3-single-sleep-plan.txt": "14f8cf27dd9c9217ce32a40ae4814bc62037cf779e339f47f024bea59109a4ee",
+    "/private/tmp/rk3-single-sleep-admission.txt": "6ddd1f89da1ea946a54ef69d43e3d1544e31d203db09782d4803cfd8b9aa483a",
+    "/private/tmp/rk3-single-sleep-cap-result.txt": "a6a5dd3240eef19039f353a4c340c034590ce0fb793883787edc4ffcfbade594"
+  },
+  "limits": [
+    "No automated postwake MIDI, rawaction or quiet-state comparison exists.",
+    "Monotonic caps are not used as actualSleep proof; OS power log/walltimes supply that proof.",
+    "Initial powerlog projection expected no space before timezone and selected no transitions; corrected locally against savedoutput beforeinterpretation, no second pmset or Sleep.",
+    "NativeSourceIDs/online metadata do not expose MIDIReceived or listener/privateguard state.",
+    "Humanfunctional check occurred later; no immediateautomatic-recovery or permanence claim.",
+    "No audible guitar check, all-eight-switch check, DIN/external/toe or USBrecovery test in this run."
+  ]
+}

@@ -1,0 +1,640 @@
+{
+  "schema": 1,
+  "issue": "rigkontrol3-40h.2",
+  "cross_reference": "rigkontrol3-40h.3",
+  "date": "2026-10-28",
+  "status": "ORCHESTRATION_FIXED_POSTWAKE_NATIVE_MIDI_FAILURE_REPRODUCED",
+  "driver_root_cause": "Not established; raw USB actions continue while native CoreMIDI delivery is absent. Private same-client/port controls pass.",
+  "installed": "0.2.8/build13 source e61aa5ab5e7afbb16e96217ba689f1f0785d1782",
+  "repository_base": "8d5b7df0d61dd5cfa4ffbfe1fea317a32c239f2b",
+  "orchestration_commit": "fe400044877f595ccb44ca6a462009a5032ea626",
+  "production_changes": false,
+  "scope": {
+    "user_requested_Sleep_cycles": 1,
+    "assistant_triggered_Sleep": 0,
+    "continuous_paired_MIDI_clients": 1,
+    "separate_raw_cohorts": 2,
+    "observer_retry": false,
+    "app_server_USB_or_settings_reset": false,
+    "driver_probe_or_C_binary_changes": false,
+    "NI_timing_ring_calendar_QoS_recovery_mappings_calibration_LED_policy": "unchanged",
+    "SIP": "enabled_before_and_after",
+    "new_planning_beads": 0
+  },
+  "plan_record": "Orchestration-only correction and ONE rerun \u2014 plan before coding (2026-10-28)\nExisting rigkontrol3-40h.2 only; no new issue. User authorizes fixing orchestration then one actualSleep/wake comparison. Keep installed0.2.8/build13 and all Driver/Agent, NI timing/ring/calendar/QoS/recovery, mappings/calibration/LED policy, security/SIP unchanged. No C probe rebuild or new driver diagnostic. Reuse frozen paired-consumer74f22f99... and rawwatch3899b149... binaries.\n\nProblem: prior coupled raw300s cap ended the pairedMIDIobserver before actualSleep. Setup/checkpoint code was also prepared while timing already ran. Do not interpret that failed coverage as a driver fault. The fix is test coordination/lifetimes only.\n\nImplement Tools/rk3-sleep-compare.py and Tools/test-rk3-sleep-compare.py. Standard-library Python, existing binary path/hash validation, unique outputdirectory, no shell or installer/app/USB/MIDIsettings commands. Prepare code/review/offline checks BEFORE userreadiness and timerstart. Nativepaired C is continuous from start through finalprivateControlB. Default whole-run budget1800s using BOTH walltime andmonotonic elapsed; enforce onparent command-poll loop, recordboth, stopuponanycap. This is separate from immutable rawwatch300s per-window cap. No Sleep command: human choosesAppleMenuSleep once.\n\nMinimal explicit state machine/API for implementation+tests:\nSleepComparison(output,paired,raw,budget_seconds=1800, expected hashes; injectable process/power readers for tests only). Methods start(), before_sleep(), after_wake(), finish(), abort(reason), poll(). CLI stdincommands pre/wake/finish/abort/status. States PRE/SLEEP/POST/DONE. Allmethods writephase JSON/eventUTC and print structuredphase readiness/status; errors/EOF/signal/deadline alwayscleanup andINCONCLUSIVE. Only owned Popen processgroups may be signaled; keep handles, poll beforekill, stop/reap/escalate bounded. No automatic retry or observer reconnect.\n\nstart: validatefrozenSHA, spawnONEpairedconsumer --live withredirectedlogs andONEraw-precohort, waitREADY+controlA andnewcompleteSIGUSR1footer, saveinitialcounts+processIDs. Do not askphysicalactions untilfullyready.\npre (afteruseroneONpress): request NEWcompleteMIDIfooter (notstale), requireCC80delta+1/last127 and rawprebit4rise/release. Savepresleepcounts/rawsequence/G/info/UTC/processes. Stop/reapraw-pre normally now, BEFOREhumanSleep; it intentionallydoesnotspanSleep. Requirevalidrawcohort/noG/property/schema/gap/error; pre-cap/failurepreventsSleep (no automaticretry), but never silentlykillsMIDIjustbecauseanoptionalrawprocessended. Requireatleast180s overallbudgetremainingbefore READY_SLEEP. Userpreconditionwah/LEDoff/pedalheel; expressionheldheel, no prepositiveCC4 excursion so postfullrangecanbeestablished.\nwake (afteractualSleep60s/wake+10suntouched): takeNEWquietfooter/processIDs, compareCC80topre(countunchanged/127), savebeforepostactions. Startfreshraw-postcohort (explicit separate generation-qualified observation, not recovery/re-resolutionofMIDIclient). CaptureinitialpostG; anybetween-cohortGtransitionrecorded, notsilentlyhidden. WaitrawreadythenREADY_POST_ACTION. Samecontinuouspairedconsumer remains. No app/serverrestart/inputrefresh, no newMIDIsubscriber.\nfinish (afteruseroneOFFpress+heel-toe-heel): newpostfooter/rawboundary; stop/reapraw-post andthenpairedSIGINTsoexistingprivateBverifiesclient. ParsePAIRED_RESULT/controlA+B/cleanup, childexitstatusandcompletefooters. ReadOSpowerlogONCEaftercollection using /usr/bin/pmset -g log hard10s; filterexacttestUTCwindow andactualSleep/Wakecolumns withwhitespace-beforeTZ support; DarkWake/maintenance are OSsubstates notextrausertests. Keepfulloriginalprivate, reportonlytargettransitions/relevantGR6ackwarnings. Comparepre/sleep/wake/postphase times. Injectfixturepowerreaderonlyinunitprocesses; no production CLI fakeSleep flag.\n\nVerdicts: PASS requiresfreshprebaseline, OSactualSleepbetweenpre/wake, freshpostrawbit4rise/release+analogsweep, quietCC80unchanged, postCC80delta+1/last0 andpostCC4movement/full0..127/heel0, privateA+Bvalid, cleanprocesses. Nativeoutputmissing withvalidraw+privatecontrols is FAILobservedpostwakeMIDI, notexactcause. Anycap/rawfault/controlfailure/cohortuncertainty/unconfirmedSleep makesINCONCLUSIVE, notdriverRED. Whole-windowpositivecount/childexit0aloneisneverPASS. Event/postrawG/processchangesrecorded explicitly; an unsupportedPrivatepropertyisnotvalue0success. Noaudio/all8/USBqualification claimed. ReporthumanUIconfirmationseparately andactualdelayfromOSWake; no unmeasured10second/instantaneous claim.\n\nMeaningful offline gates BEFORElive: actualfakechild-process test provesrawexpirydoesNOTteardowncontinuouspairedcollector; stale/no-freshpreCCcannotadmitSleep; phasepostmissingCCfailsdespiteprecount>0; invalidprivateB/rawfaultinconclusive; EOF/timebudget/signal cleanupreapsONLYownedchildren; positivebefore/afterfixturepipeline. Use unitteststdlib/fakeexecutables, zeroCoreMIDI/USB/sleep duringoffline tests. Root+independentreview, syntax/help and offline tests passbeforeONElivecomparison. No broadnativecodeunitrepeat whenDriverunchanged.\n\nLive protocol onlyafterfullyready/useravailable: establishOFF/heel, start; oneONpressandverifyfreshbaseline; actualAppleMenuSleep60s thenwake10suntouched; recordquiet andrawpostready; oneOFFpress+sweep; finish/evaluate. Ifprebaselinebad donotSleep; iftestinvalidstop/record, no secondSleep or silentrepair. OnverifiedMIDI failurepreservefailedstate, do not changerecoverybasedonguess. Allplan/changes/results inexisting.2 andevidence, crossref.3, memory, passiveexportactiveonly, independentresultreview, Gitpullrebasepush+separateDoltpush. Preserveprimaryindex113d42992a0ee90acfb640fc694b469abba536a6/86IDs.\n",
+  "implementation": {
+    "files": [
+      "Tools/rk3-sleep-compare.py",
+      "Tools/test-rk3-sleep-compare.py"
+    ],
+    "whole_run_cap_seconds": 1800,
+    "independent_raw_cap_seconds": 300,
+    "correction": "Continuous MIDI lifetime decoupled from raw windows; all phase gates prepared before recording; bounded input/deadline/owned-child cleanup.",
+    "review_finding_addressed": "Partial command could block readline; replaced by ready os.read with bounded buffering and regression."
+  },
+  "offline": {
+    "utc": "2026-10-28T08:10:29.076904+00:00",
+    "scope": "offline orchestration tests only; no hardware or system services",
+    "command": "python3 Tools/test-rk3-sleep-compare.py",
+    "exit": 0,
+    "methods": 6,
+    "seconds": 10.028,
+    "help_exit": 0,
+    "files": {
+      "Tools/rk3-sleep-compare.py": "409fd550365cba2b0cff03e5247f2b1580a45a14c55fb538bcbb2f58c967ce67",
+      "Tools/test-rk3-sleep-compare.py": "bf8416cb62cb5280c057c238fad71f9a4122bd60f045fd30880e9cc1b97c212a"
+    },
+    "real_capture_started": false,
+    "partial_line_deadline_regression": "PASS"
+  },
+  "code_review": {
+    "utc": "2026-10-28T08:11:14.693753+00:00",
+    "scope": "orchestration only, no live actions",
+    "reviewer": "/root/publication_writer_inventory",
+    "result": "PASS after partial-input deadline finding addressed",
+    "finding": "select plus blocking readline could starve deadline; replaced with ready os.read and bounded input buffer, regression uses open pipe/no newline",
+    "implementation_sha256": "409fd550365cba2b0cff03e5247f2b1580a45a14c55fb538bcbb2f58c967ce67",
+    "tests_sha256": "bf8416cb62cb5280c057c238fad71f9a4122bd60f045fd30880e9cc1b97c212a",
+    "remaining_evidence_limits": [
+      "Script PASS alone does not prove60s sleep or10s wake settling; inspect actual OS transitions and timestamps",
+      "No audio/all8/USB or exact private failure cause qualification"
+    ]
+  },
+  "preflight": {
+    "utc": "2026-10-28T08:01:01.806835+00:00",
+    "all12_installed_build13_files_unchanged": true,
+    "tool_sha256": {
+      ".build/native/live-midi-delivery/paired-consumer": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+      ".build/native/postsleep-investigation/tools/rawwatch": "3899b149b230f352edcf198f41321b24fe85adfc639a774d787252a06d1ce21e"
+    },
+    "SIP": "System Integrity Protection status: enabled.\n",
+    "processes": [
+      {
+        "pid": 35183,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 35193,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      },
+      {
+        "pid": 72936,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ],
+    "git_base": "8d5b7df0d61dd5cfa4ffbfe1fea317a32c239f2b",
+    "capture_started": false
+  },
+  "human": {
+    "readiness": "Ready \u2014 wah and LED off, pedal at heel",
+    "pre_action": "Done \u2014 Cry Wah and LED 1 are on",
+    "wake_retention": "Awake after Sleep \u2014 both stayed on",
+    "post_action": "Both of them did not respond",
+    "interpretation": "Human reports both Cry Wah controls unresponsive; final physical LED state was not separately clarified. Raw switch/pedal actions are established independently by the raw-post cohort.",
+    "one_requested_Apple_menu_Sleep": true,
+    "no_second_cycle_or_restart": true
+  },
+  "execution": {
+    "tool_session": 92190,
+    "wrapper_exit": 1,
+    "paired_client_spanned_actual_Sleep": true,
+    "raw_pre_deliberately_stopped_before_Sleep": true,
+    "raw_post_started_after_Wake": true
+  },
+  "initial": {
+    "counts": {},
+    "total_CC": 0,
+    "footer_number": 1,
+    "utc": "2026-10-28T08:11:56.778478+00:00",
+    "fresh_footer": true,
+    "processes": [
+      {
+        "pid": 35183,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 35193,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      },
+      {
+        "pid": 72936,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ],
+    "paired_pid": 54852,
+    "elapsed": {
+      "wall_seconds": 0.20087385177612305,
+      "monotonic_seconds": 0.20087387500097975
+    }
+  },
+  "pre": {
+    "counts": {
+      "80": {
+        "count": 1,
+        "min": 127,
+        "max": 127,
+        "last": 127
+      }
+    },
+    "total_CC": 1,
+    "footer_number": 2,
+    "utc": "2026-10-28T08:12:31.214816+00:00",
+    "fresh_footer": true,
+    "processes": [
+      {
+        "pid": 35183,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 35193,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      },
+      {
+        "pid": 72936,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ],
+    "paired_pid": 54852,
+    "elapsed": {
+      "wall_seconds": 34.63918471336365,
+      "monotonic_seconds": 34.639283124997746
+    }
+  },
+  "quiet": {
+    "counts": {
+      "80": {
+        "count": 1,
+        "min": 127,
+        "max": 127,
+        "last": 127
+      }
+    },
+    "total_CC": 1,
+    "footer_number": 3,
+    "utc": "2026-10-28T08:16:31.922807+00:00",
+    "fresh_footer": true,
+    "processes": [
+      {
+        "pid": 35183,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 35193,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      },
+      {
+        "pid": 72936,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ],
+    "paired_pid": 54852,
+    "elapsed": {
+      "wall_seconds": 275.34669184684753,
+      "monotonic_seconds": 177.35357249999652
+    }
+  },
+  "post": {
+    "counts": {
+      "80": {
+        "count": 1,
+        "min": 127,
+        "max": 127,
+        "last": 127
+      }
+    },
+    "total_CC": 1,
+    "footer_number": 4,
+    "utc": "2026-10-28T08:18:43.640829+00:00",
+    "fresh_footer": true,
+    "processes": [
+      {
+        "pid": 35183,
+        "uid": 501,
+        "command": "/Applications/Native Instruments/Guitar Rig 6/Guitar Rig 6.app/Contents/MacOS/Guitar Rig 6"
+      },
+      {
+        "pid": 35193,
+        "uid": 501,
+        "command": "/System/Library/Frameworks/CoreMIDI.framework/MIDIServer"
+      },
+      {
+        "pid": 72936,
+        "uid": 202,
+        "command": "Core Audio Driver (RigKontrol3Audio.driver)"
+      }
+    ],
+    "paired_pid": 54852,
+    "elapsed": {
+      "wall_seconds": 407.06568694114685,
+      "monotonic_seconds": 309.07273929199437
+    }
+  },
+  "raw_pre": {
+    "valid": true,
+    "errors": [],
+    "generation": 2,
+    "initial_bit4": false,
+    "final_bit4": false,
+    "bit4_rises": 1,
+    "bit4_releases": 1,
+    "sequence_range": [
+      130861,
+      130975
+    ],
+    "fresh_reports": 115,
+    "axis2_range": [
+      80,
+      81
+    ],
+    "last_info": {
+      "event": "watch_info",
+      "object": 126,
+      "status": 0,
+      "shape": true,
+      "schema_identity_valid": true,
+      "version": 1,
+      "flags": 3,
+      "generation": 2,
+      "error": 0,
+      "rate": 48000,
+      "digital_snapshot": 2147483648,
+      "raw_hex": "010000000300000002000000000000000000000080bb00000200000002000000010000000100000002000000000000806f72672e7269676b6f6e74726f6c332e6e692d61726d2e7573622e3137636331393430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000526967204b6f6e74726f6c2033204e61746976652041524d00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "last_query": {
+      "event": "watch_query",
+      "after_sequence": 130974,
+      "status": 0,
+      "returned_size": 8,
+      "shape": true,
+      "bounded_cursor_schema": true,
+      "count": 1,
+      "next_sequence": 130975,
+      "latest_sequence": 130975,
+      "dropped": 0
+    },
+    "watch_end": [
+      {
+        "event": "watch_end",
+        "reason": "signal_stop",
+        "exit": 0,
+        "cursor": 130975,
+        "fresh_reports": 115,
+        "gap_or_dropped": false,
+        "exact_count_inference_valid": true,
+        "record_budget_used_conservative": 351,
+        "delivery_verdict": "NOT_TESTED"
+      }
+    ],
+    "witness": true
+  },
+  "raw_post": {
+    "valid": true,
+    "errors": [],
+    "generation": 2,
+    "initial_bit4": false,
+    "final_bit4": false,
+    "bit4_rises": 1,
+    "bit4_releases": 1,
+    "sequence_range": [
+      131262,
+      131694
+    ],
+    "fresh_reports": 433,
+    "axis2_range": [
+      75,
+      738
+    ],
+    "last_info": {
+      "event": "watch_info",
+      "object": 126,
+      "status": 0,
+      "shape": true,
+      "schema_identity_valid": true,
+      "version": 1,
+      "flags": 3,
+      "generation": 2,
+      "error": 0,
+      "rate": 48000,
+      "digital_snapshot": 2147483648,
+      "raw_hex": "010000000300000002000000000000000000000080bb00000200000002000000010000000100000002000000000000806f72672e7269676b6f6e74726f6c332e6e692d61726d2e7573622e3137636331393430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000526967204b6f6e74726f6c2033204e61746976652041524d00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "last_query": {
+      "event": "watch_query",
+      "after_sequence": 131693,
+      "status": 0,
+      "returned_size": 8,
+      "shape": true,
+      "bounded_cursor_schema": true,
+      "count": 1,
+      "next_sequence": 131694,
+      "latest_sequence": 131694,
+      "dropped": 0
+    },
+    "watch_end": [
+      {
+        "event": "watch_end",
+        "reason": "signal_stop",
+        "exit": 0,
+        "cursor": 131694,
+        "fresh_reports": 433,
+        "gap_or_dropped": false,
+        "exact_count_inference_valid": true,
+        "record_budget_used_conservative": 983,
+        "delivery_verdict": "NOT_TESTED"
+      }
+    ],
+    "witness": true
+  },
+  "paired": {
+    "controlA": true,
+    "controlB": true,
+    "controls_valid": true,
+    "private_callbacks": 2,
+    "private_packets": 2,
+    "native_callbacks": 1,
+    "native_packets": 1,
+    "native_CC": 1,
+    "unknown_callbacks": 0,
+    "cleanup": true,
+    "exit": 0,
+    "native_writes": 0
+  },
+  "power": {
+    "read_exit": 0,
+    "transitions": [
+      {
+        "utc": "2026-10-28T08:13:45+00:00",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Software Sleep pid=447':TCPKeepAlive=active Using AC (Charge:44%) 3 secs    "
+      },
+      {
+        "utc": "2026-10-28T08:13:48+00:00",
+        "kind": "DarkWake",
+        "message": "DarkWake from Deep Idle [CDNP] : due to smc.sysState.Wake(0x70070000) wifibt SMC.OutboxNotEmpty/ Using AC (Charge:44%) 10 secs   "
+      },
+      {
+        "utc": "2026-10-28T08:13:58+00:00",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using AC (Charge:45%) 2 secs    "
+      },
+      {
+        "utc": "2026-10-28T08:14:00+00:00",
+        "kind": "DarkWake",
+        "message": "DarkWake from Deep Idle [CDNP] : due to smc.sysState.Wake(0x70070000) wifibt SMC.OutboxNotEmpty/ Using AC (Charge:45%) 10 secs   "
+      },
+      {
+        "utc": "2026-10-28T08:14:10+00:00",
+        "kind": "Sleep",
+        "message": "Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using AC (Charge:45%) 99 secs   "
+      },
+      {
+        "utc": "2026-10-28T08:15:49+00:00",
+        "kind": "Wake",
+        "message": "Wake from Deep Idle [CDNVA] : due to MTP.DOCK.CHANNELS.AP0.IRQ RTP.keyboard/UserActivity Assertion Using AC (Charge:45%)           "
+      }
+    ],
+    "gr6_ack_warnings": [
+      "2026-10-28 08:13:48 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)] ",
+      "2026-10-28 08:14:00 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)] ",
+      "2026-10-28 08:15:49 +0000 Kernel Client Acks  \tDelays to Sleep notifications: [Guitar Rig 6 timed out(30000 ms)] "
+    ]
+  },
+  "result": {
+    "verdict": "FAIL",
+    "reason": "observed_postwake_midi_missing",
+    "state": "DONE",
+    "utc": "2026-10-28T08:18:45.933726+00:00",
+    "cleanup": [
+      {
+        "pid": 55288,
+        "exit": 0,
+        "reaped": true
+      },
+      {
+        "pid": 54853,
+        "exit": 0,
+        "reaped": true
+      },
+      {
+        "pid": 54852,
+        "exit": 0,
+        "reaped": true
+      }
+    ],
+    "controls_valid": true,
+    "paired_exit": 0,
+    "raw_exit": 0,
+    "os_sleep_confirmed": true,
+    "processes_stable": true,
+    "process_changes": [],
+    "generation_pre": 2,
+    "generation_post": 2,
+    "generation_changed_between_cohorts": false,
+    "post_CC80_delta": 0,
+    "post_CC4_delta": 0,
+    "wake_to_quiet_seconds": 42.922807,
+    "wake_to_post_seconds": 174.640829,
+    "limits": [
+      "Separate generation-qualified raw cohorts; no raw observation during Sleep",
+      "Unchanged target PIDs do not prove application subscription continuity",
+      "Native paired-client comparison only; no audio/all-eight/USB qualification",
+      "Human UI/LED observations require separate record"
+    ],
+    "elapsed": {
+      "wall_seconds": 409.32529878616333,
+      "monotonic_seconds": 311.33235416698153
+    }
+  },
+  "cleanup": {
+    "utc": "2026-10-28T08:19:27.605424+00:00",
+    "checks": [
+      {
+        "pid": 55288,
+        "mode": "pid",
+        "absent": true
+      },
+      {
+        "pid": 55288,
+        "mode": "group",
+        "absent": true
+      },
+      {
+        "pid": 54853,
+        "mode": "pid",
+        "absent": true
+      },
+      {
+        "pid": 54853,
+        "mode": "group",
+        "absent": true
+      },
+      {
+        "pid": 54852,
+        "mode": "pid",
+        "absent": true
+      },
+      {
+        "pid": 54852,
+        "mode": "group",
+        "absent": true
+      }
+    ],
+    "all_owned_pid_and_group_absent": true,
+    "SIP": "System Integrity Protection status: enabled.\n"
+  },
+  "installed_integrity": {
+    "utc": "2026-10-28T08:20:51.055883+00:00",
+    "all12_installed_build13_files_unchanged": true,
+    "manifest_sha256": "1f1ca4e62c723c9136049809fdedc61fd3957c4f77736d5e929b8d8ef7667660",
+    "files": [
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/Info.plist",
+        "sha256": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+        "expected": "ad3f01366676624cf878fbe74f0ed9b2a1cde48569596feafb877b9a9cda7d97",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver",
+        "sha256": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+        "expected": "ca0ba738d8d5fc58df3cdf303351167ce256607fea2024a1d1c00de1abef18e4",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Info.plist",
+        "sha256": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+        "expected": "6f7bf2ae8b0fd1bfc1d87a4ea6f570bd00f4d93456df6a6a2ead979a577aff10",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/DWARF/RK3AudioDriver",
+        "sha256": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+        "expected": "323cef5da6e37bc899a5f5e68b6a3db900eb8431ef57d47213ca2b9514732c1f",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/MacOS/RK3AudioDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3AudioDriver.yml",
+        "sha256": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+        "expected": "5e3ac4fc6a6cd661734f680ce36fe8ea073ca932aefd8f8e85f4c1a642becc84",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/Plug-Ins/HAL/RigKontrol3Audio.driver/Contents/_CodeSignature/CodeResources",
+        "sha256": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+        "expected": "3f5250939ac7391958bfe4ab59ef590d2a643787d5eae00844f443e337ec3d7e",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/Info.plist",
+        "sha256": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+        "expected": "3432e380ce3e9f0ce921a0459806ef18368c6571a9271c2b2e373e1b719b168c",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver",
+        "sha256": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+        "expected": "d37ca9967a69f3886e718d97bad78092103535395d7f72e6f78801ba1a3d320f",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Info.plist",
+        "sha256": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+        "expected": "85cd32c6bb45d8aaf7d920d12b889a5626217d8c0a9e6eac4864db2ee47ae415",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/DWARF/RK3MIDIDriver",
+        "sha256": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+        "expected": "0d17254cea076d064073d2e1c958385c30095d4fcaa3742259f98967c36af773",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/MacOS/RK3MIDIDriver.dSYM/Contents/Resources/Relocations/aarch64/RK3MIDIDriver.yml",
+        "sha256": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+        "expected": "a7488b9969cb1f8c9563e6d87515ec3a6ac9cf2d620463919bf073467d51a4d1",
+        "match": true
+      },
+      {
+        "file": "/Library/Audio/MIDI Drivers/RigKontrol3MIDI.plugin/Contents/_CodeSignature/CodeResources",
+        "sha256": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143",
+        "expected": "0f75462edb0d4657ce7fff1ef8b7b8bc5c19663338bc5099f4f7c33bc181a143",
+        "match": true
+      }
+    ]
+  },
+  "interpretation": {
+    "verdict": "FAIL: fresh native MIDI missing after actual Sleep; human Guitar Rig failure agrees. Test orchestration covered all phases.",
+    "pre_MIDI": "One fresh CC80=127 and raw bit4 rise/release before Sleep, no prior CC4 excursion.",
+    "quiet_MIDI": "CC80 remains count1/127, no CC4; no phantom command witnessed while untouched.",
+    "post_raw": "433 fresh contiguous reports, one bit4 rise/release, axis2 range75..738, no gaps/drop/schema/errors, same generation2.",
+    "post_MIDI": "No new native callbacks/CC80/CC4 despite raw actions; whole-window one native packet is the pre-Sleep ON press only.",
+    "controls": "Private A before Sleep and B after post-actions exact-match+timestamp validation pass on the same continuous client/port; exit0 of C alone would have incorrectly hidden this phase failure.",
+    "processes": "Guitar Rig35183/MIDIServer35193/USBowner72936 unchanged; PID continuity does not itself prove internal subscription continuity.",
+    "OS": "One human Software Sleep request08:13:45 through user Wake08:15:49=124s wall; intervening DarkWake/Maintenance are OS substates, not repeated user attempts. Do not call this124s continuous sleep.",
+    "timing": "Quiet checkpoint42.922807s after user Wake; final post checkpoint174.640829s after Wake. Not a test of response exactly10s after Wake.",
+    "warnings": "Three GR6 Sleep-ack30000ms warnings retained without causal attribution.",
+    "failure_boundary": "Native driver publication or CoreMIDI subscription/delivery lifecycle remains unresolved; healthy private control does not identify which guard/queue/MIDIReceived path failed.",
+    "functional_limits": [
+      "No audible guitar/audio continuity check",
+      "No all-eight, DIN, external pedal, toe switch or USB recovery qualification",
+      "Physical LED final state not separately confirmed",
+      "Separate bounded raw cohorts do not observe raw traffic during Sleep"
+    ],
+    "no_phantom_qualification": "Not established: no extra native command was observed, but failed native delivery prevents inferring phantom-free recovery."
+  },
+  "next_step": {
+    "scope": "Existing .2 only; preserve failed app/server/owner state, no second Sleep/reset/install in this task.",
+    "work": "Plan the smallest native publication/subscription lifecycle observation against NI recovered power behavior before any driver code. No production fix justified by a guessed cause.",
+    "M1_M3_complete": false
+  },
+  "source_pins": {
+    ".build/native/sleep-orchestration-fix/capture-1/events.json": "147758c966a788ec98d41996e3593fbdd8713508633dac680ef5908979dd1da8",
+    ".build/native/sleep-orchestration-fix/capture-1/human.json": "4389ce159619443ff14072671c630498586b0157af0a3f070192833ace52738f",
+    ".build/native/sleep-orchestration-fix/capture-1/initial.json": "91a1334136461ebd74d0f69304ee9d2f3418c1333dd448027ed5737cf776f885",
+    ".build/native/sleep-orchestration-fix/capture-1/installed-integrity.json": "3044527c5a8c3487014f2f263a9204e13326c1626273c0cc85d9510d48f162c8",
+    ".build/native/sleep-orchestration-fix/capture-1/midi.log": "18aa360223f67f8a5abd742a41399c3e2b71c53714907f82bdaa44d9aaac56fe",
+    ".build/native/sleep-orchestration-fix/capture-1/midi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/sleep-orchestration-fix/capture-1/paired-result.json": "3b9eb8f8de1631ad76e99ab3a4deca9b160d6dbae50be6e865953c2f8b9caf74",
+    ".build/native/sleep-orchestration-fix/capture-1/pmset.log": "20463b40131f87b5db76d266afc5c09bc2e4e98861b8febfb9c33914600c8f03",
+    ".build/native/sleep-orchestration-fix/capture-1/pmset.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/sleep-orchestration-fix/capture-1/post-cleanup.json": "57b97dad87a94ab1f76b0c688d9cbb46139777b99ae7a14142a4de525275b327",
+    ".build/native/sleep-orchestration-fix/capture-1/post.json": "49de7c9d5726b7866bf675134145f3b1ac576596d39bec6e8c45e48b179db759",
+    ".build/native/sleep-orchestration-fix/capture-1/power.json": "cd67b6d535a21f2cbe6e0bbd391c9375ff932c569a54b629af896353ee686630",
+    ".build/native/sleep-orchestration-fix/capture-1/pre-raw.json": "13aa331ba6e5918648b7a0202517093ef1fcfa1e787b1a6379d7ef2cf0c1b934",
+    ".build/native/sleep-orchestration-fix/capture-1/pre.json": "10ec01eb28852c4eb59aca74301fe7399797e619369da03cb5f2bbbff61837aa",
+    ".build/native/sleep-orchestration-fix/capture-1/quiet.json": "b501239eaf97d60a07371a766c422b8fd6f6e34025829cbb70b9e55fee0a738f",
+    ".build/native/sleep-orchestration-fix/capture-1/raw-post-summary.json": "3617eb15d9b1dfb7b062f41579e5aa87ad30ff925bcd8bf7b2391fa0f5c6faf8",
+    ".build/native/sleep-orchestration-fix/capture-1/raw-post.log": "e30a19cab4c784e9d6d0b81c9f3f8aaf959e0dbe8bdd2560cbb52d860e7d6de1",
+    ".build/native/sleep-orchestration-fix/capture-1/raw-post.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/sleep-orchestration-fix/capture-1/raw-pre-summary.json": "13aa331ba6e5918648b7a0202517093ef1fcfa1e787b1a6379d7ef2cf0c1b934",
+    ".build/native/sleep-orchestration-fix/capture-1/raw-pre.log": "8910d647d291fe08a1a24cf2908a76d2f3cc7cfa8efec58268c7683783564517",
+    ".build/native/sleep-orchestration-fix/capture-1/raw-pre.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/sleep-orchestration-fix/capture-1/result.json": "a3b15faa6f6bd6aa81166d4e49847470a3fe9ff78cd387ac06fd1d88becce888",
+    ".build/native/sleep-orchestration-fix/offline-tests.stderr": "be6865afcbb907fb7623d709ff3a32f525673f0e4cec862b3696abb4e7131be1",
+    ".build/native/sleep-orchestration-fix/offline-tests.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".build/native/sleep-orchestration-fix/offline-validation.json": "feb0f2ab417dba4b23077e6824391ad1441f2087617f36e72a6109366db5bb6e",
+    ".build/native/sleep-orchestration-fix/preflight.json": "e442aff313bda9e516132dae345125e89d9832d76e974e73bd64f9b939174af4",
+    ".build/native/sleep-orchestration-fix/review.json": "44a7f215ffb58cc720da144b699d31df8ecf54b71175f67d281c57213f09e5c8",
+    "Tools/rk3-sleep-compare.py": "409fd550365cba2b0cff03e5247f2b1580a45a14c55fb538bcbb2f58c967ce67",
+    "Tools/test-rk3-sleep-compare.py": "bf8416cb62cb5280c057c238fad71f9a4122bd60f045fd30880e9cc1b97c212a",
+    ".build/native/live-midi-delivery/paired-consumer": "74f22f99beec4ec8e7eb7d91d3d19723de1ff2aea4b605d2d46d848113de9c1f",
+    ".build/native/postsleep-investigation/tools/rawwatch": "3899b149b230f352edcf198f41321b24fe85adfc639a774d787252a06d1ce21e"
+  },
+  "independent_result_reviews": {
+    "reviewed_report_sha256": "256e90b9bbf13dee57958bd0de72a9ec16f1e5ea8c34a5029bdf4b0f26a25792",
+    "publication_writer_inventory": "PASS factual/limits and31pins; actualpower/timestamps/cleanup/installintegrity consistent",
+    "sleep_orchestrator": "PASS independent raw/MIDI recalc; sole native packet b0507f timestamp4353214919046 exactly matches pre rawpress sequence130951; no falsefailure",
+    "changes_after_reviews": "Only these review records and explicit nonqualification clarification added; no execution or data changes"
+  }
+}
