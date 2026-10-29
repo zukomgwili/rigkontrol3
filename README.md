@@ -1,203 +1,160 @@
-# Rig Kontrol 3 — native ARM driver reconstruction
+# Rig Kontrol 3 — native ARM drivers
 
-**Current target:** native ARM CoreAudio and CoreMIDI operation in Guitar Rig 6
-and other hosts, with SIP enabled. Controller Editor and NI's private automatic
-recognition interface are no longer requirements. The existing native
-audio/MIDI driver remains the selected implementation; no supporting NI agent
-or controller bridge is needed for this target.
+Native ARM64 CoreAudio and CoreMIDI drivers for Native Instruments Rig Kontrol 3,
+reconstructing the behavior of the original Intel **NIUSBAudioDriver 2.8.0** and
+**NIUSBMIDIDriver 2.8.0**. The implementation retains the recovered NI USB
+protocol, audio ring, timing and recovery contracts through current macOS
+interfaces. It uses one USB owner and works with **SIP enabled**.
 
-On 2026-10-27, all twelve installed files matched the frozen **0.2.4/build9**
-package and both signatures verified. The connected device reported generation
-2 and error 0 in a read-only metadata check. This does not establish audio
-stability: the recorded intermittent `kIOReturnIsoTooOld` fault remains open.
-The older build results below are historical checkpoints.
+The target is standard audio and MIDI operation in **Guitar Rig 6 and other
+hosts**. Controller Editor and NI's private automatic application-recognition
+interface are outside the current scope. The earlier controller app and
+MainStage setup are retired; their committed history remains in Git.
 
-Fresh Apple Silicon drivers reconstructed from Native Instruments’ original
-Intel **NIUSBAudioDriver 2.8.0** and **NIUSBMIDIDriver 2.8.0**. The earlier
-controller app, MainStage setup and third-party backend are retired on this
-branch; their history remains on `codex/rk3-effects-controller`.
+## Current status
 
-The native components use the current macOS AudioServerPlugIn and CoreMIDI
-interfaces. The recovered NI USB protocol, audio packing and scheduling are
-implemented independently in C. No Intel executable runs inside the new code.
+**Current package: 0.2.13 / build 18.** On **29 October 2026**, all twelve installed
+files matched the frozen signed package. Both bundles' identities, versions,
+ARM64 architecture and signatures verified; SIP remained enabled. The full
+strict and address/undefined-behavior sanitizer checks passed before packaging.
 
-## Evidence and current validation
+This verifies the installed files. **Build 18's loaded-image identity, live
+property readback and physical audio/controller checks remain pending.** Its
+new programmable-display and direct-monitor operations have offline coverage;
+physical display observation and direct-monitor routing still need validation.
+See [package evidence](ReverseEngineering/Evidence/Build18CombinedControls.json)
+and [installed-file verification](ReverseEngineering/Evidence/Build18InstalledAcceptance.json).
 
-Both original drivers were actually decompiled using Ghidra12.2, with
-instruction-level cross-checks and SHA-256 provenance. The audio image contains
-241 original implementation functions. The MIDI image contains 59 implementation
-functions plus73 native import trampolines. Proprietary binaries and complete
-C-like exports stay local under ignored `.build/ni/`.
+Earlier builds have these recorded results; they do not substitute for build 18
+qualification:
 
-- [Audio reconstruction](ReverseEngineering/AudioDriver.md)
-- [MIDI reconstruction](ReverseEngineering/MIDIDriver.md)
-- [Native USB diagnostic](ReverseEngineering/DeviceProbe.md)
-- [Reversible removal of previous drivers](ReverseEngineering/InstalledBaseline.md)
-- [Fresh hardware observations](ReverseEngineering/HardwareValidation.md)
+| Tested build | Recorded result |
+| --- | --- |
+| 13 | Seven 600-second silent runs at 128 frames across all five sample rates, including three runs at 48 kHz, passed the bounded clock/transport checks. [Evidence](ReverseEngineering/Evidence/Build13StabilityRatesValidation.json) |
+| 15 MIDI / 13 audio | One actual sleep/wake comparison retained Guitar Rig's wah control without restarting the host, MIDI services or USB. [Evidence](ReverseEngineering/Evidence/Build15SleepRecoveryValidation.json) |
+| 16 | Clear Guitar Rig audio, audible wah, all eight switches and explicit incoming LED feedback passed. Released- and held-switch USB recovery passed. [Physical checks](ReverseEngineering/Evidence/Build16PhysicalValidation.json), [recovery](ReverseEngineering/Evidence/Build16USBRecoveryValidation.json) |
+| 16 | A bounded physical DIN loopback, including fragmented SysEx, and two built-in toe-switch actions passed. The toe test ran with Guitar Rig closed and audio stopped. [DIN](ReverseEngineering/Evidence/Build16DINValidation.json), [toe](ReverseEngineering/Evidence/Build16ToeSwitchValidation.json) |
 
-The portable driver core passes strict ARM64 compilation, address/undefined
-behavior sanitizers, NI-derived wire-format vectors, malformed-packet checks,
-partial-transfer and ring-wrap checks. The native ARM diagnostic has configured
-the cleaned device and validated its real device-info reply: **2 audio inputs,
-2 outputs, wire mode2, 1 MIDI input and 1 MIDI output**.
+**Full NI functionality and whole-rig qualification are still incomplete.**
+Remaining work includes final build 18 qualification, external pedal/footswitch
+inputs, direct-monitor routing, measured latency and the original output-cleanup
+contract's modern event binding. Apple support case **23183489** tracks that
+binding question; no technical resolution is recorded yet. A silent transport
+pass is not waveform-continuity proof or measured round-trip latency.
 
-The previously installed **0.1.3 (build 4)** failed acceptance. Its unity-gain
-guitar check produced crackling, dropouts and intermittent controls. A separate
-silent check reproduced repeated `kIOReturnIsoTooOld` errors and USB reconnections,
-despite successful audio callbacks. That build used a FIFO snapshot and an
-invented 4 ms output calendar; neither preserves NI's original shared ring.
+The existing Beads milestones track native audio (`rigkontrol3-40h.1`),
+MIDI/controller operation (`.2`) and installed qualification (`.3`). The
+[parity audit](ReverseEngineering/ParityAudit.md) and
+[output-event binding analysis](ReverseEngineering/NIOutputBindingResolution.md)
+retain the detailed limitations and historical findings.
 
-The **0.2.0 (build 5)** implementation restored the shared-ring data flow. Host output
-writes by sample position into the same mapped wire ring referenced by queued
-USB requests. Capture polls mapped completion state and reads the requested
-ring positions without consuming a FIFO. The original 64-input/128-output
-calendar, exact mode-2 byte placement, USB-anchor timestamp arithmetic and
-audio-engine recovery triggers are retained. The 64 ms USB queue horizon is
-not a measurement of guitar signal latency. The current macOS
-bindings and their unresolved limits are recorded in
-[the audio reconstruction](ReverseEngineering/AudioDriver.md) and
-[USB transport](ReverseEngineering/NativeUSB.md).
+## What the driver provides
 
-This source requires **macOS 26.4 or later** for explicitly kernel/user-shared
-transaction lists; the test Mac runs macOS 27.0.1. At the build-5 checkpoint,
-all 12 installed files matched its frozen manifest and both signatures verified.
-A 20-second standard CoreAudio run with silent output and a verified 128-frame
-buffer completed 7526 callbacks and 963328 input frames, then stopped cleanly.
-A parallel 25-second, 10 Hz status watch reported generation 1 and error 0 at
-every sample through idle, running and idle transitions.
+- Two audio inputs and two outputs, with **44.1, 48, 88.2, 96 and 192 kHz**
+  sample rates. The original default is **44.1 kHz**.
+- Separate physical DIN MIDI input/output and a mapped **Controller** source
+  with an **LED Feedback** destination.
+- Eight press-latched footswitches, built-in expression pedal and toe switch,
+  plus the original external pedal configuration and calibration operations.
+- Original software input-gain, raw direct-monitor and indexed display-byte
+  operations through the same native USB owner.
 
-A subsequent dry guitar check at unity gain and 128 frames passed the user's
-first home-practice listening check: clear, comfortably audible guitar,
-acceptable delay and no heard crackles or dropouts. All eight switch LEDs
-worked reliably while playing; incoming feedback also produced the requested
-odd/even LED pattern. The full status log nevertheless revealed **five
-unsolicited audio-engine restarts with `kIOReturnIsoTooOld` before the deliberate
-USB unplug**, while USB generation stayed 1. Sustained acceptance remains open
-under M2 `rigkontrol3-40h.1` (retaining historical `.11` evidence); clear
-listening and successful callbacks do not make
-that run error-free. This is a subjective physical pass, not a measured
-round-trip latency or proof of zero signal loss. No effects host was tested.
-
-The native MIDI bundle retains its separate Controller source and LED Feedback
-destination, alongside the hardware DIN endpoints. The build-5 combined check
-recorded all eight switch CCs at 0 and 127 and the pedal across MIDI 0–127.
-Saved calibration **88–648**, measured earlier from 555 samples, was independently
-read back from the Controller device. Incoming feedback remains explicit;
-applications must send their effect states to synchronize LEDs.
-
-These checks use standard CoreAudio and CoreMIDI clients, without the retired
-app or MainStage. Held-switch USB recovery passed without an extra toggle,
-and status confirmed a new connection generation 2. Resolving the steady-state
-restarts, longer operation and sleep/wake remain acceptance work. Physical DIN
-loopback, toe/external inputs and other sample rates remain separately tracked in Beads
-under `rigkontrol3-40h`. See [hardware validation](ReverseEngineering/HardwareValidation.md)
-for actual installed outcomes and [the MIDI component](Driver/MIDI/README.md)
-for mappings and calibration.
-
-The **0.2.1 (build 6) source** corrects a deterministic completion-order
-bug in the modern USB binding. Accepted requests now deliver their ISO
-callbacks in order for each pipe, matching the order required by NI's ring
-traversal. Raw callbacks may arrive out of order; the binding retains their
-storage until ordered delivery. A production-engine regression demonstrates
-the previous stall and sustained progress with the ordered contract. This
-changes neither the NI queue calendar nor sample placement. Temporary,
-failure-only timing observations are included for the remaining live fault.
-At that checkpoint, **build 6 was installed**, with all 12 files and signatures verified. A
-120-second silent run passed, but a longer MIDI-active run failed after
-227.593 seconds. The ordering fix does not resolve that observed late request.
-
-**The primary lift-and-shift is incomplete.** Current functional successes
-cover a subset of original audio/MIDI behavior. The completed [parity audit](ReverseEngineering/ParityAudit.md)
-in Beads `rigkontrol3-40h.13` inventories all 373 indexed executable entries and
-67 capability/platform/package rows. It identifies missing original rates,
-gain/direct-monitor controls, clock cadence and startup differences, and
-client contracts that were then required. NI-private client recognition has
-since been removed from scope; audio/MIDI correctness remains required.
-Static inspection found real ARM IOAudioEngine
-implementations: native ABI and legacy USB migration are necessary; replacing
-the entire kernel audio model with the current user HAL is not proved necessary.
-Retaining kernel audio with modern kernel USB is a conditional minimum-change
-candidate, pending current loading policy, signing and deployment constraints.
-Beads `.17` now records the explicit deployment choice: keep SIP enabled and
-use the existing public user-space audio/MIDI binding as this Mac's baseline.
-This is a constrained deployment choice, not proof of parity or an ARM mandate.
-No new implementation or installation occurred in the audit.
-
-The follow-up [.17 kernel-binding check](ReverseEngineering/KernelBindingDecision.md)
-records the public API, signing and loading requirements. The user requires
-SIP enabled and excludes the personal kernel-testing route. The existing
-AudioServerPlugIn/IOUSBHost/CoreMIDI baseline remains subject to the original
-audio/MIDI hardware contracts and tests. The current three delivery milestones
-are native MIDI/controller operation (`.2`), audio (`.1`), and installed
-qualification (`.3`); their Beads designs supersede historical NI-client gates.
-No coding, loading,
-toolchain or security change occurred in that decision.
-
-Candidate **0.2.2/build7** continues the lift-and-shift after the
-[`.6`/`.2` contract checks](ReverseEngineering/SelectedBindingContracts.md).
-Its scoped changes restore original clock sampling/counter/start behavior and
-callable per-input software gain with NI's raw Float32 semantics. The existing
-mappings, calibration and LED paths are retained. Source checks and installed
-acceptance were separate at that checkpoint; build9 is now the verified installed
-baseline described above. Remaining original rates, direct monitor,
-startup/priming, power and stability requirements stay in
-Beads; this candidate does not complete the primary port.
+The current owner supports **one connected RK3**; multiple matching devices are
+rejected. The audio bundle
+uses AudioServerPlugIn and IOUSBHost; the MIDI bundle uses CoreMIDI. No kernel
+extension or controller bridge is needed. Original Intel executables are not
+loaded by these drivers.
 
 ## Build and install
 
+Requirements:
+
+- An Apple Silicon Mac running **macOS 26.4 or later**. The development/test Mac
+  runs macOS 27.0.1; other Macs are not yet qualified.
+- Xcode command-line tools with a macOS 26.4+ SDK providing the IOUSBHost
+  shared-transaction APIs, and Python 3.
+- An Apple-issued code-signing identity. The builder selects a local Developer
+  ID Application or Apple Development identity; set `RK3_CODE_SIGN_IDENTITY`
+  to select one explicitly. The test Mac's MIDI server rejected ad-hoc signing.
+
+This is a personal-use development build. From the repository root, first
+build and check the exact output you intend to install. Pause playback and
+quit audio/MIDI applications before the final administrator command:
+
 ```sh
+set -e
 sh Tools/build-native.sh test
 sh Tools/build-drivers.sh
-sh Tools/install-native-drivers.sh --check
-sudo /bin/sh Tools/install-native-drivers.sh --install --restart-services
+rk3_driver_source="$PWD/.build/native/drivers"
+sh Tools/install-native-drivers.sh --check --source "$rk3_driver_source"
+sudo /bin/sh Tools/install-native-drivers.sh --install --restart-services --source "$rk3_driver_source"
 ```
 
-A valid Apple-issued code-signing identity is required for the MIDI bundle.
-The build selects the local identity or accepts `RK3_CODE_SIGN_IDENTITY`.
-The two bundles are `RigKontrol3Audio.driver` and `RigKontrol3MIDI.plugin`.
-The installer checks their identities, ARM64 code, signatures and content,
-preserves previous versions, and prints a reversible session path. See
-[installation and rollback](ReverseEngineering/NativeDriverInstall.md).
-This personal-use build requires macOS 26.4+ and supports stereo audio at
-44.1, 48, 88.2, 96 and 192 kHz. It uses no kernel extension,
-menu-bar app, external controller bridge, or MainStage dependency.
+Use freshly built output; an existing `.build/native/drivers` directory can
+contain an older package. Frozen candidates mentioned in historical evidence
+are local artifacts, not files supplied by a fresh clone.
 
-After installing a driver with the native pedal-settings interface, the
-calibration utility measures fresh endpoints on the Controller MIDI device:
+The installer checks both bundles, preserves rollback copies, briefly restarts
+CoreAudio/MIDI services and prints a **SESSION** path. Enter administrator
+credentials in Terminal. See [installation and rollback](ReverseEngineering/NativeDriverInstall.md)
+for destinations, session verification and restoration.
 
-```sh
-.build/native/test/rk3-calibrate --axis 2 --seconds 20
-```
+## Set up Guitar Rig or another host
 
-Axis 2 is the built-in pedal and remains the default. Axes 0 and 1 are the
-external pedal inputs. Sweep through the full travel throughout measurement.
-Insufficient movement or a device/settings change detected before commit aborts
-saving. If application fails after a successful CoreMIDI save, the requested
-settings may remain cached; the utility reports failure rather than claiming
-that they were applied. This raw-sweep utility keeps its own usable-range guard; it does not
-replace NI's recovered recalibration algorithm. A successful command confirms
-matching settings were applied in the current USB connection, rather than
-merely cached by CoreMIDI.
+1. Select **Rig Kontrol 3 (NI ARM)** as the audio input/output. Guitar checks
+   have used input 1, RK3 headphones, 48 kHz and a 128-frame host buffer.
+2. Enable the **Controller** MIDI source on **Rig Kontrol 3 Controller**.
+   The separate DIN endpoints serve the five-pin sockets.
+3. Use the host's MIDI Learn to assign the switches and expression pedal.
+   For Cry Wah, learn its sweep from the pedal and its power control from
+   switch 1. Reopen the host after a driver installation.
 
-Read the three inputs' saved settings, or select NI's original tip/ring and
-continuous/switch options for an external input:
+All mapped controls use MIDI channel **1**:
+
+| Physical control | MIDI CC |
+| --- | --- |
+| Switches 1–4 | 80, 81, 82, 83 |
+| Switches 5–8 | 76, 77, 78, 79 |
+| Built-in expression pedal, axis 2 | 4 |
+| Built-in toe switch | 64 |
+| External pedal inputs, axes 0 and 1 | 16, 17 |
+
+The eight switches toggle between 0 and 127 on each press; release does not
+send another toggle. Their LEDs follow the driver's current assignment values.
+Matching CC values sent to **LED Feedback** can update those values and LEDs.
+A host must actually send effect states for mouse or preset changes to stay
+synchronized; the driver does not add that output to Guitar Rig.
+
+## Pedal settings and calibration
+
+Read saved settings or measure a pedal's actual travel:
 
 ```sh
 .build/native/test/rk3-pedals --show
+.build/native/test/rk3-calibrate --axis 2 --seconds 20
+```
+
+Axis 2 is the built-in pedal; axes 0 and 1 are external inputs. Sweep through
+full travel during measurement. **88–648** is the recorded calibration of the
+development unit, not a universal default or a fresh build 18 readback.
+
+Select the original tip/ring and continuous/switch options for a named input:
+
+```sh
 .build/native/test/rk3-pedals --axis 0 --ring --switch
 .build/native/test/rk3-pedals --axis 0 --tip --continuous
 ```
 
-Only the named input's options change; calibration endpoints are retained.
-Both utilities report an error if the driver does not confirm USB write
-completion and the mapper update for the current audio device and connection.
-Use the separate Controller MIDI source.
-The original built-in pedal is CC4, switches1–4 CC80–83, and switches5–8 CC76–79,
-channel1. LEDs follow the controller's toggle assignments; the feedback
-destination can receive host CC values. This does not add effect-state output
-to applications that do not send it.
+Only that input's options change; its calibration endpoints are retained.
+External input settings are implemented, but their physical qualification is
+pending. The utilities require matching application status for the current
+connection rather than treating a saved CoreMIDI property as success. If saving
+succeeds but application fails, the requested settings may remain cached and
+the utility reports failure. See [pedal contracts](ReverseEngineering/TipSwitchCalibrationContract.md).
 
-Build 18 adds the original indexed display-byte operation through that same
+## Display and direct monitor
+
+Build 18 adds the original indexed display-byte setter through the existing
 controller and LED writer:
 
 ```sh
@@ -205,66 +162,86 @@ controller and LED writer:
 .build/native/test/rk3-display --index 0 --value 0
 ```
 
-Display values are raw bytes, indexed 0–3. The utility reports logical controller
-state, not physical display readback or USB acknowledgement. Requests are bound
-to the live driver session and connection; they are not saved display
-preferences. See [the recovered contract](ReverseEngineering/DisplayContract.md).
+Indices are 0–3 and values are raw bytes 0–255; no text or segment encoding is
+assumed. The result is **logical controller state**, not hardware readback or
+USB completion. Requests are transient and bound to the live driver session
+and connection. See [display contract](ReverseEngineering/DisplayContract.md).
 
-For guided tests, keep the diagnostic client open until the physical checks are
-finished, rather than relying on a short recording window:
+The original direct-monitor query is available as:
+
+```sh
+.build/native/test/rk3-direct-monitor get
+```
+
+This sends one query through the installed owner. A returned **255 / 0xff** is
+ambiguous: it may be an actual reply or NI's timeout value. Raw mode meanings
+and physical routing are not yet verified, so no mode-setting example is given.
+See [direct-monitor contract](ReverseEngineering/DirectMonitorContract.md).
+
+## Guided hardware checks
+
+Keep the diagnostic client open through the physical actions and final state
+restoration. A short recording that expires cannot verify later actions:
 
 ```sh
 .build/native/test/rk3-midi-monitor --live
-.build/native/test/rk3-audio-client --monitor --live
 ```
 
-Run these in separate terminals when testing audio and controls together. The
-audio client defaults to sending guitar input 1 to both outputs with 0.1 gain
-and a ±0.2 clamp. That intentionally quiet test attenuates the signal by 20 dB.
-For the next listening check, lower the hardware headphone level first, then
-request unity gain and a smaller buffer:
+For dry guitar monitoring, turn the RK3 headphone level low first, then run in
+a separate terminal and raise the level gradually:
 
 ```sh
 .build/native/test/rk3-audio-client --monitor --gain 1 --buffer-frames 128 --live
 ```
 
-Explicit `--gain` accepts a finite decimal from 0 to 1 and uses a ±0.95 clamp;
-the client prints the selected gain, limit and actual CoreAudio buffer size.
-The first dry listening check passed with these settings; effects-host integration remains untested.
-Each client prints its PID. `kill -USR1 <PID>` prints cumulative statistics
-without stopping; Control-C stops the client cleanly. The timed `--seconds`
-option remains available. With no MIDI applications or test clients open,
-MIDIServer may exit; a test client closing is not evidence of USB failure.
+This applies no effects. Explicit `--gain 1` uses unity gain with a ±0.95 clamp;
+the client prints the actual host buffer size. Without `--gain`, its deliberately
+quiet monitor uses 0.1 gain and a ±0.2 clamp. Each client prints its PID;
+Control-C stops it cleanly and SIGUSR1 requests cumulative statistics.
+With no MIDI application or client open, MIDIServer may exit normally.
 
-## Reproduce the core checks
+Keep one MIDI client alive across display baseline, changes and restoration;
+separate CLI invocations otherwise may span different driver sessions. Save
+LED state separately: display status contains only its four logical bytes.
 
-On an Apple Silicon Mac with Xcode command-line tools:
+## Reproduce the checks and research
+
+The hardware-free native tests use mocked device/host seams. On Apple Silicon:
 
 ```sh
 sh Tools/build-native.sh test
 sh Tools/build-native.sh sanitize
 ```
 
-The diagnostic defaults to cached descriptors and takes no exclusive access:
+The cached-descriptor diagnostic takes no exclusive device access:
 
 ```sh
 .build/native/test/rk3-device-probe --descriptors
 ```
 
-Read its scope and cancellation rules before using `--query-device`. Configure
-an otherwise unconfigured device only with explicit `--configure`.
+Read [its scope](ReverseEngineering/DeviceProbe.md) before using
+`--query-device`; an unconfigured device requires explicit `--configure`.
 
-## Reproduce the original-binary decompilation
-
-Put your own original x86_64 slices in `.build/ni/reference/2.8.0/` as
-`NIUSBAudioDriver.x86_64` and `NIUSBMIDIDriver.x86_64`. Their exact hashes are
-checked by the tool. With Ghidra12.2 and its compatible JDK installed:
+The original drivers were decompiled with Ghidra 12.2 and cross-checked against
+instructions and SHA-256 provenance. Original binaries and complete proprietary
+exports remain local under ignored `.build/ni/`. To reproduce those exports,
+place your original x86_64 slices in `.build/ni/reference/2.8.0/` as
+`NIUSBAudioDriver.x86_64` and `NIUSBMIDIDriver.x86_64`; the tool checks their
+pinned hashes. With Ghidra 12.2 and a compatible JDK installed:
 
 ```sh
 sh Tools/decompile-drivers.sh
 ```
 
-`GHIDRA_HOME` and `JAVA_HOME` override the local Homebrew paths. This creates a
-fresh private export with per-function C, assembly, an index and manifests.
-Existing output directories are refused to avoid mixing old and new exports.
-No NI binaries or full proprietary decompilations are committed to this repo.
+`GHIDRA_HOME` and `JAVA_HOME` override the local paths. The tool refuses existing
+output directories to avoid mixing exports. No NI binaries or complete
+proprietary decompilations are committed.
+
+Further technical evidence:
+
+- [Audio reconstruction](ReverseEngineering/AudioDriver.md)
+- [MIDI reconstruction](ReverseEngineering/MIDIDriver.md)
+- [USB transport](ReverseEngineering/NativeUSB.md)
+- [Controller mapping and threading](Driver/MIDI/README.md)
+- [Hardware validation history](ReverseEngineering/HardwareValidation.md)
+- [SIP-enabled deployment decision](ReverseEngineering/KernelBindingDecision.md)
