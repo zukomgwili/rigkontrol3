@@ -2,7 +2,7 @@
   "bead": "rigkontrol3-40h.2",
   "date": "2026-10-29",
   "baseline_commit": "9cc5dbd",
-  "status": "source_offline_tests_and_signed_combined_build18_checks_passed_not_installed",
+  "status": "source_offline_and_signed_package_checks_passed_installed_disk_verified_live_pending",
   "new_beads": 0,
   "original": {
     "reference": "Controller Editor 1.7.4 controller policy and NI audio 2.8.0 digital-output wrapper",
@@ -457,5 +457,6 @@
   "runtime_review": "PASS independent ABI/lifecycle/original-scope review; source hashes verified; no material findings",
   "joint_CLI_runtime_review": "PASS; error readiness, lease/ID correlation, lifecycle binding and logical-only status verified. Production rebind paths require Stop/new lifecycle epoch; speculative active A-B-A rebind is not admitted.",
   "source_complete_physical_pending": true,
-  "combined_package_evidence": "ReverseEngineering/Evidence/Build18CombinedControls.json"
+  "combined_package_evidence": "ReverseEngineering/Evidence/Build18CombinedControls.json",
+  "installed_build18_acceptance_evidence": "ReverseEngineering/Evidence/Build18InstalledAcceptance.json"
 }

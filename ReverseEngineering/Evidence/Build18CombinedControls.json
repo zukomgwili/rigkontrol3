@@ -5,7 +5,7 @@
     "rigkontrol3-40h.3"
   ],
   "date": "2026-10-29",
-  "status": "signed_verified_independently_reviewed_ready_for_administrator_installation",
+  "status": "installed_disk_identity_verified_live_and_physical_acceptance_pending",
   "source_commit": "efe0e6521da8ecd4876d54826d13c79fc0fdcd56",
   "version": "0.2.13/build18",
   "candidate": ".build/native/candidates/build18-controls-efe0e6521da8",
@@ -397,10 +397,10 @@
     "current_readonly_status": "enabled",
     "settings_changed": false
   },
-  "installed": false,
+  "installed": true,
   "physical_display_or_monitor_routing_acceptance": "NOT_RUN",
   "no_new_beads": true,
-  "remaining": "Administrator installation then bounded installed readback/display observation and applicable direct-monitor routing checks in existing M3; no unknown mode-byte sweep. Apple23183489 output-lifetime binding and remaining finite qualification gates remain open.",
+  "remaining": "Disk identity is verified after administrator installation. Loaded-image identity, bounded live Native/CoreMIDI/display/direct-monitor readback and physical qualification remain pending in existing M3. No unknown mode-byte sweep. Apple23183489 output-lifetime binding remains open.",
   "independent_package_review": "PASS: archive/current/commit53 source pins, unchanged builder, production trace0, exact12-file manifest, both Apple Development/strict Apple-anchor/arm64/IDs/versions/minOS/factories, safe COM factory and installer checks. Installed16 unchanged; SIP enabled.",
   "debug_symbols": {
     "authoritative": "original in-bundle dSYMs produced by the normal compiler during the signed build, included in the signed12-file manifest",
@@ -435,5 +435,8 @@
   "independent_package_review_evidence": {
     "path": ".build/native/candidates/build18-controls-efe0e6521da8/independent-package-review.json",
     "sha256": "8985333a046055a4c19ddfa13bdac882eac5d3d1331d214748d7bbd608111ce8"
-  }
+  },
+  "installation_status": "User installed; exact disk hashes/signatures verified. Loaded image identity, live readback and physical tests remain pending.",
+  "installed_acceptance_evidence": "ReverseEngineering/Evidence/Build18InstalledAcceptance.json",
+  "source_provenance_scope": "Historical build-time provenance; installed:false inside this nested build record refers to package creation before installation."
 }
