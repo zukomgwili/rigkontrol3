@@ -22,6 +22,7 @@
 #include "NativeClient.h"
 #include "Controller.h"
 #include "PedalSettings.h"
+#include "Display.h"
 #include <errno.h>
 
 enum { OUTPUT_SLOTS = 256, OUTPUT_BYTES = OUTPUT_SLOTS * 8,
@@ -99,6 +100,10 @@ typedef struct {
     PedalCompletion pedal_completion; /* worker -> I/O, state_lock */
     RK3PedalSettings pedal_applied;
     bool pedal_has_applied;
+    uint64_t display_session; /* Immutable, fresh for this Driver instance. */
+    RK3DisplayRequest display_pending,display_seen;
+    RK3DisplayStatus display_status,display_published;
+    bool display_has_pending,display_has_seen,display_ready,display_has_published;
     OutputEntry feedback[OUTPUT_SLOTS];
     atomic_uint_fast64_t feedback_read, feedback_write;
     atomic_flag feedback_consumer;
@@ -128,6 +133,7 @@ typedef struct {
 
 static MIDIDriverInterface interface_table;
 static OSStatus stop_driver(MIDIDriverRef self);
+static void display_invalidate_locked(Driver *,int32_t);
 
 static Driver *driver_from_ref(MIDIDriverRef self) { return (Driver *)self; }
 static MIDIDriverRef driver_ref(Driver *driver) { return (MIDIDriverRef)&driver->interface; }
@@ -310,7 +316,9 @@ static OSStatus bind_controller(Driver *driver,MIDIDeviceRef device) {
     pthread_mutex_lock(&driver->state_lock);
     if(driver->remembered_controller_source!=source) atomic_store(&driver->controller_enabled,false);
     driver->remembered_controller_source=source;
-    if(driver->controller_device!=device)driver->pedal_has_published=false;
+    if(driver->controller_device!=device) {
+        driver->pedal_has_published=false;display_invalidate_locked(driver,EAGAIN);
+    }
     driver->controller_device = device; driver->controller_source = source; driver->controller_destination = destination;
     pthread_mutex_unlock(&driver->state_lock);
     return noErr;
@@ -406,6 +414,84 @@ static void poll_pedal_settings(Driver *driver,AudioDeviceID device,uint64_t gen
     }
 }
 
+
+/* Main publishes copied runtime state; only the existing I/O loop touches the
+ * Controller. The mailbox is transient and latest-request, not a saved profile. */
+static void display_invalidate_locked(Driver *driver,int32_t error) {
+    driver->display_has_pending=false;driver->display_ready=false;
+    driver->display_status.status=error;driver->display_status.request_id=0;
+    driver->display_status.session=driver->display_session;
+    driver->display_status.epoch=atomic_load(&driver->lifecycle_epoch);
+    driver->display_status.generation=atomic_load(&driver->generation);
+    driver->display_status.audio_device=atomic_load(&driver->audio_device);
+    driver->display_has_published=false;
+}
+static bool display_cohort_locked(Driver *driver,const RK3DisplayRequest *request) {
+    return driver->started&&atomic_load(&driver->online)&&request->session==driver->display_session&&
+        request->audio_device==atomic_load(&driver->audio_device)&&
+        request->generation==atomic_load(&driver->generation)&&request->epoch==atomic_load(&driver->lifecycle_epoch);
+}
+static void stage_display_request(Driver *driver,const RK3DisplayRequest *request) {
+    if(!rk3_display_request_valid(request))return;
+    pthread_mutex_lock(&driver->state_lock);
+    if(driver->display_ready&&display_cohort_locked(driver,request)) {
+        bool duplicate=driver->display_has_seen&&!memcmp(request,&driver->display_seen,sizeof(*request));
+        bool conflict=driver->display_has_seen&&request->request_id==driver->display_seen.request_id&&
+            request->session==driver->display_seen.session&&!duplicate;
+        if(!conflict&&!duplicate) {
+            driver->display_pending=*request;driver->display_has_pending=true;
+            driver->display_seen=*request;driver->display_has_seen=true;
+            driver->display_status.status=EINPROGRESS;driver->display_status.request_id=request->request_id;
+        }
+    }
+    pthread_mutex_unlock(&driver->state_lock);
+}
+static void poll_display(Driver *driver) {
+    if(!driver->controller_device)return;
+    CFDataRef data=NULL;
+    if(MIDIObjectGetDataProperty(driver->controller_device,
+        CFSTR(RK3_CONTROLLER_DISPLAY_REQUEST_KEY),&data)==noErr&&data&&
+       CFGetTypeID(data)==CFDataGetTypeID()&&CFDataGetLength(data)==sizeof(RK3DisplayRequest)) {
+        RK3DisplayRequest request;memcpy(&request,CFDataGetBytePtr(data),sizeof(request));
+        stage_display_request(driver,&request);
+    }
+    if(data)CFRelease(data);
+    pthread_mutex_lock(&driver->state_lock);
+    RK3DisplayStatus status=driver->display_status;
+    pthread_mutex_unlock(&driver->state_lock);
+    if(!driver->display_has_published||memcmp(&status,&driver->display_published,sizeof(status))) {
+        data=CFDataCreate(NULL,(const UInt8 *)&status,sizeof(status));
+        if(data) {
+            if(MIDIObjectSetDataProperty(driver->controller_device,
+                CFSTR(RK3_CONTROLLER_DISPLAY_STATUS_KEY),data)==noErr) {
+                driver->display_published=status;driver->display_has_published=true;
+            }
+            CFRelease(data);
+        }
+    }
+}
+static void apply_display_request(Driver *driver,AudioDeviceID device,uint64_t generation,uint64_t epoch) {
+    pthread_mutex_lock(&driver->state_lock);
+    RK3DisplayRequest cohort={.session=driver->display_session,.epoch=epoch,
+        .generation=generation,.audio_device=device};
+    if(!display_cohort_locked(driver,&cohort)) {pthread_mutex_unlock(&driver->state_lock);return;}
+    bool same=rk3_display_same_lease(&cohort,&driver->display_status);
+    if(!same||!driver->display_ready) {
+        driver->display_status=(RK3DisplayStatus){.version=1,.session=driver->display_session,
+            .epoch=epoch,.generation=generation,.audio_device=device};
+    }
+    driver->display_ready=true;
+    if(driver->display_has_pending) {
+        RK3DisplayRequest request=driver->display_pending;driver->display_has_pending=false;
+        if(rk3_display_request_valid(&request)&&display_cohort_locked(driver,&request)) {
+            (void)rk3_controller_set_display(&driver->controller,request.index,(uint8_t)request.value);
+            driver->display_status.status=0;driver->display_status.request_id=request.request_id;
+        }
+    }
+    for(unsigned i=0;i<4;++i)driver->display_status.content[i]=driver->controller.displays[3-i];
+    pthread_mutex_unlock(&driver->state_lock);
+}
+
 static void publish_offline(Driver *driver, bool offline) {
     if (driver->midi_device != 0 && driver->published_online == offline) {
         if (MIDIObjectSetIntegerProperty(driver->midi_device,kMIDIPropertyOffline,offline ? 1 : 0) == noErr)
@@ -457,8 +543,14 @@ static void refresh_topology(Driver *driver) {
         atomic_store_explicit(&driver->audio_device,device,memory_order_relaxed);
         atomic_store_explicit(&driver->generation,info.generation,memory_order_release);
     }
+    bool changed=atomic_load(&driver->online)!=usable||(!usable&&driver->display_ready)||
+        driver->display_status.audio_device!=atomic_load(&driver->audio_device)||
+        driver->display_status.generation!=atomic_load(&driver->generation)||
+        driver->display_status.epoch!=atomic_load(&driver->lifecycle_epoch);
+    if(changed)display_invalidate_locked(driver,usable?EAGAIN:ENODEV);
     atomic_store_explicit(&driver->online,usable,memory_order_release);
     pthread_mutex_unlock(&driver->state_lock);
+    poll_display(driver);
     publish_offline(driver,!usable);
 }
 
@@ -760,6 +852,7 @@ static void input_tick(CFRunLoopTimerRef timer, void *context) {
     pthread_mutex_unlock(&driver->state_lock);
     prepare_controller(driver,&info,epoch,batch.latest_sequence,true);
     bool pedals_ready=apply_pedal_settings(driver,device,&info,epoch,batch.latest_sequence);
+    apply_display_request(driver,device,generation,epoch);
     drain_feedback(driver,&controls);
     if (batch.dropped != 0) {
         rk3_midi_stream_reset(&driver->parser);rk3_controller_reset_inputs(&driver->controller);
@@ -915,8 +1008,10 @@ static OSStatus stop_driver(MIDIDriverRef self) {
     driver->started = false;
     atomic_store_explicit(&driver->online,false,memory_order_release);
     atomic_fetch_add_explicit(&driver->lifecycle_epoch,1,memory_order_acq_rel);
+    display_invalidate_locked(driver,ENODEV);
     atomic_store_explicit(&driver->parser_reset,true,memory_order_release);
     pthread_mutex_unlock(&driver->state_lock);
+    poll_display(driver);
     if (driver->discovery_timer != NULL) {
         CFRunLoopTimerInvalidate(driver->discovery_timer);
         CFRelease(driver->discovery_timer);
@@ -1112,6 +1207,9 @@ void *RK3MIDIDriverFactory(CFAllocatorRef allocator, CFUUIDRef type) {
     atomic_init(&driver->source_enabled,false);
     atomic_init(&driver->controller_enabled,false);atomic_init(&driver->controller_listener_epoch,0);
     driver->controller_enable_epoch=UINT64_MAX;
+    do {arc4random_buf(&driver->display_session,sizeof(driver->display_session));} while(!driver->display_session);
+    driver->display_status=(RK3DisplayStatus){.version=1,.status=EINPROGRESS,
+        .session=driver->display_session,.content={0,0x40,0x40,0}};
     driver->pedal_requested=rk3_pedal_settings_initial();
     driver->pedal_status=(RK3PedalStatus){.version=1,.status=EINPROGRESS,
         .settings=driver->pedal_requested};

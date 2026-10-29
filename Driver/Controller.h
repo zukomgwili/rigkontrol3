@@ -43,8 +43,13 @@ RK3ControllerResult rk3_controller_report(RK3ControllerState *state,
     const uint8_t *report,size_t length,RK3ControllerEmit emit,void *context);
 RK3ControllerResult rk3_controller_feedback(RK3ControllerState *state,
     uint8_t status,uint8_t controller,uint8_t value);
-/* Snapshot command05 with preserved startup displays00,40,40,00; LED raw bits
- * 0..7/toe bit8; trailing00,00. Dirty remains set on failed synchronous write. */
+/* NI's byte setter: index0..3 stores at3-index; true only if content changed.
+ * Invalid state/index and unchanged content return false without mutation. */
+bool rk3_controller_set_display(RK3ControllerState *state,uint32_t index,uint8_t value);
+/* Snapshot command05: reversed display storage (startup00,40,40,00), LED
+ * raw bits0..7/toe bit8, trailing00,00. NI clears dirty before writing. The
+ * native callback acknowledges queue admission only: failed admission retains
+ * dirty; a later USB failure does not create a new retry policy. */
 RK3ControllerResult rk3_controller_flush_leds(RK3ControllerState *state,
     bool force,RK3ControllerWrite write,void *context);
 /* NI's per-pedal setters assign flags/endpoints without resetting calculation

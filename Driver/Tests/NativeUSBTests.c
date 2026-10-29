@@ -519,12 +519,11 @@ static void request_test(void) {
     assert(!rk3_usb_command_for_generation(&session, command, sizeof(command), 9, 2));
     pthread_join(thread, NULL); assert(consumer.cancelled); /* request survives caller timeout */
     consumer.delay = false;
-    uint8_t led[] = {5,0,0x40,0x40,0,0xff,1,0,0};
+    uint8_t led[] = {5,0x11,0x22,0x33,0xff,0xff,1,0,0};
     assert(pthread_create(&thread, NULL, consume_one, &consumer) == 0);
     assert(rk3_usb_command_for_generation(&session, led, sizeof(led), 9, 1000));
     pthread_join(thread, NULL); assert(consumer.observed == 9);
-    for (size_t index = 1; index < sizeof(led); ++index) {
-        if (index == 5) continue; /* Full LED mask byte is explicitly permitted. */
+    for (size_t index = 6; index < sizeof(led); ++index) {
         uint8_t saved = led[index]; led[index] = index == 6 ? 2 : (uint8_t)(saved ^ 1);
         assert(!rk3_usb_command_for_generation(&session, led, sizeof(led), 9, 10)); led[index] = saved;
     }

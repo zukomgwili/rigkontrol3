@@ -175,6 +175,54 @@ static void test_feedback_and_leds(void) {
     assert(rk3_controller_feedback(&state,0xb0,84,0) == RK3_CONTROLLER_NOT_CONTROLLER);
     assert(memcmp(&state,&saved,sizeof(state)) == 0);
 }
+typedef struct {RK3ControllerState *state;unsigned writes;} DisplayDuringWrite;
+static bool display_during_write(void *context,const uint8_t *bytes,size_t length) {
+    DisplayDuringWrite *change=context;
+    assert(length==9 && bytes[0]==5 && !change->state->leds_dirty);
+    ++change->writes;
+    assert(rk3_controller_set_display(change->state,0,0xa5));
+    return true;
+}
+static void test_display(void) {
+    RK3ControllerState state;rk3_controller_init(&state);Output out={0};
+    assert(rk3_controller_flush_leds(&state,false,write_led,&out)==RK3_CONTROLLER_OK);
+    for(uint32_t i=0;i<4;++i) {
+        uint8_t value=(uint8_t)(0x11*(i+1));
+        assert(rk3_controller_set_display(&state,i,value));
+        assert(state.displays[3-i]==value && state.leds_dirty);
+    }
+    assert(rk3_controller_feedback(&state,0xb0,76,127)==RK3_CONTROLLER_OK);
+    assert(rk3_controller_feedback(&state,0xb0,83,127)==RK3_CONTROLLER_OK);
+    assert(rk3_controller_feedback(&state,0xb0,64,127)==RK3_CONTROLLER_OK);
+    assert(rk3_controller_flush_leds(&state,false,write_led,&out)==RK3_CONTROLLER_OK);
+    const uint8_t expected[]={5,0x11,0x22,0x33,0x44,0x81,1,0,0};
+    assert(!memcmp(out.led,expected,sizeof(expected)) && !state.leds_dirty);
+    RK3ControllerState saved=state;
+    for(uint32_t i=0;i<4;++i) assert(!rk3_controller_set_display(&state,i,expected[1+i]));
+    assert(!rk3_controller_set_display(&state,4,0xff));
+    assert(!rk3_controller_set_display(&state,UINT32_MAX,0xff));
+    assert(!rk3_controller_set_display(NULL,0,1));
+    RK3ControllerState invalid={0};assert(!rk3_controller_set_display(&invalid,0,1));
+    assert(!memcmp(&state,&saved,sizeof(state)));
+    unsigned writes=out.writes;
+    assert(rk3_controller_flush_leds(&state,false,write_led,&out)==RK3_CONTROLLER_OK && out.writes==writes);
+    assert(rk3_controller_flush_leds(&state,true,write_led,&out)==RK3_CONTROLLER_OK && out.writes==writes+1);
+    for(uint32_t i=0;i<4;++i) {
+        assert(rk3_controller_set_display(&state,i,0));
+        assert(rk3_controller_set_display(&state,i,255));
+    }
+    rk3_controller_reset_inputs(&state);
+    for(unsigned i=0;i<4;++i) assert(state.displays[i]==255);
+    assert(rk3_controller_flush_leds(&state,false,write_led,&out)==RK3_CONTROLLER_OK);
+    DisplayDuringWrite change={&state,0};
+    assert(rk3_controller_flush_leds(&state,true,display_during_write,&change)==RK3_CONTROLLER_OK);
+    assert(change.writes==1 && state.leds_dirty); /* A new setter isn't erased after admission. */
+    out.fail=true;
+    assert(rk3_controller_flush_leds(&state,false,write_led,&out)==RK3_CONTROLLER_OUTPUT_FAILED && state.leds_dirty);
+    out.fail=false;
+    assert(rk3_controller_flush_leds(&state,false,write_led,&out)==RK3_CONTROLLER_OK && !state.leds_dirty);
+    assert(out.led[1]==0xa5 && out.led[5]==0x81 && out.led[6]==1);
+}
 static void test_bounds_and_failures(void) {
     RK3ControllerState state;rk3_controller_init(&state);Output out={0};RK3ControllerState saved=state;
     uint8_t bytes[65]={3};
@@ -205,6 +253,6 @@ static void test_bounds_and_failures(void) {
     out.fail=false;report(&state,&out,half,7);message(&out,1,4,64);
 }
 int main(void) {
-    test_buttons_and_reconnect();test_axes();test_switch_pedals();test_calibration();test_feedback_and_leds();test_bounds_and_failures();
+    test_buttons_and_reconnect();test_axes();test_switch_pedals();test_calibration();test_feedback_and_leds();test_display();test_bounds_and_failures();
     puts("Controller: original CCs, continuous/switch pedals, calibration lifecycle, input baselines, feedback/LEDs and failures passed.");return 0;
 }

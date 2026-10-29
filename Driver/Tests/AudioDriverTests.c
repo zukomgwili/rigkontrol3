@@ -215,6 +215,15 @@ static void properties(void){
     lease.generation=7;
     RK3NativeCommand leds={1,9,{5,0,0x40,0x40,0,0xff,1,0,0}};
     assert(rk3_native_send_command(DEVICE,&lease,&leds)==0);
+    for(unsigned index=1;index<=4;++index) for(unsigned value=0;value<=255;++value) {
+        leds.bytes[index]=(uint8_t)value;
+        assert(rk3_native_send_command(DEVICE,&lease,&leds)==0);
+        assert(!memcmp(command_bytes,leds.bytes,9));
+    }
+    lease.generation=6;assert(rk3_native_send_command(DEVICE,&lease,&leds)!=0);lease.generation=7;
+    leds.length=8;assert(rk3_native_send_command(DEVICE,&lease,&leds)!=0);leds.length=9;
+    leds.bytes[7]=1;assert(rk3_native_send_command(DEVICE,&lease,&leds)!=0);leds.bytes[7]=0;
+    leds.bytes[8]=1;assert(rk3_native_send_command(DEVICE,&lease,&leds)!=0);leds.bytes[8]=0;
     leds.bytes[6]=2;
     assert(rk3_native_send_command(DEVICE,&lease,&leds)!=0);
     command.bytes[1]=1;

@@ -188,8 +188,8 @@ typedef struct {
  * successful read; latest_sequence may exceed next_sequence when more wait.
  * dropped reports a history overrun, requiring per-port parser reset.
  * The history is non-destructive so independent clients have separate cursors.
- * COMMAND accepts NI command7 MIDI output, the exact display-preserving
- * nine-byte command5 LED update, and the fixed33-byte type2 command0f pedal
+ * COMMAND accepts NI command7 MIDI output, the exact nine-byte command5
+ * display/LED update, and the fixed33-byte type2 command0f pedal
  * configuration (three-bit ring/switch masks; zero padding), validated by the owner;
  * hardware write completion is synchronous/bounded and failures propagate.
  * COMMAND requires a CommandLease qualifier; the worker validates generation

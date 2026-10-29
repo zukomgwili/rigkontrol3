@@ -73,6 +73,9 @@ if [ "$mode" != build ]; then
             -framework CoreAudio -framework CoreMIDI -framework CoreFoundation -o "$out/$variant-tool-tests"
         "$out/$variant-tool-tests"
     done
+    xcrun clang $flags "$root/Tools/rk3-display-tests.c" \
+        -framework CoreAudio -framework CoreMIDI -framework CoreFoundation -o "$out/display-tool-tests"
+    "$out/display-tool-tests"
 fi
 xcrun clang $flags -fobjc-arc -fblocks -I"$root/Driver" -c "$root/Driver/NativeHostUSB.m" -o "$out/NativeHostUSB.o"
 if [ "$mode" != build ]; then
@@ -84,7 +87,7 @@ xcrun clang $flags -I"$root/Driver" "$root/Tools/rk3-native-test.c" \
     "$root/Driver/NativeUSB.c" "$root/Driver/NativeAudioISO.c" "$root/Driver/AudioCodec.c" \
     "$root/Driver/AudioSchedule.c" "$root/Driver/AudioRing.c" "$root/Driver/AudioClock.c" "$root/Driver/InputGain.c" "$root/Driver/DeviceProtocol.c" "$out/NativeHostUSB.o" \
     -framework IOUSBHost -framework Foundation -framework IOKit -framework CoreFoundation -o "$out/rk3-native-test"
-for unit in rk3-calibrate rk3-pedals rk3-midi-monitor rk3-midi-feedback; do
+for unit in rk3-calibrate rk3-pedals rk3-display rk3-midi-monitor rk3-midi-feedback; do
     xcrun clang $flags -I"$root/Driver" "$root/Tools/$unit.c" \
         -framework CoreAudio -framework CoreMIDI -framework CoreFoundation -o "$out/$unit"
 done

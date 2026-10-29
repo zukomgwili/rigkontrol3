@@ -63,8 +63,8 @@ mapping implementation is loaded.
 - A private worker inside this plug-in drains that queue. Controller feedback
   bytes use a distinct typed entry and bounded feedback queue to the I/O loop;
   they are parsed as CC input to the controller state and never written to DIN.
-  Controller LED flushes enqueue the exact leased nine-byte command05, preserving
-  the original four startup display bytes. This is not a separate
+  Controller LED flushes enqueue the exact leased nine-byte command05, combining
+  the four programmable display bytes with the current switch LEDs. This is not a separate
   service. Every command carries the captured audio-device ID and generation,
   plus the required generation lease qualifier. Both plug-in and hardware owner
   discard stale work across reconnect. A separate lifecycle epoch also rejects
@@ -99,6 +99,21 @@ History loss and generation/activation changes reset all parser state.
 The source uses current SDK packet helpers, not the old Intel packed-structure
 pointer arithmetic. No proprietary decompiled implementation is embedded.
 
+## Programmable display
+
+`rk3-display --show` reads the current **logical** four-byte content; it is not
+hardware readback. `rk3-display --index 0..3 --value 0..255` applies NI's original
+indexed byte setter. No numeral, segment or text encoding is imposed.
+
+The transient `Display.h` CoreMIDI Data-property mailbox is bound to the current
+driver session, lifecycle epoch, audio provider and physical generation. The
+existing discovery cycle stages one latest request; the I/O cycle applies the
+setter to the same controller state that owns switch feedback, then publishes a
+correlated logical acknowledgement. The CLI detects a superseding writer.
+Cached requests from another session are not restored as preferences. There is
+no additional MIDI protocol, timer, thread, LED writer or USB retry policy.
+See [the recovered display contract](../../ReverseEngineering/DisplayContract.md).
+
 ## Hardware-free validation
 
 `RK3MIDIDriverTests.c` includes the exact production implementation with mocked
@@ -106,8 +121,8 @@ CoreAudio transport and MIDI delivery. It checks COM negotiation/reference
 counts, cross-packet output chunking, all-or-nothing queue pressure, wrap,
 contention, endpoint/offline errors, generation leases/stale-work rejection,
 DIN/controller separation, input timestamps, activation baselines, history
-loss recovery, malformed records, complete-message reconstruction, Stop/Start entrant cancellation, listener reactivation races, transient output failures without replay/offline latching, and actual USB removal/offline behavior. It never
-calls Start or real AudioObject transport functions. Its mock transport requires
+loss recovery, malformed records, complete-message reconstruction, Stop/Start entrant cancellation, listener reactivation races, transient output failures without replay/offline latching, and USB removal/offline behavior. Start/Stop run with mocked
+topology and transport; no real AudioObject transport is called. Its mock transport requires
 the actual CFData/pointer-size API, verifies serialized report queries and command
 leases, and rejects wrong CF types, short data, wrong outer sizes, NULL objects
 and transport errors without changing failed-copy output buffers.

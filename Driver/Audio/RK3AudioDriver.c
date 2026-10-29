@@ -571,8 +571,7 @@ static OSStatus set(AudioServerPlugInDriverRef v,AudioObjectID o,pid_t pid,const
         bool midi=command->length>=4&&command->length<=64&&command->bytes[0]==7&&
             command->bytes[1]<current.midi_outputs&&command->bytes[2]>0&&command->bytes[2]<=61&&
             command->length==(uint32_t)(command->bytes[2]+3);
-        bool leds=command->length==9&&command->bytes[0]==5&&command->bytes[1]==0&&
-            command->bytes[2]==0x40&&command->bytes[3]==0x40&&command->bytes[4]==0&&
+        bool leds=command->length==9&&command->bytes[0]==5&&
             command->bytes[6]<=1&&command->bytes[7]==0&&command->bytes[8]==0;
         bool pedals=rk3_pedal_configuration_valid(command->bytes,command->length);
         if(command->version!=RK3_CONTROL_VERSION||(!midi&&!leds&&!pedals))return kAudioHardwareIllegalOperationError;

@@ -121,15 +121,20 @@ RK3ControllerResult rk3_controller_feedback(RK3ControllerState *state,
     if(state->button_values[button] != assignment) {state->button_values[button]=assignment;state->leds_dirty=true;}
     return RK3_CONTROLLER_OK;
 }
+bool rk3_controller_set_display(RK3ControllerState *state,uint32_t index,uint8_t value) {
+    if(!valid(state) || index > 3 || state->displays[3-index] == value) return false;
+    state->displays[3-index]=value;state->leds_dirty=true;return true;
+}
 RK3ControllerResult rk3_controller_flush_leds(RK3ControllerState *state,
     bool force,RK3ControllerWrite write,void *context) {
     if(!valid(state) || write == NULL) return RK3_CONTROLLER_INVALID_ARGUMENT;
     if(!force && !state->leds_dirty) return RK3_CONTROLLER_OK;
-    uint8_t report[9]={5,state->displays[0],state->displays[1],state->displays[2],state->displays[3],0,0,0,0};
+    state->leds_dirty=false;
+    uint8_t report[9]={5,state->displays[3],state->displays[2],state->displays[1],state->displays[0],0,0,0,0};
     for(unsigned index=0;index<9;++index)
         if(state->button_values[index] != 0) report[5+index/8]|=(uint8_t)(1u<<(index%8));
     if(!write(context,report,sizeof(report))) {state->leds_dirty=true;return RK3_CONTROLLER_OUTPUT_FAILED;}
-    state->leds_dirty=false;return RK3_CONTROLLER_OK;
+    return RK3_CONTROLLER_OK;
 }
 RK3ControllerResult rk3_controller_set_pedal_mode(RK3ControllerState *state,
     unsigned index,bool sample_tip,bool as_switch) {

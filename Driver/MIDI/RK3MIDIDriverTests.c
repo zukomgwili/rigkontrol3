@@ -112,6 +112,11 @@ static uint64_t info_generation = 7;
 static uint32_t digital_snapshot=UINT32_C(0x80000000);
 static bool press_release_before_snapshot;
 static CFDataRef calibration_data,pedal_settings_data,pedal_status_data;
+static CFDataRef display_request_data,display_status_data;
+static bool display_worker_once;
+static unsigned display_usb_writes;
+static OSStatus display_usb_error;
+static uint8_t display_usb_bytes[9];
 static unsigned pedal_writes;
 static OSStatus pedal_write_error;
 static bool pedal_replace_generation,pedal_stop_during_write;
@@ -241,7 +246,14 @@ static OSStatus mock_set(AudioObjectID object,const AudioObjectPropertyAddress *
         if(pedal_stop_during_write)assert(stop_driver(driver_ref(working_driver))==noErr);
         return pedal_write_error;
     }
-    if(command.length==9) {assert(command.bytes[0]==5);return noErr;}
+    if(command.length==9) {
+        assert(command.bytes[0]==5);
+        if(display_worker_once) {
+            ++display_usb_writes;memcpy(display_usb_bytes,command.bytes,9);
+            atomic_store(&working_driver->worker_stop,true);return display_usb_error;
+        }
+        return noErr;
+    }
     assert(command.version == RK3_CONTROL_VERSION && command.length == 6);
     assert(command.bytes[0] == 7 && command.bytes[1] == 0 && command.bytes[2] == 3);
     if(writes<sizeof(attempted_notes))attempted_notes[writes]=command.bytes[4];
@@ -268,6 +280,8 @@ static OSStatus mock_received(MIDIEndpointRef source,const MIDIPacketList *list)
 }
 
 static CFDataRef *data_property(CFStringRef key) {
+    if(CFEqual(key,CFSTR(RK3_CONTROLLER_DISPLAY_REQUEST_KEY)))return &display_request_data;
+    if(CFEqual(key,CFSTR(RK3_CONTROLLER_DISPLAY_STATUS_KEY)))return &display_status_data;
     if(CFEqual(key,CFSTR(RK3_CONTROLLER_CALIBRATION_KEY)))return &calibration_data;
     if(CFEqual(key,CFSTR(RK3_CONTROLLER_PEDAL_SETTINGS_KEY)))return &pedal_settings_data;
     assert(CFEqual(key,CFSTR(RK3_CONTROLLER_PEDAL_STATUS_KEY)));return &pedal_status_data;
@@ -1061,8 +1075,136 @@ static void test_failed_start_is_inactive_then_same_endpoint_resumes(void) {
     lifecycle_done(driver);
 }
 
+
+static void clear_display_properties(void) {
+    if(display_request_data)CFRelease(display_request_data);
+    if(display_status_data)CFRelease(display_status_data);
+    display_request_data=display_status_data=NULL;
+}
+static Driver *display_driver(void) {
+    clear_display_properties();Driver *driver=make_driver();driver->controller_device=456;
+    atomic_store(&driver->lifecycle_epoch,5);apply_display_request(driver,42,7,5);
+    assert(driver->display_ready&&!driver->display_status.status&&rk3_display_status_valid(&driver->display_status));
+    driver->controller.leds_dirty=false;return driver;
+}
+static RK3DisplayRequest display_request(Driver *driver,uint64_t id,unsigned index,unsigned value) {
+    return (RK3DisplayRequest){.version=1,.index=index,.session=driver->display_session,
+        .epoch=atomic_load(&driver->lifecycle_epoch),.generation=atomic_load(&driver->generation),
+        .audio_device=atomic_load(&driver->audio_device),.value=value,.request_id=id};
+}
+static void post_display(Driver *driver,const RK3DisplayRequest *request) {
+    if(display_request_data)CFRelease(display_request_data);
+    display_request_data=CFDataCreate(NULL,(const UInt8 *)request,sizeof(*request));poll_display(driver);
+}
+static void test_display_mailbox_and_status(void) {
+    Driver *driver=display_driver();uint64_t session=driver->display_session;assert(session);
+    for(unsigned i=0;i<4;++i) {
+        RK3DisplayRequest request=display_request(driver,i+1,i,0x11+i);
+        post_display(driver,&request);assert(driver->display_has_pending);
+        assert(driver->controller.displays[3-i]!=(uint8_t)request.value);
+        apply_display_request(driver,42,7,5);
+        assert(!driver->display_has_pending&&driver->display_status.request_id==i+1);
+        assert(driver->display_status.content[i]==0x11+i&&driver->controller.displays[3-i]==0x11+i);
+        driver->controller.leds_dirty=false;post_display(driver,&request);apply_display_request(driver,42,7,5);
+        assert(!driver->controller.leds_dirty); /* Cached same request is not attempted again. */
+    }
+    driver->controller.button_values[0]=127;driver->controller.button_values[8]=127;
+    RK3DisplayRequest same=display_request(driver,9,0,0x11);post_display(driver,&same);apply_display_request(driver,42,7,5);
+    assert(!driver->controller.leds_dirty&&!driver->display_status.status&&driver->display_status.request_id==9);
+    assert(driver->controller.button_values[0]==127&&driver->controller.button_values[8]==127);
+    RK3DisplayRequest first=display_request(driver,10,1,0x70),latest=display_request(driver,11,2,0x80);
+    post_display(driver,&first);post_display(driver,&latest);apply_display_request(driver,42,7,5);
+    assert(driver->display_status.content[1]==0x12&&driver->display_status.content[2]==0x80&&driver->display_status.request_id==11);
+    driver->controller.leds_dirty=false;
+    RK3DisplayRequest reused=latest;reused.value=0x81;post_display(driver,&reused);apply_display_request(driver,42,7,5);
+    assert(driver->display_status.content[2]==0x80&&!driver->controller.leds_dirty&&!driver->display_status.status);
+    poll_display(driver);assert(display_status_data&&CFDataGetLength(display_status_data)==56);
+    RK3DisplayStatus status;memcpy(&status,CFDataGetBytePtr(display_status_data),56);
+    assert(!memcmp(&status,&driver->display_status,56)&&rk3_display_same_lease(&latest,&status));
+    assert(status.session==session&&status.content[0]==0x11&&status.content[3]==0x14);
+    status.reserved=1;assert(!rk3_display_status_valid(&status));status.reserved=0;
+    status.reserved_bytes[0]=1;assert(!rk3_display_status_valid(&status));
+    free_driver(driver);clear_display_properties();
+}
+static void test_display_reject_and_lifetime(void) {
+    Driver *driver=display_driver();RK3DisplayRequest good=display_request(driver,20,0,0x55);
+    for(unsigned fault=0;fault<9;++fault) {
+        RK3DisplayRequest request=good;
+        if(fault==0)request.version=2;if(fault==1)request.index=4;if(fault==2)request.value=256;
+        if(fault==3)request.session^=1;if(fault==4)++request.epoch;if(fault==5)++request.generation;
+        if(fault==6)++request.audio_device;if(fault==7)request.request_id=0;if(fault==8)request.session=0;
+        post_display(driver,&request);apply_display_request(driver,42,7,5);
+        assert(!driver->display_has_pending&&driver->display_status.content[0]==0&&!driver->controller.leds_dirty&&!driver->display_status.status);
+    }
+    if(display_request_data)CFRelease(display_request_data);
+    display_request_data=CFDataCreate(NULL,(const UInt8 *)&good,sizeof(good)-1);
+    poll_display(driver);assert(!driver->display_has_pending);
+    post_display(driver,&good);assert(driver->display_has_pending);
+    pthread_mutex_lock(&driver->state_lock);atomic_store(&driver->audio_device,43);
+    atomic_fetch_add(&driver->lifecycle_epoch,1);display_invalidate_locked(driver,EAGAIN);pthread_mutex_unlock(&driver->state_lock);
+    apply_display_request(driver,43,7,6);assert(driver->display_status.content[0]==0&&driver->display_status.audio_device==43);
+    post_display(driver,&good);apply_display_request(driver,43,7,6);assert(driver->display_status.content[0]==0);
+    RK3DisplayRequest current=display_request(driver,21,0,0x66);post_display(driver,&current);apply_display_request(driver,43,7,6);
+    assert(driver->display_status.content[0]==0x66);
+    poll_display(driver);assert(driver->display_has_published);
+    assert(bind_controller(driver,334)==noErr);assert(!driver->display_ready&&!driver->display_has_published);
+    poll_display(driver);assert(driver->display_status.status==EAGAIN);
+    apply_display_request(driver,43,7,6);assert(driver->display_ready&&driver->display_status.content[0]==0x66);
+    pthread_mutex_lock(&driver->state_lock);driver->started=false;atomic_store(&driver->online,false);
+    atomic_fetch_add(&driver->lifecycle_epoch,1);display_invalidate_locked(driver,ENODEV);pthread_mutex_unlock(&driver->state_lock);
+    post_display(driver,&current);apply_display_request(driver,43,7,6);assert(!driver->display_ready&&driver->controller.displays[3]==0x66);
+    driver->started=true;atomic_store(&driver->online,true);apply_display_request(driver,43,7,7);
+    assert(driver->display_status.content[0]==0x66&&!driver->display_status.request_id);
+    Driver *replacement=display_driver();assert(replacement->display_session!=driver->display_session);
+    post_display(replacement,&current);apply_display_request(replacement,42,7,5);assert(replacement->display_status.content[0]==0);
+    free_driver(replacement);free_driver(driver);clear_display_properties();
+}
+static void test_display_actual_stop_start_retains_only_runtime_content(void) {
+    clear_display_properties();reset_pedal_test();Driver *driver=lifecycle_driver();lifecycle_start(driver);
+    expected_after=driver->cursor;input_batch=(RK3NativeReports){.version=1};input_tick(NULL,driver);
+    uint64_t epoch=atomic_load(&driver->lifecycle_epoch);assert(driver->display_ready);
+    RK3DisplayRequest request=display_request(driver,40,3,0xf0);post_display(driver,&request);
+    expected_after=driver->cursor;input_tick(NULL,driver);assert(driver->display_status.content[3]==0xf0);
+    lifecycle_stop(driver);assert(!driver->display_ready&&driver->display_status.status==ENODEV);
+    lifecycle_start(driver);expected_after=driver->cursor;input_batch=(RK3NativeReports){.version=1};input_tick(NULL,driver);
+    assert(driver->display_ready&&driver->display_status.content[3]==0xf0&&
+        driver->display_status.epoch!=epoch&&!driver->display_status.request_id);
+    post_display(driver,&request);assert(!driver->display_has_pending);
+    lifecycle_done(driver);clear_display_properties();
+}
+static void test_display_io_failure_invalidates_cached_ready(void) {
+    Driver *driver=display_driver();poll_display(driver);
+    assert(driver->display_ready&&!driver->display_status.status);
+    record_io_failure(driver,42,7,5);assert(!atomic_load(&driver->online));
+    refresh_topology(driver);
+    assert(!driver->display_ready&&driver->display_status.status==ENODEV);
+    RK3DisplayStatus status;assert(display_status_data);
+    memcpy(&status,CFDataGetBytePtr(display_status_data),sizeof(status));
+    assert(status.status==ENODEV&&status.session==driver->display_session);
+    free_driver(driver);clear_display_properties();
+}
+static void test_display_single_writer_and_drop(void) {
+    Driver *driver=display_driver();RK3DisplayRequest request=display_request(driver,30,0,0xa5);
+    post_display(driver,&request);apply_display_request(driver,42,7,5);
+    driver->controller.button_values[0]=127;driver->controller.button_values[8]=127;
+    Delivery delivery={.driver=driver,.device=42,.generation=7,.epoch=5};
+    atomic_store(&driver->output_write,OUTPUT_SLOTS);atomic_store(&driver->output_read,0);
+    assert(rk3_controller_flush_leds(&driver->controller,false,queue_leds,&delivery)==RK3_CONTROLLER_OUTPUT_FAILED&&driver->controller.leds_dirty);
+    atomic_store(&driver->output_write,0);atomic_store(&driver->output_read,0);
+    assert(rk3_controller_flush_leds(&driver->controller,false,queue_leds,&delivery)==RK3_CONTROLLER_OK&&!driver->controller.leds_dirty);
+    OutputEntry entry=driver->output[0];assert(entry.command.length==9);
+    assert(entry.command.bytes[1]==0xa5&&entry.command.bytes[5]==1&&entry.command.bytes[6]==1);
+    working_driver=driver;display_worker_once=true;display_usb_writes=0;display_usb_error=kAudioHardwareUnspecifiedError;
+    atomic_store(&driver->worker_stop,false);add_ref(driver);output_worker(driver);
+    assert(display_usb_writes==1&&!driver->controller.leds_dirty&&atomic_load(&driver->output_failures)==1);
+    assert(atomic_load(&driver->output_read)==atomic_load(&driver->output_write));
+    apply_display_request(driver,42,7,5);assert(!driver->controller.leds_dirty); /* No USB-failure retry. */
+    display_worker_once=false;display_usb_error=noErr;working_driver=NULL;free_driver(driver);clear_display_properties();
+}
+
 int main(void) {
     assert(CFPlugInRegisterFactoryFunction(factory_id(),RK3MIDIDriverFactory));
+    test_display_mailbox_and_status();test_display_reject_and_lifetime();test_display_single_writer_and_drop();test_display_io_failure_invalidates_cached_ready();test_display_actual_stop_start_retains_only_runtime_content();
     test_com(); test_packet_queue(); test_input_history(); test_complete_message_boundaries(); test_listener_epoch(); test_controller_and_feedback(); test_pedal_settings_binding();
     test_pedal_pending_keeps_digital_and_din_and_postwrite_barrier();test_pedal_superseded_write_restores_defaults();
     test_pedal_postwrite_read_failure_is_not_acknowledged();test_enable_before_first_controller_poll(); test_controller_activation_snapshot_barrier(); test_cf_transport_rejection(); test_worker_generation_and_error(); test_transient_output_does_not_disconnect_sources();
@@ -1072,7 +1214,7 @@ int main(void) {
     test_restart_without_listener_stays_silent();test_absent_hardware_is_not_removed_registered_endpoint();
     test_missing_registered_endpoint_drops_only_its_listener();test_replaced_registered_sources_do_not_inherit_listeners();
     test_failed_start_is_inactive_then_same_endpoint_resumes();
-    clear_pedal_properties();
+    clear_pedal_properties();clear_display_properties();
     assert(CFPlugInUnregisterFactory(factory_id()));
     puts("RK3 CoreMIDI: COM, bounded queue, generation lease, history cursor and input routing passed");
     return 0;

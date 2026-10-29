@@ -1529,8 +1529,7 @@ bool rk3_usb_command_for_generation(rk3_usb_session *session, const uint8_t *byt
     if (session == NULL || bytes == NULL || length > 64) return false;
     bool midi = length >= 4 && bytes[0] == RK3_COMMAND_MIDI_OUTPUT &&
         bytes[2] != 0 && bytes[2] <= 61 && length == (size_t)bytes[2] + 3;
-    bool led = length == 9 && bytes[0] == RK3_COMMAND_WRITE_IO && bytes[1] == 0 &&
-        bytes[2] == 0x40 && bytes[3] == 0x40 && bytes[4] == 0 &&
+    bool led = length == 9 && bytes[0] == RK3_COMMAND_WRITE_IO &&
         bytes[6] <= 1 && bytes[7] == 0 && bytes[8] == 0;
     bool pedals = rk3_pedal_configuration_valid(bytes, length);
     if (!midi && !led && !pedals) return false;

@@ -197,6 +197,19 @@ channel1. LEDs follow the controller's toggle assignments; the feedback
 destination can receive host CC values. This does not add effect-state output
 to applications that do not send it.
 
+Build 18 adds the original indexed display-byte operation through that same
+controller and LED writer:
+
+```sh
+.build/native/test/rk3-display --show
+.build/native/test/rk3-display --index 0 --value 0
+```
+
+Display values are raw bytes, indexed 0–3. The utility reports logical controller
+state, not physical display readback or USB acknowledgement. Requests are bound
+to the live driver session and connection; they are not saved display
+preferences. See [the recovered contract](ReverseEngineering/DisplayContract.md).
+
 For guided tests, keep the diagnostic client open until the physical checks are
 finished, rather than relying on a short recording window:
 
