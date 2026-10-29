@@ -1,9 +1,16 @@
 # Agent Instructions
 
+## Project workspace
+
+Use `/Users/zukomgwili/src/rigkontrol3` on `master` for all project work,
+including edits, Git, builds, tests and Beads. Keep the chat attached to this
+established local checkout. Use a separate worktree only when the user explicitly
+requests one.
+
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
-> **Architecture in one line:** Issues live in a local Dolt database
-> (`.beads/dolt/`); cross-machine sync uses `bd dolt push/pull` (a
+> **Architecture in one line:** Issues live in a local Dolt database under
+> `.beads/` (`bd info` reports its path); cross-machine sync uses `bd dolt push/pull` (a
 > git-compatible protocol), stored under `refs/dolt/data` on your git
 > remote — separate from `refs/heads/*` where your code lives.
 > `.beads/issues.jsonl` is a passive export, not the wire protocol.

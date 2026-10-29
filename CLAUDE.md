@@ -1,6 +1,7 @@
 # Project Instructions for AI Agents
 
-This file provides instructions and context for AI coding agents working on this project.
+Follow [AGENTS.md](AGENTS.md) for the required established project folder,
+branch, Beads workflow and session-completion rules.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 ## Beads Issue Tracker
@@ -51,31 +52,9 @@ bd close <id>         # Complete work
 <!-- END BEADS INTEGRATION -->
 
 
-## Build & Test
+## Build, architecture and validation
 
-```bash
-swift build
-swift test
-swift run rk3probe
-```
-
-## Architecture Overview
-
-RigKontrol3 is a native macOS Apple Silicon MIDI bridge project for Native Instruments Rig Kontrol 3 pedal and switch control data.
-
-The first milestone is controller-only: read Rig Kontrol 3 control events and publish them through CoreMIDI as a virtual MIDI source. Audio interface support is out of scope until the controller path is working.
-
-Current structure:
-
-- `RigKontrol3Core`: Swift library for device probes, mapping, calibration, and MIDI message construction.
-- `rk3probe`: command-line probe for USB/HID/MIDI visibility checks.
-- `Research/rig-kontrol-3.md`: verified local hardware and driver facts.
-
-DriverKit is a documented fallback only if app-level USB access cannot read the control data reliably or cannot be shipped with acceptable permissions. Do not start DriverKit work unless a concrete app-level blocker is recorded; current libusb probes can open the device, claim interface 0 alt 0, and read bulk endpoint `0x81`.
-
-## Conventions & Patterns
-
-- Verify hardware facts from the attached device before relying on public samples.
-- Keep hardware access, mapping/calibration, and MIDI output separate.
-- Use Beads (`bd`) for task tracking.
-- Do not add audio-interface work to the first milestone.
+Read [README.md](README.md) for current native CoreAudio/CoreMIDI build commands,
+installation, mappings and qualification status. Follow the existing Beads plan
+before implementation or hardware tests; preserve NI's timing and recovery and
+keep SIP enabled.
